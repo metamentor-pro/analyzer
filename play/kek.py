@@ -1,4 +1,5 @@
 """Agent for working with pandas objects."""
+import io
 import logging
 import re
 from typing import Any, Dict, List, Optional, Union
@@ -42,6 +43,8 @@ You should use the tools below to answer the question posed of you (note that at
 SUFFIX = """
 This is the result of `print(df.head())`:
 {df_head}
+This is the result of `print(df.info())`:
+{df_info}
 Begin!
 {chat_history}
 Question: {input}. Answer in russian.
@@ -113,7 +116,7 @@ def create_pandas_dataframe_agent(
         raise ValueError(f"Expected pandas object, got {type(df)}")
 
     if input_variables is None:
-        input_variables = ["df_head", "input", "agent_scratchpad", "chat_history"]
+        input_variables = ["df_head", "df_info", "input", "agent_scratchpad", "chat_history"]
 
     def NoFunc(x):
         if x == "hidden":
@@ -126,7 +129,10 @@ def create_pandas_dataframe_agent(
     prompt = ZeroShotAgent.create_prompt(
         tools, prefix=prefix, suffix=suffix, format_instructions=FORMAT_INSTRUCTIONS, input_variables=input_variables
     )
-    partial_prompt = prompt.partial(df_head=str(df.head().to_markdown()))
+    buf = io.StringIO()
+    df.info(buf=buf)
+
+    partial_prompt = prompt.partial(df_head=str(df.head().to_markdown()), df_info=buf.getvalue())
     llm_chain = LLMChain(
         llm=llm,
         prompt=partial_prompt,
