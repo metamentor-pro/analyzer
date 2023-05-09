@@ -38,6 +38,9 @@ Your task is to provide an answer to a question in user-friendly form, understan
 Answer should be in the form of analysis, not just data. Don't use names of columns in answer. Instead of that, describe them.
 There is a lot of missing values in table. Handle them properly, take them into account while analyzing.
 Don't try to plot graphs, just use pandas.
+If you do not know the answer, just report it. 
+If question consists of two parts, you should provide answers on each of them separately.
+If observation is too big (you can notice it with '...'), you should save results to file (using python code), and report about it.
 You should use the tools below to answer the question posed of you (note that at least one should be used):"""
 
 SUFFIX = """
@@ -45,6 +48,7 @@ This is the result of `print(df.head())`:
 {df_head}
 This is the result of `print(df.info())`:
 {df_info}
+If observation is too big (you can notice it with '...'), you should use save results to file, and report about it.
 Begin!
 {chat_history}
 Question: {input}
@@ -132,8 +136,15 @@ def create_pandas_dataframe_agent(
     def NoFunc(x):
         if x == "hidden":
             return "Use Final Answer if you have nothing to do, if you have work to do, just do it"
-            return "You didn't follow Thought/Action/Action_Input scheme"
+            # return "You didn't follow Thought/Action/Action_Input scheme"
 
+    human_input = HumanInputRun()
+    human_input.description = (
+        "You can ask a human for guidance when you think you "
+        "got stuck or you are not sure what to do next. "
+        "The input should be a question for the human. "
+        "You should use this tool only for clarification, not meaningful questions"
+    )
     tools = [PythonAstREPLTool(locals={"df": df, "python": None}),
              HumanInputRun(),
              Tool(name="No", func=NoFunc, description="Use this tool if no tool is needed")
