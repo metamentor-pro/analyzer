@@ -19,6 +19,7 @@ while True:
     if question == "exit":
         break
     try:
+        question = question + "Ответь на русском"
         print(f"Answer: {ag.run(question)}")
     except Exception as e:
         print(f"Failed with error: {str(e)}")

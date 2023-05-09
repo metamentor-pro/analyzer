@@ -18,7 +18,7 @@ def transform_list_to_join(l):
 
 for item in d:
     try:
-        new_item = {'date': item['date'], 'coord': item['coord'],
+        new_item = {'date': item['date'],
                     'row_title_column': ' '.join(transform_list_to_join(item['row_title_column']))}
         for column_name in ["column_310", "column_268", "column_386", "column_281", "column_362", "column_314",
                             "column_331", "column_354", "column_475", "column_364", "column_370", "column_372"]:
