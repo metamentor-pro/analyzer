@@ -41,6 +41,7 @@ Don't try to plot graphs, just use pandas.
 If you do not know the answer, just report it. 
 If question consists of two parts, you should provide answers on each of them separately.
 If observation is too big (you can notice it with '...'), you should save results to file (using python code), and report about it.
+The answer should be detailed. It should include data you gained in the process of answering (you can save it to file if needed, in this case report about it and explain how to interpret the file).
 You should use the tools below to answer the question posed of you (note that at least one should be used):"""
 
 SUFFIX = """
@@ -94,7 +95,7 @@ class MyOutputParser(AgentOutputParser):
         # match_action = re.search(regex_action, text, re.DOTALL)
         # match_action_input
         if "Action:" not in text and "Action_Input:" not in text:
-            return AgentFinish({"output" : text.strip()}, text)
+            return AgentFinish({"output": text.strip()}, text)
         if not match:
             return AgentAction("No", "hidden", text)
             # raise OutputParserException(f"Could not parse LLM output: `{text}`")
