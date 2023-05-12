@@ -18,7 +18,7 @@ from langchain.tools import HumanInputRun
 from langchain.tools.python.tool import PythonAstREPLTool
 
 PREFIX = """
-You are working with a pandas dataframe in Python. The name of the dataframe is `df`. It is passed as a local variable, so there is no need to read it.
+You are working with a pandas dataframe in Python. The name of the dataframe is `df`. It is passed as a local variable. YOU DON'T NEED TO READ DATA.
 This dataframe is the report produced by oil production company.
 It contains the following columns:
 date - column with date
@@ -61,7 +61,7 @@ FORMAT_INSTRUCTIONS = """Use the following format:
 
 Question: the input question you must answer
 Thought: you should always think about what to do
-Action: the action to take, should be one of [{tool_names}]
+Action: the action to take, should be one of [{tool_names}]. IT IS CRITICALLY IMPORTANT TO USE ONE OF PROVIDED TOOLS.
 Action_Input: the input to the action
 Observation: the result of the action
 ... (this Thought/Action/Action_Input/Observation can repeat N times)
@@ -73,6 +73,12 @@ Don't omit any parts of this scheme.
 
 
 class MyOutputParser(AgentOutputParser):
+    tool_names: List[str] = []
+
+    def __init__(self, tool_names: List[str], *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.tool_names = tool_names
+
     def get_format_instructions(self) -> str:
         return FORMAT_INSTRUCTIONS
 
@@ -102,6 +108,8 @@ class MyOutputParser(AgentOutputParser):
             # raise OutputParserException(f"Could not parse LLM output: `{text}`")
 
         action = match.group(1).strip()
+        if action not in self.tool_names:
+            return AgentAction("No", "invalid tool", text)
         action_input = match.group(2)
         return AgentAction(action, action_input.strip(" ").strip('"'), text)
 
@@ -138,7 +146,8 @@ def create_pandas_dataframe_agent(
     def NoFunc(x):
         if x == "hidden":
             return "Use Final Answer if you have nothing to do, if you have work to do, just do it"
-            # return "You didn't follow Thought/Action/Action_Input scheme"
+        if x == "invalid tool":
+            return "WRONG ACTION - YOU SHOULD USE ONE OF PROVIDED TOOLS: [python_repl_ast, No]"
 
     human_input = HumanInputRun()
     human_input.description = (
@@ -148,7 +157,7 @@ def create_pandas_dataframe_agent(
         "You should use this tool only for clarification, not meaningful questions"
     )
     tools = [PythonAstREPLTool(locals={"df": df, "python": None}),
-             HumanInputRun(),
+             # human_input,
              Tool(name="No", func=NoFunc, description="Use this tool if no tool is needed")
              ]
     # tools.extend(load_tools(["google-search"]))
@@ -171,7 +180,7 @@ def create_pandas_dataframe_agent(
         callback_manager=callback_manager,
         **kwargs,
     )
-    agent.output_parser = MyOutputParser()
+    agent.output_parser = MyOutputParser(tool_names=tool_names)
     memory = ConversationBufferMemory(memory_key="chat_history")
     return AgentExecutor.from_agent_and_tools(
         agent=agent,
