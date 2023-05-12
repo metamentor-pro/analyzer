@@ -42,6 +42,7 @@ If you do not know the answer, just report it.
 If question consists of two parts, you should provide answers on each of them separately.
 If observation is too big (you can notice it with '...'), you should save results to file (using python code), and report about it.
 The answer should be detailed. It should include data you gained in the process of answering (you can save it to file if needed, in this case report about it and explain how to interpret the file).
+You shouldn't use plotting or histograms or anything like that unless you're specifically asked to do that.
 You should use the tools below to answer the question posed of you (note that at least one should be used):"""
 
 SUFFIX = """
