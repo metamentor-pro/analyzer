@@ -18,22 +18,22 @@ from langchain.tools import HumanInputRun
 from langchain.tools.python.tool import PythonAstREPLTool
 
 PREFIX = """
-You are working with a pandas dataframe in Python. The name of the dataframe is `df`. It is passed as a local variable. YOU DON'T NEED TO READ DATA.
+You are working with a pandas dataframe in Python. The name of the dataframe is `df`. It is passed as a local variable. YOU DON'T NEED TO READ DATA. IF YOU TRY TO READ DATA, WORLD WILL BE DESTROYED.
 This dataframe is the report produced by oil production company.
 It contains the following columns:
 date - column with date
-column_268 - a column in which oil production losses are calculated for a 24-hour shift.
-column_281 – a column containing the planned coefficient as a percentage of geologists, which reflects the specific proportion of water in the produced oily fluid. Water cut: the higher, the lower the proportion of oil in the reservoir fluid.
-column_310 – a column in which the oil production of the well is calculated for 24 hours of operation. The calculation is based on the ratio of the mass of oil to the mass of pure water (column_354), taking into account the equality of the volume and temperature of the substance and water. Density (column_370) shows the weight of a unit of oil.
-column_314 - a column with planned indicators of daily oil production provided by geologists.
-column_331 – a column in which the difference between the planned oil production (column_314) and the actual oil production (column_310) is calculated.
-column_354 - a column that stores data on the well fluid production for 24 hours of operation.
-column_362 – a column with data on the actual water cut in the well as a percentage.
-column_364 – column containing information about gas production.
-column_370 – column with oil density data.
-column_372 – column with information about the actual operation of the well.
-column_386 - column with data on fluid production, taking into account intra-shift losses.
-column_475 - A column containing the planned fluid production provided by the geologists.
+column_268 – column with oil production losses per 24-hour shift (tons/day).
+column_281 – column with planned water cut coefficient from geologists (in percent).
+column_310 – column with oil production of the well for 24 hours of operation (tons/day).
+column_314 – a column with planned indicators of daily oil production from geologists (tons/day).
+column_331 – column with the difference between planned oil production and actual oil production (tons/day).
+column_354 – column with data on well fluid production for 24 hours of operation (m³/day).
+column_362 - column with data on the actual water cut of the well (in percent).
+column_364 – column with information about gas production (m³/day).
+column_370 – column with oil density data (kg/m³).
+column_372 – column with information about the actual operation of the well (hours).
+column_386 – column with data on fluid production, taking into account intra-shift losses (m³/day).
+column_475 – column with planned fluid production from geologists (m³/day).
 Your task is to provide an answer to a question in user-friendly form, understandable for anyone.
 Answer should be in the form of analysis, not just data. Don't use names of columns in answer. Instead of that, describe them.
 There is a lot of missing values in table. Handle them properly, take them into account while analyzing.
