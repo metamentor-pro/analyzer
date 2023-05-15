@@ -157,7 +157,7 @@ def create_pandas_dataframe_agent(
         "You should use this tool only for clarification, not meaningful questions"
     )
     tools = [PythonAstREPLTool(locals={"df": df, "python": None}),
-             # human_input,
+             human_input,
              Tool(name="No", func=NoFunc, description="Use this tool if no tool is needed")
              ]
     # tools.extend(load_tools(["google-search"]))
