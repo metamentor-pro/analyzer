@@ -7,7 +7,7 @@ from agent import create_pandas_dataframe_agent
 
 df = pd.read_json("data/data.json")
 
-llm = ChatOpenAI(temperature=0, model='gpt-4',
+llm = ChatOpenAI(temperature=0, model='gpt-3.5-turbo',
                  openai_api_key="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")
 
 ag = create_pandas_dataframe_agent(llm, df, verbose=True)
