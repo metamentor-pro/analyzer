@@ -22,7 +22,12 @@ for item in d:
                     'row_title_column': ' '.join(transform_list_to_join(item['row_title_column']))}
         for column_name in ["column_310", "column_268", "column_386", "column_281", "column_362", "column_314",
                             "column_331", "column_354", "column_475", "column_364", "column_370", "column_372"]:
-            new_item[column_name] = float(item[column_name][0]) if item[column_name][0] is not None else None
+            if item[column_name][0] is None:
+                new_item[column_name] = None
+            elif float(item[column_name][0]) == 0. and column_name in ["column_370"]:
+                new_item[column_name] = None
+            else:
+                new_item[column_name] = float(item[column_name][0])
         reformatted.append(new_item)
     except Exception as e:
         print(traceback.format_exc())

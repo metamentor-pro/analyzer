@@ -31,20 +31,24 @@ column_331 – column with the difference between planned oil production and act
 column_354 – column with data on well fluid production for 24 hours of operation (m³/day).
 column_362 - column with data on the actual water cut of the well (in percent).
 column_364 – column with information about gas production (m³/day).
-column_370 – column with oil density data (kg/m³).
+column_370 – column with oil density data (tons/m³).
 column_372 – column with information about the actual operation of the well (hours).
 column_386 – column with data on fluid production, taking into account intra-shift losses (m³/day).
 column_475 – column with planned fluid production from geologists (m³/day).
 Your task is to provide an answer to a question in user-friendly form, understandable for anyone.
-You should handle units of measure properly, considering relationships between them.
-IT IS FORBIDDEN TO HALLUCINATE NUMBERS. YOU CAN ONLY USE DATA PROVIDED IN THE TABLE AND MAKE CONCLUSIONS BASED ON IT, GAINED BY python_repl_ast tool.   
+You should handle units of measure properly, considering relationships between them. Take into account, that 1 ton contains 7.28 barrels.
+When counting value, report about its units of measure using comments.
+IT IS FORBIDDEN TO HALLUCINATE NUMBERS. YOU CAN ONLY USE DATA PROVIDED IN THE TABLE AND MAKE CONCLUSIONS BASED ON IT, GAINED BY python_repl_ast tool.
 Answer should be in the form of analysis, not just data. Don't use names of columns in answer. Instead of that, describe them.
 There is a lot of missing values in table. Handle them properly, take them into account while analyzing.
 Don't try to plot graphs, just use pandas.
 If you do not know the answer, just report it. 
 If question consists of two parts, you should provide answers on each of them separately.
 THE DATA IS IN THE `df` VARIABLE. YOU DON'T NEED TO READ DATA.
-The answer should be detailed. It should include data you gained in the process of answering (you can save it to file if needed, in this case report about it and explain how to interpret the file).
+The answer should be detailed. It should include data you gained in the process of answering.
+You should answer only the question that was asked, and not to invent your own.
+If the question is incorrect in your opinion, report about it (via Final Answer) and finish work.
+You must include all assumptions you make (like oil price) to the Final Answer.
 You shouldn't use plotting or histograms or anything like that unless you're specifically asked to do that.
 You should use the tools below to answer the question posed of you (note that at least one should be used):"""
 
@@ -56,8 +60,9 @@ This is the result of `print(df.info())`:
 If observation is too big (you can notice it with '...'), you should use save results to file, and report about it.
 Begin!
 {chat_history}
+Reminder! Don't read data, it is already placed in ```df``` variable.
 Question: {input}
-Answer ONLY in Russian.
+Final Answer should be ONLY in Russian, the rest can be in English.
 {agent_scratchpad}"""
 
 FORMAT_INSTRUCTIONS = """Use the following format:
@@ -100,7 +105,7 @@ class MyOutputParser(AgentOutputParser):
         match = re.search(regex, text, re.DOTALL)
 
         if "Action:" not in text and "Action_Input:" not in text:
-            return AgentFinish({"output": text.strip()}, text)
+            return AgentAction("No", "hidden", text)
         if "Action:" in text and "Action_Input:" not in text:
             return AgentAction("No", "no input", text)
         if not match:
@@ -131,6 +136,7 @@ def create_pandas_dataframe_agent(
     """Construct a pandas agent from an LLM and dataframe."""
     try:
         import pandas as pd
+        import numpy as np
     except ImportError:
         raise ValueError(
             "pandas package not found, please install with `pip install pandas`"
@@ -144,9 +150,9 @@ def create_pandas_dataframe_agent(
 
     def NoFunc(x):
         if x == "hidden":
-            return "If you are ready to answer, mark the a if you have work to do, just do it"
+            return "If you are ready to answer, mark the answer with 'Final Answer', if you have work to do, just do it"
         if x == "invalid tool":
-            return "WRONG ACTION - YOU SHOULD USE ONE OF PROVIDED TOOLS: [python_repl_ast, No]"
+            return "WRONG ACTION - YOU SHOULD USE ONE OF PROVIDED TOOLS: [python_repl_ast, Human, No]"
         if x == "no input":
             return "YOU SHOULD FOLLOW THE PROVIDED SCHEME AND INCLUDE Action_Input, OR FINISH WORK USING Final Answer"
 
@@ -164,7 +170,7 @@ def create_pandas_dataframe_agent(
     )
     tools = [python,
              human_input,
-             Tool(name="No", func=NoFunc, description="Use this tool if no tool is needed. Even in that case, don't forget to include Action_Input  ")
+             Tool(name="No", func=NoFunc, description="Use this tool if no tool is needed. Even in that case, don't forget to include Action_Input")
              ]
     # tools.extend(load_tools(["google-search"]))
     prompt = ZeroShotAgent.create_prompt(
