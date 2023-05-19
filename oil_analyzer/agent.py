@@ -4,7 +4,7 @@ import logging
 import re
 from typing import Any, Dict, List, Optional, Union
 
-from langchain.agents import Tool
+from langchain.agents import Tool, load_tools
 from langchain.agents.agent import AgentExecutor, AgentOutputParser
 # from langchain.agents.agent_toolkits.pandas.prompt import PREFIX, SUFFIX
 from langchain.agents.mrkl.base import ZeroShotAgent
@@ -15,6 +15,7 @@ from langchain.chains.llm import LLMChain
 from langchain.memory import ConversationBufferMemory
 from langchain.schema import AgentAction, AgentFinish
 from langchain.tools import HumanInputRun
+from langchain.utilities import WolframAlphaAPIWrapper
 from langchain.tools.python.tool import PythonAstREPLTool
 
 PREFIX = """
@@ -48,7 +49,8 @@ THE DATA IS IN THE `df` VARIABLE. YOU DON'T NEED TO READ DATA.
 The answer should be detailed. It should include data you gained in the process of answering.
 You should answer only the question that was asked, and not to invent your own.
 If the question is incorrect in your opinion, report about it (via Final Answer) and finish work.
-You must include all assumptions you make (like oil price) to the Final Answer.
+You must include ALL assumptions you make (like oil price) to the Final Answer.
+Before writing code, you should EXPLAIN ALL FORMULAS.
 You shouldn't use plotting or histograms or anything like that unless you're specifically asked to do that.
 You should use the tools below to answer the question posed of you (note that at least one should be used):"""
 
@@ -69,7 +71,7 @@ FORMAT_INSTRUCTIONS = """Use the following format:
 
 Question: the input question you must answer
 Thought: you should always think about what to do
-Action: the action to take, should be one of [{tool_names}]. IT IS CRITICALLY IMPORTANT TO USE ONE OF PROVIDED TOOLS.
+Action: tool, one of [{tool_names}]. IT IS CRITICALLY IMPORTANT TO USE ONE OF PROVIDED TOOLS.
 Action_Input: the input to the action
 Observation: the result of the action
 ... (this Thought/Action/Action_Input/Observation can repeat N times)
@@ -78,6 +80,8 @@ Final Answer: the final answer to the original input question. Should be in Russ
 
 Don't omit any parts of this scheme.
 """
+
+WOLFRAM_TOKEN = "3JW87A-T9JPV96HTA"
 
 
 class MyOutputParser(AgentOutputParser):
@@ -152,7 +156,7 @@ def create_pandas_dataframe_agent(
         if x == "hidden":
             return "If you are ready to answer, mark the answer with 'Final Answer', if you have work to do, just do it"
         if x == "invalid tool":
-            return "WRONG ACTION - YOU SHOULD USE ONE OF PROVIDED TOOLS: [python_repl_ast, Human, No]"
+            return "WRONG ACTION - YOU SHOULD USE ONE OF PROVIDED TOOLS: [python_repl_ast, Human, No, WolframAlpha]"
         if x == "no input":
             return "YOU SHOULD FOLLOW THE PROVIDED SCHEME AND INCLUDE Action_Input, OR FINISH WORK USING Final Answer"
 
@@ -173,6 +177,7 @@ def create_pandas_dataframe_agent(
              Tool(name="No", func=NoFunc, description="Use this tool if no tool is needed. Even in that case, don't forget to include Action_Input")
              ]
     # tools.extend(load_tools(["google-search"]))
+    tools.extend(load_tools(["wolfram-alpha"], wolfram_alpha_appid=WOLFRAM_TOKEN))
     prompt = ZeroShotAgent.create_prompt(
         tools, prefix=prefix, suffix=suffix, format_instructions=FORMAT_INSTRUCTIONS, input_variables=input_variables
     )
