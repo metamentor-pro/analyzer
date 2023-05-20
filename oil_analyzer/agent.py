@@ -16,7 +16,10 @@ from langchain.memory import ConversationBufferMemory
 from langchain.schema import AgentAction, AgentFinish
 from langchain.tools import HumanInputRun
 from langchain.utilities import WolframAlphaAPIWrapper
-from langchain.tools.python.tool import PythonAstREPLTool
+
+from custom_python_ast import CustomPythonAstREPLTool
+
+# from langchain.tools.python.tool import PythonAstREPLTool
 
 PREFIX = """
 You are working with a pandas dataframe in Python. The name of the dataframe is `df`. It is passed as a local variable.
@@ -152,19 +155,22 @@ def create_pandas_dataframe_agent(
     if input_variables is None:
         input_variables = ["df_head", "df_info", "input", "agent_scratchpad", "chat_history"]
 
-    def NoFunc(x):
-        if x == "hidden":
-            return "If you are ready to answer, mark the answer with 'Final Answer', if you have work to do, just do it"
-        if x == "invalid tool":
-            return "WRONG ACTION - YOU SHOULD USE ONE OF PROVIDED TOOLS: [python_repl_ast, Human, No, WolframAlpha]"
-        if x == "no input":
-            return "YOU SHOULD FOLLOW THE PROVIDED SCHEME AND INCLUDE Action_Input, OR FINISH WORK USING Final Answer"
+    def NoFuncWrapper(tools: List):
+        def NoFunc(x):
+            if x == "hidden":
+                return "If you are ready to answer, mark the answer with 'Final Answer', if you have work to do, just do it"
+            if x == "invalid tool":
+                return "WRONG ACTION - YOU SHOULD USE ONE OF PROVIDED TOOLS: {}".format([tool.name for tool in tools])
+            if x == "no input":
+                return "YOU SHOULD FOLLOW THE PROVIDED SCHEME AND INCLUDE Action_Input, OR FINISH WORK USING Final Answer"
+
+        return NoFunc
 
     human_input = HumanInputRun()
     human_input.description = (
         "You can use this tool to ask human a question. You should use it only in case you are told to do so."
     )
-    python = PythonAstREPLTool(locals={"df": df, "python": None})
+    python = CustomPythonAstREPLTool(locals={"df": df, "pd": pd, "np": np, "python": None})
     python.description = (
         "A Python shell. Use this to execute python commands. "
         "Input should be a valid python command. "
@@ -172,10 +178,12 @@ def create_pandas_dataframe_agent(
         "make sure it does not look abbreviated before using it in your answer."
         "You shouldn't use print in the code. To get results, the last line should be the variable, which value you will get as observation. This value shouldn't be big dataframe, otherwise, you won't get observation."
     )
-    tools = [python,
-             human_input,
-             Tool(name="No", func=NoFunc, description="Use this tool if no tool is needed. Even in that case, don't forget to include Action_Input")
-             ]
+    tools = []
+    tools.extend([python,
+                  human_input,
+                  Tool(name="No", func=NoFuncWrapper(tools),
+                       description="Use this tool if no tool is needed. Even in that case, don't forget to include Action_Input")
+                  ])
     # tools.extend(load_tools(["google-search"]))
     tools.extend(load_tools(["wolfram-alpha"], wolfram_alpha_appid=WOLFRAM_TOKEN))
     prompt = ZeroShotAgent.create_prompt(
