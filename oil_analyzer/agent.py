@@ -61,13 +61,12 @@ If observation is too big (you can notice it with '...'), you should use save re
 Begin!
 {chat_history}
 Reminder! Don't read data, it is already placed in ```df``` variable.
+YOU MUST FOLLOW THE PROVIDED SCHEME (Thought/Action/Action_Input). EVERYTHING WILL BE DESTROYED IF YOU WON'T! YOU SHOULD INCLUDE ALL PARTS OF THIS SCHEME TO ONE ANSWER.
 Question: {input}
 Final Answer should be ONLY in Russian, the rest can be in English.
 {agent_scratchpad}"""
 
-
 WOLFRAM_TOKEN = "3JW87A-T9JPV96HTA"
-
 
 
 def create_pandas_dataframe_agent(
@@ -102,8 +101,16 @@ def create_pandas_dataframe_agent(
 
     def no_func_wrapper(tools: List):
         def no_func(x):
-            if x == "hidden":
-                return "If you are ready to answer, mark the answer with 'Final Answer', if you have work to do, just do it"
+            # return "\nThought:"
+            if x == "wrong scheme":
+                return None
+                return """IF YOU ARE READY TO ANSWER, MARK THE ANSWER WITH 'Final Answer'. IF YOU HAVE WORK TO DO, DO IT USING 'Action/Action_Input'
+FOR EXAMPLE:
+Action: python_repl_ast
+Action_Input:
+```
+df.head(5)
+```"""
             if x == "invalid tool":
                 return "WRONG ACTION - YOU SHOULD USE ONE OF PROVIDED TOOLS: {}".format([tool.name for tool in tools])
             if x == "no input":
@@ -115,7 +122,8 @@ def create_pandas_dataframe_agent(
     human_input.description = (
         "You can use this tool to ask human a question. You should use it only in case you are told to do so."
     )
-    python = CustomPythonAstREPLTool(locals={"df": df, "pd": pd, "np": np, "python": None, "python_repl_ast": None})
+    python = CustomPythonAstREPLTool(locals={"df": df, "python": None, "python_repl_ast": None},
+                                     globals={"pd": pd, "np": np})
     python.description = (
         "A Python shell. Use this to execute python commands. "
         "Input should be a valid python command. "

@@ -48,11 +48,11 @@ class CustomOutputParser(AgentOutputParser):
         match = re.search(regex, text, re.DOTALL)
 
         if "Action:" not in text and "Action_Input:" not in text:
-            return AgentAction("No", "hidden", text)
+            return AgentAction("No", "wrong scheme", text)
         if "Action:" in text and "Action_Input:" not in text:
             return AgentAction("No", "no input", text)
         if not match:
-            return AgentAction("No", "hidden", text)
+            return AgentAction("No", "wrong scheme", text)
 
         action = match.group(1).strip()
         if action not in self.tool_names:
