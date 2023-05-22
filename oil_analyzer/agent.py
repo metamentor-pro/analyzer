@@ -1,25 +1,19 @@
 """Agent for working with pandas objects."""
 import io
-import logging
-import re
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from langchain.agents import Tool, load_tools
-from langchain.agents.agent import AgentExecutor, AgentOutputParser
-# from langchain.agents.agent_toolkits.pandas.prompt import PREFIX, SUFFIX
+from langchain.agents.agent import AgentExecutor
 from langchain.agents.mrkl.base import ZeroShotAgent
-from langchain.agents.mrkl.output_parser import FINAL_ANSWER_ACTION
 from langchain.base_language import BaseLanguageModel
 from langchain.callbacks.base import BaseCallbackManager
 from langchain.chains.llm import LLMChain
 from langchain.memory import ConversationBufferMemory
-from langchain.schema import AgentAction, AgentFinish
 from langchain.tools import HumanInputRun
-from langchain.utilities import WolframAlphaAPIWrapper
 
+from custom_output_parser import CustomOutputParser
 from custom_python_ast import CustomPythonAstREPLTool
-
-# from langchain.tools.python.tool import PythonAstREPLTool
+from custom_output_parser import FORMAT_INSTRUCTIONS
 
 PREFIX = """
 You are working with a pandas dataframe in Python. The name of the dataframe is `df`. It is passed as a local variable.
@@ -71,59 +65,9 @@ Question: {input}
 Final Answer should be ONLY in Russian, the rest can be in English.
 {agent_scratchpad}"""
 
-FORMAT_INSTRUCTIONS = """Use the following format:
-
-Question: the input question you must answer
-Thought: you should always think about what to do
-Action: tool, one of [{tool_names}]. IT IS CRITICALLY IMPORTANT TO USE ONE OF PROVIDED TOOLS.
-Action_Input: the input to the action
-Observation: the result of the action
-... (this Thought/Action/Action_Input/Observation can repeat N times)
-Thought: I now know the final answer
-Final Answer: the final answer to the original input question. Should be in Russian.
-
-Don't omit any parts of this scheme.
-"""
 
 WOLFRAM_TOKEN = "3JW87A-T9JPV96HTA"
 
-
-class MyOutputParser(AgentOutputParser):
-    tool_names: List[str] = []
-
-    def __init__(self, tool_names: List[str], *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.tool_names = tool_names
-
-    def get_format_instructions(self) -> str:
-        return FORMAT_INSTRUCTIONS
-
-    def parse(self, text: str) -> Union[AgentAction, AgentFinish]:
-        logging.info(text)
-        if FINAL_ANSWER_ACTION in text:
-            return AgentFinish(
-                {"output": text.split(FINAL_ANSWER_ACTION)[-1].strip()}, text
-            )
-        # \s matches against tab/newline/whitespace
-
-        regex = (
-            r"Action\s*\d*\s*:[\s]*(.*?)[\s]*Action_Input\s*\d*\s*:[\s]*(.*)"
-        )
-
-        match = re.search(regex, text, re.DOTALL)
-
-        if "Action:" not in text and "Action_Input:" not in text:
-            return AgentAction("No", "hidden", text)
-        if "Action:" in text and "Action_Input:" not in text:
-            return AgentAction("No", "no input", text)
-        if not match:
-            return AgentAction("No", "hidden", text)
-
-        action = match.group(1).strip()
-        if action not in self.tool_names:
-            return AgentAction("No", "invalid tool", text)
-        action_input = match.group(2)
-        return AgentAction(action, action_input.strip(" ").strip('"'), text)
 
 
 def create_pandas_dataframe_agent(
@@ -206,7 +150,7 @@ def create_pandas_dataframe_agent(
         callback_manager=callback_manager,
         **kwargs,
     )
-    agent.output_parser = MyOutputParser(tool_names=tool_names)
+    agent.output_parser = CustomOutputParser(tool_names=tool_names)
     memory = ConversationBufferMemory(memory_key="chat_history")
     return AgentExecutor.from_agent_and_tools(
         agent=agent,
