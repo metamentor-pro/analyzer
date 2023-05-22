@@ -27,6 +27,7 @@ YOU DON'T NEED TO READ DATA, IT IS ALREADY IN THE `df` VARIABLE. IF YOU TRY TO R
 This dataframe is the report produced by oil production company.
 It contains the following columns:
 date - column with date
+row_title_column - column with name of well. One well can be included many times in the report.
 column_268 – column with oil production losses per 24-hour shift (tons/day).
 column_281 – column with planned water cut coefficient from geologists (in percent).
 column_310 – column with oil production of the well for 24 hours of operation (tons/day).
@@ -155,8 +156,8 @@ def create_pandas_dataframe_agent(
     if input_variables is None:
         input_variables = ["df_head", "df_info", "input", "agent_scratchpad", "chat_history"]
 
-    def NoFuncWrapper(tools: List):
-        def NoFunc(x):
+    def no_func_wrapper(tools: List):
+        def no_func(x):
             if x == "hidden":
                 return "If you are ready to answer, mark the answer with 'Final Answer', if you have work to do, just do it"
             if x == "invalid tool":
@@ -164,13 +165,13 @@ def create_pandas_dataframe_agent(
             if x == "no input":
                 return "YOU SHOULD FOLLOW THE PROVIDED SCHEME AND INCLUDE Action_Input, OR FINISH WORK USING Final Answer"
 
-        return NoFunc
+        return no_func
 
     human_input = HumanInputRun()
     human_input.description = (
         "You can use this tool to ask human a question. You should use it only in case you are told to do so."
     )
-    python = CustomPythonAstREPLTool(locals={"df": df, "pd": pd, "np": np, "python": None})
+    python = CustomPythonAstREPLTool(locals={"df": df, "pd": pd, "np": np, "python": None, "python_repl_ast": None})
     python.description = (
         "A Python shell. Use this to execute python commands. "
         "Input should be a valid python command. "
@@ -181,7 +182,7 @@ def create_pandas_dataframe_agent(
     tools = []
     tools.extend([python,
                   human_input,
-                  Tool(name="No", func=NoFuncWrapper(tools),
+                  Tool(name="No", func=no_func_wrapper(tools),
                        description="Use this tool if no tool is needed. Even in that case, don't forget to include Action_Input")
                   ])
     # tools.extend(load_tools(["google-search"]))
