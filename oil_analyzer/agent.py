@@ -103,7 +103,7 @@ def create_pandas_dataframe_agent(
         def no_func(x):
             # return "\nThought:"
             if x == "wrong scheme":
-                return None
+                return "DON'T STOP AFTER 'Thought'. Continue with action or final answer (if you are ready to provide it)"
                 return """IF YOU ARE READY TO ANSWER, MARK THE ANSWER WITH 'Final Answer'. IF YOU HAVE WORK TO DO, DO IT USING 'Action/Action_Input'
 FOR EXAMPLE:
 Action: python_repl_ast
