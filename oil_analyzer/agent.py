@@ -1,3 +1,4 @@
+from langchain.memory import ConversationBufferMemory
 import logging
 import re
 from dataclasses import dataclass
@@ -7,7 +8,7 @@ from langchain import LLMChain
 from langchain.agents import LLMSingleActionAgent, AgentExecutor
 from langchain.base_language import BaseLanguageModel
 from langchain.prompts import StringPromptTemplate
-from langchain.tools import Tool, BaseTool
+from langchain.tools import Tool
 
 from custom_output_parser import CustomOutputParser
 from warning_tool import WarningTool
@@ -75,7 +76,7 @@ class CustomPromptTemplate(StringPromptTemplate):
         else:
             kwargs["agent_scratchpad"] = ""
 
-        kwargs["agent_scratchpad"] += "Here go your thoughts and actions:"
+        kwargs["agent_scratchpad"] += "Here go your thoughts and actions:\n"
 
         kwargs["agent_scratchpad"] += self.thought_log(
             intermediate_steps[
@@ -110,6 +111,16 @@ class BaseMinion:
         agent_toolnames = [tool.name for tool in available_tools]
         available_tools.append(WarningTool().get_tool())
 
+        class Summarizer:
+            def __init__(self):
+                self.summary = ""
+
+            def run(self, summary: str, thought_process: str):
+                return self.summary
+
+            def add_question_answer(self, question: str, answer: str):
+                self.summary += f"Previous question: {question}\nPrevious answer: {answer}\n\n"
+        self.summarizer = Summarizer()
         prompt = CustomPromptTemplate(
             template=base_prompt,
             tools=available_tools,
@@ -117,6 +128,7 @@ class BaseMinion:
                 base_prompt, interaction_enabled=True
             ),
             agent_toolnames=agent_toolnames,
+            my_summarize_agent=self.summarizer,
         )
 
         llm_chain = LLMChain(llm=llm, prompt=prompt)
@@ -135,8 +147,10 @@ class BaseMinion:
         )
 
     def run(self, **kwargs):
-        # kwargs["feedback"] = kwargs.get("feedback", "")
-        return (
+        question = kwargs["input"]
+        ans = (
                 self.agent_executor.run(**kwargs)
                 or "No result. The execution was probably unsuccessful."
         )
+        self.summarizer.add_question_answer(question, ans)
+        return ans

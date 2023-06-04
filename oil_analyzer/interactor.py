@@ -2,14 +2,14 @@ import io
 import logging
 import traceback
 
-import pandas as pd
 import numpy as np
-from langchain.chat_models import ChatOpenAI
-from agent import BaseMinion
-from prompts import *
-from custom_python_ast import CustomPythonAstREPLTool
+import pandas as pd
 from langchain.agents import Tool
-from langchain.utilities import PythonREPL
+from langchain.chat_models import ChatOpenAI
+
+from agent import BaseMinion
+from common_prompts import TableDescriptionPrompt
+from custom_python_ast import CustomPythonAstREPLTool
 
 df = pd.read_json("data/data.json")
 df_head = df.head()
@@ -26,27 +26,28 @@ python_tool.description = (
     "Input should be a valid python command. "
     "If you want to see the output of a value, you should print it out with `print(...)`."
     "Code should always produce a value"
-    # "You shouldn't use print in the code. To get results, the last line should be the variable, which value you will get as observation. This value shouldn't be big dataframe, otherwise, you won't get observation."
 )
 
-ag = BaseMinion(base_prompt=execution_prompt,
+prompt = TableDescriptionPrompt("""
+date - column with date
+row_title_column - column with name of well. One well can be included many times in the report.
+column_268 – column with oil production losses per 24-hour shift (tons/day).
+column_281 – column with planned water cut coefficient from geologists (in percent).
+column_310 – column with oil production of the well for 24 hours of operation (tons/day).
+column_314 – a column with planned indicators of daily oil production from geologists (tons/day).
+column_331 – column with the difference between planned oil production and actual oil production (tons/day).
+column_354 – column with data on well fluid production for 24 hours of operation (m³/day).
+column_362 - column with data on the actual water cut of the well (in percent).
+column_364 – column with information about gas production (m³/day).
+column_370 – column with oil density data (tons/m³).
+column_372 – column with information about the actual operation of the well (hours).
+column_386 – column with data on fluid production, taking into account intra-shift losses (m³/day).
+column_475 – column with planned fluid production from geologists (m³/day).""")
+
+ag = BaseMinion(base_prompt=prompt.__str__(),
                 available_tools=[
                     Tool(name=python_tool.name, description=python_tool.description, func=python_tool._run)], model=llm)
 
-# python_repl = PythonREPL(locals={"df": df, "python": None, "python_repl_ast": None},
-#                          globals={"pd": pd, "np": np})
-#
-# ag = BaseMinion(base_prompt=execution_prompt, available_tools=[Tool(
-#     name="python_repl_ast",
-#     description="A Python shell. Use this to execute python commands. Input should be a valid python command. "
-#                 "If you want to see the output of a value, you should print it out with `print(...)`.",
-#     func=python_repl.run
-# )
-# ], model=llm)
-#
-# print(python_repl.run("import pandas as pd"
-#                       "df = pd.read_json(\"data/data.json\")"))
-# print(python_repl.run("print(df.head())"))
 
 logging.basicConfig(level=logging.INFO, filename="py_log.log", filemode="w")
 while True:
@@ -57,7 +58,6 @@ while True:
         df_info = df_info
         df_head = df_head
         question = question
-        d = {"question": question, "df_head": df_head}
-        print(f"Answer: {ag.run(input=question, df_head=df_head, df_info=df_info)}")
+        print(f"Answer: {ag.run(input=question, df_head=df_head, df_info=df_info.getvalue())}")
     except Exception as e:
         print(f"Failed with error: {traceback.format_exc()}")
