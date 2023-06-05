@@ -51,6 +51,7 @@ class CustomPythonAstREPLTool(BaseTool):
             module_end = ast.Module(tree.body[-1:], type_ignores=[])
             module_end_str = ast.unparse(module_end)  # type: ignore
             try:
+                raise NotImplementedError("Not yet")
                 return eval(module_end_str, self.globals, self.locals)
             except Exception:
                 old_stdout = sys.stdout
@@ -62,6 +63,8 @@ class CustomPythonAstREPLTool(BaseTool):
                 except Exception as e:
                     sys.stdout = old_stdout
                     output = str(e)
+                if output == "":
+                    return "Program didn't produce output. Use ```print()``` if you want to know something"
                 return output
         except Exception as e:
             return traceback.format_exc()
