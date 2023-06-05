@@ -1,6 +1,8 @@
 from langchain.memory import ConversationBufferMemory
 import logging
 import re
+import typing
+
 from dataclasses import dataclass
 from typing import Any, List
 
@@ -108,8 +110,16 @@ class BaseMinion:
                  max_iterations: int = 50) -> None:
         llm = model
 
-        agent_toolnames = [tool.name for tool in available_tools]
         available_tools.append(WarningTool().get_tool())
+        #dictionary of subagents
+        subagents = {"Checker": Checker(base_prompt,available_tools,model),
+         "Calculator": Calculator(base_prompt,available_tools,model)
+        }
+        for subagents_names in subagents.keys():
+            subagent = subagents[subagents_names]
+            available_tools.append(subagent.get_tool())
+        agent_toolnames = [tool.name for tool in available_tools]
+
 
         class Summarizer:
             def __init__(self):
@@ -154,3 +164,42 @@ class BaseMinion:
         )
         self.summarizer.add_question_answer(question, ans)
         return ans
+
+class Subagent_tool(BaseMinion):
+    def __init__(self, base_prompt: str, available_tools: List[Tool], model: BaseLanguageModel,
+                 max_iterations: int = 50) -> None:
+        llm = model
+
+        agent_toolnames = [tool.name for tool in available_tools]
+
+
+
+
+
+    name: str
+    description: str
+    func: typing.Callable[[str], str]
+
+    def get_tool(self):
+        return Tool(name=self.name, func=self.func, description=self.description)
+
+#there can be any subagents needed
+class Calculator(Subagent_tool):
+    name: str = "Calculator"
+    description: str = "A subagent tool that can be used for calculations "
+
+    @staticmethod
+    def func(args: str) -> str:
+        return '\r' + args + '\n'
+
+class Checker(Subagent_tool):
+    name: str = "Checker"
+    description: str = "A subagent tool that can be used to check the results"
+
+    @staticmethod
+    def func(args: str) -> str:
+        return '\r' + args + '\n'
+
+#subagents = {"Checker": Checker(),
+             #"Calculator": Calculator()
+ #}

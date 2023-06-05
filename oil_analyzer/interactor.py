@@ -1,6 +1,7 @@
 import io
 import logging
 import traceback
+import pathlib
 
 import numpy as np
 import pandas as pd
@@ -10,8 +11,22 @@ from langchain.chat_models import ChatOpenAI
 from agent import BaseMinion
 from common_prompts import TableDescriptionPrompt
 from custom_python_ast import CustomPythonAstREPLTool
+from msg_parser import memo, memo2
 
-df = pd.read_json("data/data.json")
+path = "data/data.json"
+sheet_name = "Sheet1"
+
+
+file_extension = pathlib.Path(path).suffix
+
+if file_extension == '.XLSX':
+    df = pd.read_excel(path, sheet_name= sheet_name)
+if file_extension == ".json":
+    df = pd.read_json(path)
+if file_extension == ".csv":
+    df = pd.read_csv(path)
+
+
 df_head = df.head()
 df_info = io.StringIO()
 df.info(buf=df_info)
@@ -27,6 +42,7 @@ python_tool.description = (
     "If you want to see the output of a value, you should print it out with `print(...)`."
     "Code should always produce a value"
 )
+context = "" #there should be context that depends on task (memo + memo2 for example)
 
 prompt = TableDescriptionPrompt("""
 date - column with date
@@ -42,7 +58,7 @@ column_364 – column with information about gas production (m³/day).
 column_370 – column with oil density data (tons/m³).
 column_372 – column with information about the actual operation of the well (hours).
 column_386 – column with data on fluid production, taking into account intra-shift losses (m³/day).
-column_475 – column with planned fluid production from geologists (m³/day).""")
+column_475 – column with planned fluid production from geologists (m³/day).""", context)
 
 ag = BaseMinion(base_prompt=prompt.__str__(),
                 available_tools=[

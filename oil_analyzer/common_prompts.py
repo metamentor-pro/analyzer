@@ -1,8 +1,9 @@
 
 # class representing prompt for the agent which can be used to set description of the table
 class TableDescriptionPrompt:
-    def __init__(self, table_description):
+    def __init__(self, table_description,context):
         self.table_description = table_description
+        self.context = context
 
     def __str__(self):
         return """
@@ -15,6 +16,13 @@ It contains the following columns:
 """ + self.table_description + """
 You have access to the following tools:
 {tools}
+
+You are provided with the folowing context:""" + self.context + """""
+Take this context into account when analyzing and writing the answer 
+
+You can use subagents in order to simplify you work
+You should specify the function of the subagent if you use one 
+
 When possible, use your own knowledge.
 
 You will use the following format to accomplish your tasks: 
