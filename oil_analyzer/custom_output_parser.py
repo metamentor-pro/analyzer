@@ -1,61 +1,83 @@
-import logging
 import re
-from typing import List, Union
+from typing import Union
 
 from langchain.agents import AgentOutputParser
 from langchain.schema import AgentAction, AgentFinish
 
-FORMAT_INSTRUCTIONS = """Use the following format:
-
-Question: the input question you must answer
-Thought: you should always think about what to do
-Action: tool, one of [{tool_names}]. IT IS CRITICALLY IMPORTANT TO USE ONE OF PROVIDED TOOLS.
-Action_Input: the input to the action
-Observation: the result of the action
-... (this Thought/Action/Action_Input/Observation can repeat N times)
-Thought: I now know the final answer
-Final Answer: the final answer to the original input question. Should be in Russian.
-Assumptions <optional>: assumptions you made during computations (like oil price).
-
-Don't omit any parts of this scheme.
-"""
-
-FINAL_ANSWER_ACTION = "Final Answer:"
-
 
 class CustomOutputParser(AgentOutputParser):
-    tool_names: List[str] = []
-
-    def __init__(self, tool_names: List[str], *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.tool_names = tool_names
-
-    def get_format_instructions(self) -> str:
-        return FORMAT_INSTRUCTIONS
-
-    def parse(self, text: str) -> Union[AgentAction, AgentFinish]:
-        logging.info(text)
-        if FINAL_ANSWER_ACTION in text:
+    def parse(self, llm_output: str) -> Union[AgentAction, AgentFinish]:
+        # todo: check that there's no "Action:" together with the result
+        # Check if agent should finish"
+        if "Final Result:" in llm_output:
+            if "Action" in llm_output:
+                return AgentAction(
+                    tool="WarnAgent",
+                    tool_input="ERROR: Don't write 'Action' together with the Final Result. You need to REDO your action(s), receive the 'AResult' and only then write your 'Final Result'",
+                    log=llm_output,
+                )
             return AgentFinish(
-                {"output": text.split(FINAL_ANSWER_ACTION)[-1].strip()}, text
+                # Return values is generally always a dictionary with a single `output` key
+                # It is not recommended to try anything else at the moment :)
+                return_values={"output": llm_output.split("Final Result:")[-1].strip()},
+                log=llm_output,
             )
-        # \s matches against tab/newline/whitespace
+        # Parse out the action and action input
+        regex = r"Action\s*\d*\s*:(.*?)\nAction\s*\d*\s*Input\s*\d*\s*:[\s]*(.*)"
+        match = re.search(regex, llm_output, re.DOTALL)
+        if not match and llm_output.strip().split("\n")[-1].strip().startswith(
+                "Thought:"
+        ):
+            return AgentAction(
+                tool="WarnAgent",
+                tool_input="don't stop after 'Thought:', continue with the next thought or action",
+                log=llm_output,
+            )
 
-        regex = (
-            r"Action\s*\d*\s*:[\s]*(.*?)[\s]*Action_Input\s*\d*\s*:[\s]*(.*)"
-        )
-
-        match = re.search(regex, text, re.DOTALL)
-
-        if "Action:" not in text and "Action_Input:" not in text:
-            return AgentAction("No", "wrong scheme", text)
-        if "Action:" in text and "Action_Input:" not in text:
-            return AgentAction("No", "no input", text)
         if not match:
-            return AgentAction("No", "wrong scheme", text)
+            if "Action:" in llm_output and "Action Input:" not in llm_output:
+                return AgentAction(
+                    tool="WarnAgent",
+                    tool_input="No Action Input specified.",
+                    log=llm_output,
+                )
+            else:
+                return AgentAction(
+                    tool="WarnAgent",
+                    tool_input="Continue with your next thought or action. Do not repeat yourself. \n",
+                    log=llm_output,
+                )
 
-        action = match.group(1).strip()
-        if action not in self.tool_names:
-            return AgentAction("No", "invalid tool", text)
+        actions = [
+            line.split(":", 1)[1].strip()
+            for line in llm_output.splitlines()
+            if line.startswith("Action:")
+        ]
+
+        if llm_output.count("Action Input") > 1:
+            return AgentAction(
+                tool="WarnAgent",
+                tool_input="ERROR: Write 'AResult: ' after each action. Execute ALL the past actions "
+                           f"without AResult again ({', '.join(actions)}). They weren't completed.",
+                log=llm_output,
+            )
+
+        action = match.group(1).strip().strip("`").strip('"').strip("'").strip()
         action_input = match.group(2)
-        return AgentAction(action, action_input.strip(" ").strip('"'), text)
+        if "\nThought: " in action_input or "\nAction: " in action_input:
+            return AgentAction(
+                tool="WarnAgent",
+                tool_input="Error: Write 'AResult: ' after each action. "
+                           f"Execute all the actions without AResult again ({', '.join(actions)}).",
+                log=llm_output,
+            )
+        if "Subagent" in action:
+            action_input += " " + action.split("Subagent")[1].strip()
+            action = "Subagent"
+
+        # Return the action and action input
+        return AgentAction(
+            tool=action,
+            tool_input=action_input.strip(" ").split("\nThought: ")[0],
+            log=llm_output,
+        )
