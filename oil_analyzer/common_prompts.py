@@ -1,7 +1,7 @@
 
 # class representing prompt for the agent which can be used to set description of the table
 class TableDescriptionPrompt:
-    def __init__(self, table_description,context):
+    def __init__(self, table_description, context):
         self.table_description = table_description
         self.context = context
 
