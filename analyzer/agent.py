@@ -115,6 +115,7 @@ class BaseMinion:
         subagents = {"Checker": Checker(base_prompt,available_tools,model),
          "Calculator": Calculator(base_prompt,available_tools,model)
         }
+        subagents = {}
         for subagents_names in subagents.keys():
             subagent = subagents[subagents_names]
             available_tools.append(subagent.get_tool())

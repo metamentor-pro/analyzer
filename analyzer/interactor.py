@@ -17,31 +17,6 @@ path = "data/data.json"
 sheet_name = "Sheet1"
 
 
-file_extension = pathlib.Path(path).suffix
-
-if file_extension == '.XLSX':
-    df = pd.read_excel(path, sheet_name= sheet_name)
-if file_extension == ".json":
-    df = pd.read_json(path)
-if file_extension == ".csv":
-    df = pd.read_csv(path)
-
-
-df_head = df.head()
-df_info = io.StringIO()
-df.info(buf=df_info)
-
-llm = ChatOpenAI(temperature=0.7, model='gpt-4',
-                 openai_api_key="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")
-
-python_tool = CustomPythonAstREPLTool(locals={"df": df, "python": None, "python_repl_ast": None},
-                                      globals={"pd": pd, "np": np})
-python_tool.description = (
-    "A Python shell. Use this to execute python commands. "
-    "Input should be a valid python command. "
-    "If you want to see the output of a value, you should print it out with `print(...)`."
-    "Code should always produce a value"
-)
 context = "" #there should be context that depends on task (memo + memo2 for example)
 
 prompt = TableDescriptionPrompt("""
@@ -60,6 +35,42 @@ column_372 – column with information about the actual operation of the well (h
 column_386 – column with data on fluid production, taking into account intra-shift losses (m³/day).
 column_475 – column with planned fluid production from geologists (m³/day).""", context)
 
+context = memo2
+prompt = TableDescriptionPrompt("", context)
+path = "data/Бованенково.XLSX"
+
+
+file_extension = pathlib.Path(path).suffix
+
+if file_extension == '.XLSX':
+    df = pd.read_excel(path, sheet_name= sheet_name)
+if file_extension == ".json":
+    df = pd.read_json(path)
+if file_extension == ".csv":
+    df = pd.read_csv(path)
+
+df_head = df.head()
+df_info = io.StringIO()
+df.info(buf=df_info)
+
+llm = ChatOpenAI(temperature=0.7, model='gpt-4',
+                 openai_api_key="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")
+
+python_tool = CustomPythonAstREPLTool(locals={"df": df, "python": None, "python_repl_ast": None},
+                                      globals={"pd": pd, "np": np})
+python_tool.description = (
+    "A Python shell. Use this to execute python commands. "
+    "Input should be a valid python command. "
+    "If you want to see the output of a value, you should print it out with `print(...)`."
+    "Code should always produce a value"
+)
+
+
+
+
+
+
+
 ag = BaseMinion(base_prompt=prompt.__str__(),
                 available_tools=[
                     Tool(name=python_tool.name, description=python_tool.description, func=python_tool._run)], model=llm)
@@ -67,7 +78,11 @@ ag = BaseMinion(base_prompt=prompt.__str__(),
 
 logging.basicConfig(level=logging.INFO, filename="py_log.log", filemode="w")
 while True:
-    question = input()
+    try:
+        question = input()
+    except KeyboardInterrupt:
+        print("Aborted")
+        break
     if question == "exit":
         break
     try:
@@ -75,5 +90,7 @@ while True:
         df_head = df_head
         question = question
         print(f"Answer: {ag.run(input=question, df_head=df_head, df_info=df_info.getvalue())}")
+    except KeyboardInterrupt:
+        print("Aborted")
     except Exception as e:
         print(f"Failed with error: {traceback.format_exc()}")
