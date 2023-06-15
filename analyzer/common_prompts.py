@@ -1,11 +1,16 @@
-
 # class representing prompt for the agent which can be used to set description of the table
 class TableDescriptionPrompt:
-    def __init__(self, table_description, context):
+    def __init__(self, table_description, context, build_plots):
         self.table_description = table_description
         self.context = context
+        self.build_plots = build_plots
 
     def __str__(self):
+        if self.build_plots:
+            plots_part = "You can use plots if you need them. "
+        else:
+            plots_part = "You are not allowed to use plots. "
+
         return """
 Follow the instructions below carefully and intelligently.
 
@@ -55,16 +60,13 @@ You should answer only the question that was asked, and not to invent your own.
 If the question is incorrect in your opinion, report about it (via Final Result) and finish work.
 You must include ALL assumptions you make (like oil price) to the Final Result.
 The final result should contain exact numbers, not variable names.
-Before writing code, you should EXPLAIN ALL FORMULAS.
-You shouldn't use plotting or histograms or anything like that unless you're specifically asked to do that.
-
+Before writing code, you should EXPLAIN ALL FORMULAS.""" + \
+            plots_part + \
+            """
 This is result of printing ```df.head()```:
 {df_head}
 This is result of printing ```df.info()```:
 {df_info}
-
-Here is the conversation context:
-{history}
 
 Begin!
 

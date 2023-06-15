@@ -1,0 +1,2 @@
+data_path: data/data.json
+build_plots: false

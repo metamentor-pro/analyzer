@@ -115,7 +115,6 @@ class BaseMinion:
         subagents = {"Checker": Checker(base_prompt,available_tools,model),
          "Calculator": Calculator(base_prompt,available_tools,model)
         }
-        subagents = {}
         for subagents_names in subagents.keys():
             subagent = subagents[subagents_names]
             available_tools.append(subagent.get_tool())
@@ -159,7 +158,6 @@ class BaseMinion:
 
     def run(self, **kwargs):
         question = kwargs["input"]
-        kwargs['history'] = self.summarizer.summary
         ans = (
                 self.agent_executor.run(**kwargs)
                 or "No result. The execution was probably unsuccessful."
@@ -202,92 +200,6 @@ class Checker(Subagent_tool):
     def func(args: str) -> str:
         return '\r' + args + '\n'
 
-        #dictionary of subagents
-        subagents = {"Checker": Checker(base_prompt, available_tools, model),
-                     "Calculator": Calculator(base_prompt, available_tools, model)
-                     }
-
-        available_tools.append(WarningTool().get_tool())
-        for subagent_name in subagents.keys():
-            subagent = subagents[subagent_name]
-            available_tools.append(subagent.get_tool())
-        agent_toolnames = [tool.name for tool in available_tools]
-
-
-        class Summarizer:
-            def __init__(self):
-                self.summary = ""
-
-            def run(self, summary: str, thought_process: str):
-                return self.summary
-
-            def add_question_answer(self, question: str, answer: str):
-                self.summary += f"Previous question: {question}\nPrevious answer: {answer}\n\n"
-        self.summarizer = Summarizer()
-        prompt = CustomPromptTemplate(
-            template=base_prompt,
-            tools=available_tools,
-            input_variables=extract_variable_names(
-                base_prompt, interaction_enabled=True
-            ),
-            agent_toolnames=agent_toolnames,
-            my_summarize_agent=self.summarizer,
-        )
-
-        llm_chain = LLMChain(llm=llm, prompt=prompt)
-
-        output_parser = CustomOutputParser()
-
-        agent = LLMSingleActionAgent(
-            llm_chain=llm_chain,
-            output_parser=output_parser,
-            stop=["AResult:"],
-            allowed_tools=[tool.name for tool in available_tools],
-        )
-
-        self.agent_executor = AgentExecutor.from_agent_and_tools(
-            agent=agent, tools=available_tools, verbose=True, max_iterations=max_iterations
-        )
-
-    def run(self, **kwargs):
-        question = kwargs["input"]
-        ans = (
-                self.agent_executor.run(**kwargs)
-                or "No result. The execution was probably unsuccessful."
-        )
-        self.summarizer.add_question_answer(question, ans)
-        return ans
-
-class Subagent_tool(BaseMinion):
-    def __init__(self, base_prompt: str, available_tools: List[Tool], model: BaseLanguageModel,
-                 max_iterations: int = 50) -> None:
-        llm = model
-
-
-        agent_toolnames = [tool.name for tool in available_tools]
-
-
-    name: str
-    description: str
-    func: typing.Callable[[str], str]
-
-    def get_tool(self):
-        return Tool(name=self.name, func=self.func, description=self.description)
-
-#there can be any subagent class needed
-class Calculator(Subagent_tool):
-    name: str = "Calculator"
-    description: str = "A subagent tool that can be used for calculations "
-
-    @staticmethod
-    def func(args: str) -> str:
-        return '\r' + args + '\n'
-
-class Checker(Subagent_tool):
-    name: str = "Checker"
-    description: str = "A subagent tool that can be used to check the results"
-
-    @staticmethod
-    def func(args: str) -> str:
-        return '\r' + args + '\n'
-
+#subagents = {"Checker": Checker(),
+             #"Calculator": Calculator()
+ #}
