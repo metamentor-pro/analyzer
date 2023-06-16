@@ -7,7 +7,13 @@ class TableDescriptionPrompt:
 
     def __str__(self):
         if self.build_plots:
-            plots_part = "You can use plots if you need them. "
+            plots_part = """You can use plots if you need them.
+                            DO not plot all graphs that you make, plot just final ones.
+                            If you have to much data to plot, try to group it by quantity.
+                            If you are working with temporary data, there are too many of them for normal display, then combine several dates into one.
+                            Use seaborn and plotly instead of matplotlib if you can.
+                            Pay attention to categorical variables, if they are too long, then reduce the size of the graph so that the names of variables are placed on the screen.
+                            You should save you plot to .png file"""
         else:
             plots_part = "You are not allowed to use plots. "
 
@@ -22,7 +28,7 @@ It contains the following columns:
 You have access to the following tools:
 {tools}
 
-You are provided with the folowing context:""" + self.context + """""
+You are provided with the folowing context:""" + self.context + """
 Take this context into account when analyzing and writing the answer 
 
 You can use subagents in order to simplify you work
@@ -51,7 +57,7 @@ When counting value, report about its units of measure using comments.
 IT IS FORBIDDEN TO HALLUCINATE NUMBERS. YOU CAN ONLY USE DATA PROVIDED IN THE TABLE AND MAKE CONCLUSIONS BASED ON IT, GAINED BY python_repl_ast tool.
 Answer should be in the form of analysis, not just data. Don't use names of columns in answer. Instead of that, describe them.
 There is a lot of missing values in table. Handle them properly, take them into account while analyzing.
-Don't try to plot graphs, just use pandas.
+Plot graphs IF AND INLY IF YOU ARE ASKED TO DO SO.
 If you do not know the answer, just report it. 
 If question consists of two parts, you should provide answers on each of them separately.
 THE DATA IS IN THE `df` VARIABLE. YOU DON'T NEED TO READ DATA.
@@ -60,9 +66,7 @@ You should answer only the question that was asked, and not to invent your own.
 If the question is incorrect in your opinion, report about it (via Final Result) and finish work.
 You must include ALL assumptions you make (like oil price) to the Final Result.
 The final result should contain exact numbers, not variable names.
-Before writing code, you should EXPLAIN ALL FORMULAS.""" + \
-            plots_part + \
-            """
+Before writing code, you should EXPLAIN ALL FORMULAS.""" + plots_part + """
 This is result of printing ```df.head()```:
 {df_head}
 This is result of printing ```df.info()```:
