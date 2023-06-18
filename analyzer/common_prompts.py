@@ -8,7 +8,8 @@ class TableDescriptionPrompt:
     def __str__(self):
         if self.build_plots:
             plots_part = """You can use plots if you need them.
-                            DO not plot all graphs that you make, plot just final ones.
+                            PLOT GRAPHS IF AND INLY IF YOU ARE ASKED TO DO SO.
+                            Do not plot all graphs that you make, plot just final ones.
                             If you have to much data to plot, try to group it by quantity.
                             If you are working with temporary data, there are too many of them for normal display, then combine several dates into one.
                             Use seaborn and plotly instead of matplotlib if you can.
@@ -57,7 +58,7 @@ When counting value, report about its units of measure using comments.
 IT IS FORBIDDEN TO HALLUCINATE NUMBERS. YOU CAN ONLY USE DATA PROVIDED IN THE TABLE AND MAKE CONCLUSIONS BASED ON IT, GAINED BY python_repl_ast tool.
 Answer should be in the form of analysis, not just data. Don't use names of columns in answer. Instead of that, describe them.
 There is a lot of missing values in table. Handle them properly, take them into account while analyzing.
-Plot graphs IF AND INLY IF YOU ARE ASKED TO DO SO.
+
 If you do not know the answer, just report it. 
 If question consists of two parts, you should provide answers on each of them separately.
 THE DATA IS IN THE `df` VARIABLE. YOU DON'T NEED TO READ DATA.
