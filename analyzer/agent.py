@@ -111,9 +111,10 @@ class BaseMinion:
         llm = model
 
         available_tools.append(WarningTool().get_tool())
-        #dictionary of subagents
-        subagents = {"Checker": Checker(base_prompt,available_tools,model),
-         "Calculator": Calculator(base_prompt,available_tools,model)
+        # dictionary of subagents
+        subagents = {"Checker": Checker(base_prompt, available_tools, model),
+                     "Calculator": Calculator(base_prompt, available_tools, model),
+                     "Plot_Subagent": Plot_Subagent(base_prompt, available_tools, model)
         }
         for subagents_names in subagents.keys():
             subagent = subagents[subagents_names]
@@ -172,10 +173,6 @@ class Subagent_tool(BaseMinion):
 
         agent_toolnames = [tool.name for tool in available_tools]
 
-
-
-
-
     name: str
     description: str
     func: typing.Callable[[str], str]
@@ -183,7 +180,7 @@ class Subagent_tool(BaseMinion):
     def get_tool(self):
         return Tool(name=self.name, func=self.func, description=self.description)
 
-#there can be any subagents needed
+# there can be any subagents needed
 class Calculator(Subagent_tool):
     name: str = "Calculator"
     description: str = "A subagent tool that can be used for calculations "
@@ -200,6 +197,10 @@ class Checker(Subagent_tool):
     def func(args: str) -> str:
         return '\r' + args + '\n'
 
-#subagents = {"Checker": Checker(),
-             #"Calculator": Calculator()
- #}
+class Plot_Subagent(Subagent_tool):
+    name: str = "Plot_Subagent"
+    description: str = "A subagent tool that can be used to plot graphs and provide visualisation"
+
+    @staticmethod
+    def func(args: str) -> str:
+        return '\r' + args + '\n'

@@ -111,5 +111,3 @@ def run_loop(path: Union[str, None] = None, build_plots: Union[bool, None] = Fal
 
 if __name__ == "__main__":
     app()
-
-

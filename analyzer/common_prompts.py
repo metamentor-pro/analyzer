@@ -8,13 +8,13 @@ class TableDescriptionPrompt:
     def __str__(self):
         if self.build_plots:
             plots_part = """You can use plots if you need them.
-                            PLOT GRAPHS IF AND INLY IF YOU ARE ASKED TO DO SO.
-                            Do not plot all graphs that you make, plot just final ones.
+                            BUILD GRAPHS IF AND INLY IF YOU ARE ASKED TO DO SO.
+                            For building plots you should use your subagent called Plot_Subagent and in answer always mention what subagents you used.        
                             If you have to much data to plot, try to group it by quantity.
                             If you are working with temporary data, there are too many of them for normal display, then combine several dates into one.
                             Use seaborn and plotly instead of matplotlib if you can.
                             Pay attention to categorical variables, if they are too long, then reduce the size of the graph so that the names of variables are placed on the screen.
-                            You should save you plot to .png file"""
+                            You should save you plot to .png file, DO NOT PLOT IT IN THE TERMINAL, JUST SAVE IT TO FILE"""
         else:
             plots_part = "You are not allowed to use plots. "
 
