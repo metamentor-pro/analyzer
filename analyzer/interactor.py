@@ -16,6 +16,7 @@ from common_prompts import TableDescriptionPrompt
 from custom_python_ast import CustomPythonAstREPLTool
 from msg_parser import memo, memo2
 
+
 import typer
 import yaml
 
@@ -88,16 +89,19 @@ app = typer.Typer()
 
 
 @app.command()
-def run_loop(path: Union[str, None] = None, build_plots: Union[bool, None] = False):
+def run_loop(path: Union[str, None] = None, build_plots: Union[bool, None] = False, user_question: Union[str, None] = None, user_id: Union[str, None] = None):
     ag, df_head, df_info = preparation(path=path, build_plots=build_plots)
     while True:
-        question = input()
+        #question = input()
+        question = user_question # this is for interacting with the user's request via a bot
         if question == "exit":
             break
         try:
-            print(f"Answer: {ag.run(input=question, df_head=df_head, df_info=df_info.getvalue())}")
+            return (f"Answer: {ag.run(input=question, df_head=df_head, df_info=df_info.getvalue())}")
+
         except Exception as e:
-            print(f"Failed with error: {traceback.format_exc()}")
+
+            return (f"Failed with error: {traceback.format_exc()}")
 
 
 # @app.command()

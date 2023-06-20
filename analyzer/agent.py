@@ -120,7 +120,7 @@ class BaseMinion:
         # dictionary of subagents
         subagents = {"Checker": Checker(base_prompt, available_tools, model),
                      "Calculator": Calculator(base_prompt, available_tools, model),
-                     "Plot_Subagent": Plot_Subagent(base_prompt, available_tools, model)
+                     "Plot_Subagent": PlotSubagent(base_prompt, available_tools, model)
         }
         for subagents_names in subagents.keys():
             subagent = subagents[subagents_names]
@@ -249,8 +249,8 @@ class Checker(Subagent_tool):
         else:
             return "Not enough data"
 
-class Plot_Subagent(Subagent_tool):
-    name: str = "Plot_Subagent"
+class PlotSubagent(Subagent_tool):
+    name: str = "PlotSubagent"
     description: str = "A subagent tool that can be used to plot graphs and provide visualisation"
 
     def func(self, args: str) -> str:

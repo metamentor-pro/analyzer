@@ -9,7 +9,7 @@ class TableDescriptionPrompt:
         if self.build_plots:
             plots_part = """You can use plots if you need them.
                             BUILD GRAPHS IF AND INLY IF YOU ARE ASKED TO DO SO.
-                            For building plots you should use your subagent called Plot_Subagent and in answer always mention what subagents you used.        
+                            For building plots you should use your subagent called PlotSubagent and in answer always mention what subagents you used.        
                             If you have to much data to plot, try to group it by quantity.
                             If you are working with temporary data, there are too many of them for normal display, then combine several dates into one.
                             Use seaborn and plotly instead of matplotlib if you can.
