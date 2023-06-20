@@ -77,7 +77,7 @@ def preparation(path: Union[str, None], build_plots: Union[bool, None]):
     ag = BaseMinion(base_prompt=prompt.__str__(),
                     available_tools=[
                         Tool(name=python_tool.name, description=python_tool.description, func=python_tool._run)],
-                    model=llm)
+                    model=llm, df_head =df_head, df_info = df_info)
     return ag, df_head, df_info
 
 

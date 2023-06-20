@@ -14,7 +14,7 @@ class TableDescriptionPrompt:
                             If you are working with temporary data, there are too many of them for normal display, then combine several dates into one.
                             Use seaborn and plotly instead of matplotlib if you can.
                             Pay attention to categorical variables, if they are too long, then reduce the size of the graph so that the names of variables are placed on the screen.
-                            You should save you plot to .png file, DO NOT PLOT IT IN THE TERMINAL, JUST SAVE IT TO FILE"""
+                            You should save you plot to .png file, DO NOT PLOT IT IN THE TERMINAL, JUST SAVE IT TO FILE, File should be in the folder called 'Plots'"""
         else:
             plots_part = "You are not allowed to use plots. "
 
@@ -28,7 +28,7 @@ It contains the following columns:
 """ + self.table_description + """
 You have access to the following tools:
 {tools}
-
+You should use subagents in your work, always mention what subagents you used.
 You are provided with the folowing context:""" + self.context + """
 Take this context into account when analyzing and writing the answer 
 
