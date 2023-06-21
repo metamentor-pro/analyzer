@@ -120,7 +120,7 @@ class BaseMinion:
         # dictionary of subagents
         subagents = {"Checker": Checker(base_prompt, available_tools, model),
                      "Calculator": Calculator(base_prompt, available_tools, model),
-                     "PlotSubagent": PlotSubagent(base_prompt, available_tools, model)
+
         }
         for subagents_names in subagents.keys():
             subagent = subagents[subagents_names]
@@ -173,6 +173,7 @@ class Subagent_tool(BaseMinion):
                  max_iterations: int = 50) -> None:
         llm = model
         agent_toolnames = [tool.name for tool in available_tools]
+
 
 
         class Summarizer:
@@ -249,14 +250,4 @@ class Checker(Subagent_tool):
         else:
             return "Not enough data"
 
-class PlotSubagent(Subagent_tool):
-    name: str = "PlotSubagent"
-    description: str = "A subagent tool that can be used to plot graphs and provide visualisation"
-
-    def func(self, args: str) -> str:
-        if (df_head_sub is not None) and (df_info_sub is not None):
-            result = self.run(input=args, df_head=df_head_sub, df_info=df_info_sub.getvalue())
-            return '\r' + result + '\n'
-        else:
-            return "Not enough data"
 
