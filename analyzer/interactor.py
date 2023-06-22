@@ -15,6 +15,8 @@ from custom_python_ast import CustomPythonAstREPLTool
 from msg_parser import memo, memo2
 import typer
 import yaml
+
+
 def preparation(path: Union[str, None], build_plots: Union[bool, None]):
     with open("config.yaml") as f:
         cfg = yaml.load(f, Loader=yaml.FullLoader)
@@ -50,28 +52,47 @@ def preparation(path: Union[str, None], build_plots: Union[bool, None]):
     ag = BaseMinion(base_prompt=prompt.__str__(),
                     available_tools=[
                         Tool(name=python_tool.name, description=python_tool.description, func=python_tool._run)],
-                    model=llm, df_head =df_head, df_info = df_info)
+                    model=llm, df_head=df_head, df_info=df_info)
     return ag, df_head, df_info
+
+
 logging.basicConfig(level=logging.INFO, filename="py_log.log", filemode="w")
-# rewrite the code above using typer library
-app = typer.Typer()
-@app.command()
-def run_loop(path: Union[str, None] = None, build_plots: Union[bool, None] = False, user_question: Union[str, None] = None, user_id: Union[str, None] = None):
+
+
+def run_loop_bot(path: Union[str, None] = None, build_plots: Union[bool, None] = False, user_question: Union[str, None] = None, user_id: Union[str, None] = None):
     ag, df_head, df_info = preparation(path=path, build_plots=build_plots)
 
-
     while True:
-
-        #question = input()
         question = user_question  # this is for interacting with the user's request via a bot
         if question == "exit":
             break
         try:
-            #print(f"Answer: {ag.run(input=question, df_head=df_head, df_info=df_info.getvalue())}")
+
             return (f"Answer: {ag.run(input=question, df_head=df_head, df_info=df_info.getvalue())}")
         except Exception as e:
-            #print(f"Failed with error: {traceback.format_exc()}")
+
             return (f"Failed with error: {traceback.format_exc()}")
+
+
+# rewrite the code above using typer library
+app = typer.Typer()
+
+
+@app.command()
+def run_loop(path: Union[str, None] = None, build_plots: Union[bool, None] = False):
+    ag, df_head, df_info = preparation(path=path, build_plots=build_plots)
+
+    while True:
+
+        question = input()
+
+        if question == "exit":
+            break
+        try:
+            print(f"Answer: {ag.run(input=question, df_head=df_head, df_info=df_info.getvalue())}")
+
+        except Exception as e:
+            print(f"Failed with error: {traceback.format_exc()}")
 
 
 if __name__ == "__main__":
