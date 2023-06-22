@@ -56,11 +56,11 @@ def on_click(message):
         bot.send_message(message.chat.id, "Пожалуйста, отправьте запрос")
         bot.register_next_step_handler(message, call_to_model)
     elif message.text == "Выбрать таблицу":
-        bot.send_message(message.from_user.id, "Можете выбрать нужную таблицу или добавить новую")
         markup = types.ReplyKeyboardMarkup()
         btn1 = types.KeyboardButton("Доступная таблица")
         markup.row(btn1)
-        bot.send_message(message.from_user.id, "hfh", reply_markup=markup)
+        bot.send_message(message.from_user.id, "Можете выбрать нужную таблицу или добавить новую", reply_markup=markup)
+        bot.register_next_step_handler(message, choose_table)
 
     elif message.text == "Режим визуализации":
         markup = types.ReplyKeyboardMarkup()
@@ -74,13 +74,9 @@ def on_click(message):
     elif message.text == "Добавить описание таблицы":
         bot.register_next_step_handler(message, table_description)
 
-def tables(message):
-    #here should be all tables that are available to user
-    markup = types.ReplyKeyboardMarkup()
-    btn1 = types.KeyboardButton("Доступная таблица")
-    markup.row(btn1)
-    bot.send_message(message.from_user.id, "fhf", reply_markup=markup)
 
+def choose_table(message):
+    bot.send_message(message.from_user.id, "Таблица выбрана. Теперь вы можете задавать вопросы. Нажмите /exit, чтобы выйти из этого режима", reply_markup=types.ReplyKeyboardRemove())
 
 #function that contains all params that was set by user and will be used during interaction with model
 def settings_handler(message):
