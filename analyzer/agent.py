@@ -118,9 +118,9 @@ class BaseMinion:
         llm = model
         available_tools.append(WarningTool().get_tool())
         # dictionary of subagents
+
         subagents = {"Checker": Checker(base_prompt, available_tools, model),
                      "Calculator": Calculator(base_prompt, available_tools, model),
-
         }
         for subagents_names in subagents.keys():
             subagent = subagents[subagents_names]

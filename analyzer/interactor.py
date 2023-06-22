@@ -56,7 +56,7 @@ logging.basicConfig(level=logging.INFO, filename="py_log.log", filemode="w")
 # rewrite the code above using typer library
 app = typer.Typer()
 @app.command()
-def run_loop(path: Union[str, None] = None, build_plots: Union[bool, None] = True, user_question: Union[str, None] = None, user_id: Union[str, None] = None):
+def run_loop(path: Union[str, None] = None, build_plots: Union[bool, None] = False, user_question: Union[str, None] = None, user_id: Union[str, None] = None):
     ag, df_head, df_info = preparation(path=path, build_plots=build_plots)
 
 

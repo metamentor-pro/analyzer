@@ -9,9 +9,9 @@ import yaml
 
 from telebot import types
 
-question_from_bot = None
+user_question = None
 user_id = None
-Conv_flag = False
+plot_flag = False
 plot_files = ""
 
 class Outside_main_thread(Exception):
@@ -36,42 +36,92 @@ class Bot(telebot.TeleBot):
 
 bot = Bot()
 @bot.message_handler(commands=["start", "exit"])
-def start(message):
-    markup  = types.ReplyKeyboardMarkup()
-    btn1 =  types.KeyboardButton("Добавить таблицу")
+def main(message):
+    markup = types.ReplyKeyboardMarkup()
+    btn1 = types.KeyboardButton("Выбрать таблицу")
     btn2 = types.KeyboardButton("Добавить описание таблицы")
-    btn3 = types.KeyboardButton("Поменять режим визуализации")
+    btn3 = types.KeyboardButton("Режим визуализации")
     btn4 = types.KeyboardButton("Режим отправки запроса")
-    markup.row(btn1,btn2,btn3, btn4)
+    markup.row(btn1, btn2, btn3, btn4)
 
 
-    bot.send_message(message.chat.id, "Вы можете ввести запрос или выбрать одну из опций", reply_markup= markup)
-    #bot.send_message(message.chat.id, "Пожалуйста, отправьте запрос")
+    bot.send_message(message.chat.id, "Вы можете  выбрать одну из опций", reply_markup= markup)
+
 
     bot.register_next_step_handler(message, on_click)
 
+#to do: find a way to split this function into small parts
 def on_click(message):
     if message.text == "Режим отправки запроса":
         bot.send_message(message.chat.id, "Пожалуйста, отправьте запрос")
         bot.register_next_step_handler(message, call_to_model)
+    elif message.text == "Выбрать таблицу":
+        bot.send_message(message.from_user.id, "Можете выбрать нужную таблицу или добавить новую")
+        markup = types.ReplyKeyboardMarkup()
+        btn1 = types.KeyboardButton("Доступная таблица")
+        markup.row(btn1)
+        bot.send_message(message.from_user.id, "hfh", reply_markup=markup)
 
+    elif message.text == "Режим визуализации":
+        markup = types.ReplyKeyboardMarkup()
+        btn1 = types.KeyboardButton("Выключить")
+        btn2 = types.KeyboardButton("Включить")
+        markup.row(btn1, btn2)
+        bot.send_message(message.from_user.id, "Можете выбрать режим визуализации данных, выключен по умолчанию",
+                         reply_markup=markup)
+        bot.register_next_step_handler(message, settings_handler)
+
+    elif message.text == "Добавить описание таблицы":
+        bot.register_next_step_handler(message, table_description)
+
+def tables(message):
+    #here should be all tables that are available to user
+    markup = types.ReplyKeyboardMarkup()
+    btn1 = types.KeyboardButton("Доступная таблица")
+    markup.row(btn1)
+    bot.send_message(message.from_user.id, "fhf", reply_markup=markup)
+
+
+#function that contains all params that was set by user and will be used during interaction with model
+def settings_handler(message):
+    global plot_flag
+    markup = types.ReplyKeyboardMarkup()
+    btn1 = types.KeyboardButton("Вернуться в главное меню")
+    markup.add(btn1)
+
+    if message.text == "Выключить":
+        plot_flag = False
+        bot.send_message(message.from_user.id, "Режим визуализации отключён", reply_markup=markup)
+        bot.register_next_step_handler(message, main)
+    elif message.text == "Включить":
+        plot_flag = True
+        bot.send_message(message.from_user.id, "Режим визуализации включён", reply_markup=markup)
+        bot.register_next_step_handler(message, main)
+
+
+
+
+
+def table_description(message):
+    pass
 
 @bot.message_handler()
 def call_to_model(message):
 
 
-    global question_from_bot, user_id,plot_files
+
+    global user_question, user_id, plot_files
 
     markup = types.ReplyKeyboardMarkup()
     btn1 = types.KeyboardButton("/exit")
-    btn2 = types.KeyboardButton("Поменять режим визуализации")
-    markup.add(btn1, btn2)
 
-    bot.send_message(message.from_user.id, "Обрабатываю запрос, вы можете выйти из режима работы с моделью с помощью exit'", reply_markup= markup)
+    markup.add(btn1)
 
-    question_from_bot = message.text
+    bot.send_message(message.from_user.id, "Обрабатываю запрос, вы можете выйти из режима работы с моделью с помощью 'exit'", reply_markup= markup)
+
+    user_question= message.text
     user_id = message.from_user.id
-    answer_from_model = interactor.run_loop("data/Бованенково.XLSX", True , question_from_bot, user_id)
+    answer_from_model = interactor.run_loop("data/Бованенково.XLSX", plot_flag, user_question, user_id)
     bot.send_message(message.from_user.id, answer_from_model)
 
     pattern = r"\b\w+\.png\b"
@@ -83,19 +133,6 @@ def call_to_model(message):
 
         bot.send_photo(message.from_user.id, open(path_to_file, "rb"))
         os.remove(path_to_file)
-
-
-
-
-
-def do_nothing(message):
-    pass
-
-
-
-@bot.message_handler(commands=["exit"])
-def finish(message):
-    bot.send_message(message.from_user.id, "До свидания")
 
 
 @bot.message_handler(commands=["help"])
