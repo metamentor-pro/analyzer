@@ -153,8 +153,8 @@ def call_to_model(message, settings=None):
 
             bot.send_photo(message.from_user.id, open(path_to_file, "rb"))
             os.remove(path_to_file)
-
-        bot.register_next_step_handler(message, call_to_model, settings)
+        if user_question != "/exit":
+            bot.register_next_step_handler(message, call_to_model, settings)
     else:
         bot.send_message(message.from_user.id, "Сначала нужно задать первоначальные настройки")
         bot.register_next_step_handler(message, main, settings)
