@@ -65,7 +65,7 @@ class CustomPromptTemplate(StringPromptTemplate):
                 summary=self.last_summary,
                 thought_process=self.thought_log(
                     intermediate_steps[
-                    -self.summarize_every_n_steps: -self.keep_n_last_thoughts
+                     -self.summarize_every_n_steps: -self.keep_n_last_thoughts
                     ]
                 ),
             )
@@ -79,7 +79,7 @@ class CustomPromptTemplate(StringPromptTemplate):
         kwargs["agent_scratchpad"] += "Here go your thoughts and actions:\n"
         kwargs["agent_scratchpad"] += self.thought_log(
             intermediate_steps[
-            -self.steps_since_last_summarize + self.keep_n_last_thoughts:
+             -self.steps_since_last_summarize + self.keep_n_last_thoughts:
             ]
         )
         self.steps_since_last_summarize += 1
@@ -121,7 +121,7 @@ class BaseMinion:
 
         subagents = {"Checker": Checker(base_prompt, available_tools, model),
                      "Calculator": Calculator(base_prompt, available_tools, model),
-        }
+                     }
         for subagents_names in subagents.keys():
             subagent = subagents[subagents_names]
             available_tools.append(subagent.get_tool())
@@ -132,10 +132,13 @@ class BaseMinion:
                 self.summary = ""
 
             def run(self, summary: str, thought_process: str):
+
                 return self.summary
 
             def add_question_answer(self, question: str, answer: str):
                 self.summary += f"Previous question: {question}\nPrevious answer: {answer}\n\n"
+
+                return self.summary
         self.summarizer = Summarizer()
         prompt = CustomPromptTemplate(
             template=base_prompt,
@@ -164,8 +167,13 @@ class BaseMinion:
                 self.agent_executor.run(**kwargs)
                 or "No result. The execution was probably unsuccessful."
         )
-        self.summarizer.add_question_answer(question, ans)
-        return ans
+        summary = self.summarizer.add_question_answer(question, ans)
+        # to do: make better summary system
+        answer = []
+
+        answer.append(ans)
+        answer.append(summary)
+        return answer
 
 
 class Subagent_tool(BaseMinion):
@@ -233,7 +241,7 @@ class Calculator(Subagent_tool):
 
     def func(self, args: str) -> str:
         if (df_head_sub is not None) and (df_info_sub is not None):
-            result = self.run(input=args, df_head = df_head_sub, df_info = df_info_sub.getvalue())
+            result = self.run(input=args, df_head=df_head_sub, df_info=df_info_sub.getvalue())
             return '\r' + result + '\n'
         else:
             return "Not enough data"

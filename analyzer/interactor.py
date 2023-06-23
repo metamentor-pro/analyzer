@@ -67,8 +67,9 @@ def run_loop_bot(path: Union[str, None] = None, build_plots: Union[bool, None] =
         if question == "exit":
             break
         try:
+            answer = ag.run(input=question, df_head=df_head, df_info=df_info.getvalue())
 
-            return (f"Answer: {ag.run(input=question, df_head=df_head, df_info=df_info.getvalue())}")
+            return answer
         except Exception as e:
 
             return (f"Failed with error: {traceback.format_exc()}")
@@ -89,7 +90,8 @@ def run_loop(path: Union[str, None] = None, build_plots: Union[bool, None] = Fal
         if question == "exit":
             break
         try:
-            print(f"Answer: {ag.run(input=question, df_head=df_head, df_info=df_info.getvalue())}")
+            answer = ag.run(input=question, df_head=df_head, df_info=df_info.getvalue())
+            print(f"Answer: {answer[0]}")
 
         except Exception as e:
             print(f"Failed with error: {traceback.format_exc()}")
