@@ -284,6 +284,16 @@ def call_to_model(message, settings=None):
                 current_summary = cur.fetchone()[0]
 
             con.commit()
+        with sq.connect("user_data.sql") as con:
+            cur = con.cursor()
+            cur.execute("SELECT * FROM tables WHERE user_id = '%s'" % (user_id))
+            existing_record = cur.fetchone()
+
+            if existing_record:
+                cur.execute("SELECT table_description FROM users WHERE user_id = '%s'" % (user_id))
+                table_description = cur.fetchone()[0]
+
+            con.commit()
 
         plot_files = None
         print(settings)
@@ -311,7 +321,7 @@ def call_to_model(message, settings=None):
 
             user_question = message.text
 
-            answer_from_model = interactor.run_loop_bot(table, build_plots, user_question, current_summary)
+            answer_from_model = interactor.run_loop_bot(table, build_plots, user_question, current_summary, table_description)
             summary = answer_from_model[1]
 
             with sq.connect("user_data.sql") as con:
