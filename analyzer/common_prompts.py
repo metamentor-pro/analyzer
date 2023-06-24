@@ -1,16 +1,14 @@
 # class representing prompt for the agent which can be used to set description of the table
 class TableDescriptionPrompt:
-    def __init__(self, table_description, context, build_plots):
+    def __init__(self, table_description, context, build_plots, current_summary):
         self.table_description = table_description
         self.context = context
         self.build_plots = build_plots
-
+        self.current_summary = current_summary
     def __str__(self):
         if self.build_plots:
             plots_part = """You can use plots if you need them.
                             BUILD GRAPHS IF AND INLY IF YOU ARE ASKED TO DO SO.
-                            
-                                   
                             If you have to much data to plot, try to group it by quantity.
                             If you are working with temporary data, there are too many of them for normal display, then combine several dates into one.
                             Use seaborn and plotly instead of matplotlib if you can.
@@ -33,7 +31,8 @@ You have access to the following tools:
 You should use subagents in your work, always mention what subagents you used.
 You are provided with the folowing context:""" + self.context + """
 Take this context into account when analyzing and writing the answer 
-
+Here is the summary of your last conversation with user""" + self.current_summary + """ 
+pay attention to this summary during your work
 You can use subagents in order to simplify you work
 You should specify the function of the subagent if you use one 
 

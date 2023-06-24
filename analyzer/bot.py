@@ -52,7 +52,7 @@ def main(message, settings=None):
 
         cur.execute("""CREATE TABLE IF NOT EXISTS users (
                     user_id TEXT UNIQUE,
-                    conv_sum VARCHAR)
+                    conv_sum TEXT)
                    """)
 
         con.commit()
@@ -60,6 +60,7 @@ def main(message, settings=None):
         cur = con.cursor()
         cur.execute(""" CREATE TABLE IF NOT EXISTS table_data (user_id INTEGER, 
                         table_name VARCHAR UNIQUE,
+                        table_description VARCHAR UNIQUE,
                         FOREIGN KEY(user_id) REFERENCES users (user_id) on DELETE CASCADE)""")
 
         con.commit()
@@ -118,6 +119,20 @@ def on_click(message, settings=None):
         bot.register_next_step_handler(message, plots_handler, settings)
 
     elif message.text == "Добавить описание таблицы":
+        markup = types.ReplyKeyboardMarkup()
+        with sq.connect("user_data.sql") as con:
+            cur = con.cursor()
+            cur.execute("select table_name from table_data where user_id == '%s'" % (user_id))
+            rows = cur.fetchall()
+            con.commit()
+        btn = None
+        for row in rows:
+            btn = types.KeyboardButton(row[0])
+            markup.add(btn)
+        btn1 = types.KeyboardButton("exit")
+        markup.add(btn1)
+        bot.send_message(message.from_user.id, "Выберите, к какой таблице вы хотите добавить описание",
+                         reply_markup=markup)
         bot.register_next_step_handler(message, table_description, settings)
 
 
@@ -193,15 +208,83 @@ def plots_handler(message, settings=None):
 
 
 def table_description(message, settings=None):
-    pass
+    if message.text == "exit":
+        main(message, settings)
+    else:
 
-# to do: rewrite this with less if/else statements
+        markup = types.ReplyKeyboardMarkup()
+        btn1 = types.KeyboardButton("exit")
+        markup.add(btn1)
+        bot.send_message(message.from_user.id,
+                         "Таблица выбрана. Чтобы добавить описание таблицы, отправьте файл с описанием столбцов в формате txt или качестве сообщения.",
+                         reply_markup=markup)
+        bot.register_next_step_handler(message, choose_description, settings)
 
+
+def choose_description(message, settings=None):
+    markup = types.ReplyKeyboardMarkup()
+    btn1 = types.KeyboardButton("exit")
+    markup.add(btn1)
+    if message.content_type == "text":
+
+        description = str(message.text)
+        print(description)
+        with sq.connect("user_data.sql") as con:
+            cur = con.cursor()
+
+            cur.execute("""INSERT INTO table_data(table_description) values(?)""", (description,))
+
+            cur.execute("select * from table_data")
+
+            con.commit()
+        bot.send_message(message.from_user.id, 'Описание сохранено', reply_markup=markup)
+        bot.register_next_step_handler(message, main, settings)
+    elif message.content_type == "document":
+
+            user_id = message.from_user.id
+            file_id = message.document.file_id
+            file_info = bot.get_file(file_id)
+            file_path = file_info.file_path
+
+            downloaded_file = bot.download_file(file_path)
+            src = "data/" + message.document.file_name
+
+            description = downloaded_file.decode('utf-8')
+
+            with sq.connect("user_data.sql") as con:
+                cur = con.cursor()
+
+                cur.execute("""INSERT INTO table_data(table_description) values(?)""", (description,))
+
+                cur.execute("select * from table_data")
+
+                con.commit()
+            bot.send_message(message.from_user.id, 'Описание сохранено', reply_markup=markup)
+            bot.register_next_step_handler(message, main, settings)
+
+            # bot.send_message(message.from_user.id, "Что-то пошло не так, попробуйте другой файл")
+            # error_message_flag = True
+            # bot.register_next_step_handler(message, table_description, settings)
+
+
+# to do: there should be some ways to optimize interaction with database
 
 def call_to_model(message, settings=None):
     if message.text == "exit":
         main(message, settings)
     else:
+        user_id = message.from_user.id
+        with sq.connect("user_data.sql") as con:
+            cur = con.cursor()
+            cur.execute("SELECT * FROM users WHERE user_id = '%s'" % (user_id))
+            existing_record = cur.fetchone()
+
+            if existing_record:
+                cur.execute("SELECT conv_sum FROM users WHERE user_id = '%s'" % (user_id))
+                current_summary = cur.fetchone()[0]
+
+            con.commit()
+
         plot_files = None
         print(settings)
         table = None
@@ -227,8 +310,8 @@ def call_to_model(message, settings=None):
             bot.send_message(message.from_user.id, "Обрабатываю запрос, вы можете выйти из режима работы с моделью с помощью 'exit'", reply_markup=markup)
 
             user_question = message.text
-            user_id = message.from_user.id
-            answer_from_model = interactor.run_loop_bot(table, build_plots, user_question, user_id)
+
+            answer_from_model = interactor.run_loop_bot(table, build_plots, user_question, current_summary)
             summary = answer_from_model[1]
 
             with sq.connect("user_data.sql") as con:
@@ -237,7 +320,13 @@ def call_to_model(message, settings=None):
                 existing_record = cur.fetchone()
 
                 if existing_record:
-                    cur.execute("UPDATE users SET conv_sum = '%s' WHERE user_id = '%s'" % (summary, user_id))
+                    cur.execute("SELECT conv_sum FROM users WHERE user_id = '%s'" % (user_id))
+                    current_summary = cur.fetchone()[0]
+                    print(current_summary)
+                    print(type(current_summary))
+                    new_summary = current_summary + summary
+
+                    cur.execute("UPDATE users SET conv_sum = '%s' WHERE user_id = '%s'" % (new_summary, user_id))
                 else:
                     cur.execute("INSERT INTO users VALUES('%s', '%s')" % (user_id, summary))
 
