@@ -122,19 +122,19 @@ def on_click(message, settings=None):
         with sq.connect("user_data.sql") as con:
             cur = con.cursor()
             cur.execute("select table_name from tables where user_id == '%s'" % (user_id,))
-            existing_record = cur.fetchall()
             rows = cur.fetchall()
             con.commit()
         btn = None
-        print(existing_record)
-        if existing_record is not None:
-            for row in rows:
-                print(row[0])
-                if row[0] is not None:
+        print(rows)
 
-                    btn = types.KeyboardButton(row[0])
+        for row in rows:
+            print('NEN:', row[0])
+            if row[0] is not None:
 
-                    markup.add(btn)
+                btn = types.KeyboardButton(row[0])
+
+                markup.add(btn)
+
         btn1 = types.KeyboardButton("Добавить новую таблицу")
         markup.row(btn1)
         bot.send_message(message.from_user.id, "Можете выбрать нужную таблицу или добавить новую", reply_markup=markup)
@@ -161,12 +161,12 @@ def on_click(message, settings=None):
 
         btn = None
 
-        if existing_record is not None:
-            for row in rows:
-                if row[0] is not None:
-                    btn = types.KeyboardButton(row[0])
+        for row in rows:
 
-                    markup.add(btn)
+            if row[0] is not None:
+                btn = types.KeyboardButton(row[0])
+
+                markup.add(btn)
 
         btn1 = types.KeyboardButton("exit")
         markup.add(btn1)
@@ -219,7 +219,6 @@ def add_table(message, settings=None, error_message_flag=False):
                 print("this:", existing_record)
                 if not existing_record:
                     cur.execute("""INSERT INTO tables(user_id, table_name) VALUES(?,?)""", (user_id, message.document.file_name))
-
 
                 con.commit()
             bot.reply_to(message, 'Файл сохранен')
@@ -280,7 +279,6 @@ def choose_description(message, settings=None, table_name=None):
             existing_record = cur.fetchall()
             if existing_record:
                 cur.execute("""UPDATE tables SET table_description = '%s' WHERE table_name = '%s' """ % (description, table_name))
-
 
             con.commit()
         bot.send_message(message.from_user.id, 'Описание сохранено', reply_markup=markup)
@@ -358,8 +356,6 @@ def call_to_model(message, settings=None):
             plot_files = None
             print(settings)
             table = None
-
-
 
             table = "data/" + settings["table_name"]
             build_plots = settings["build_plots"]
