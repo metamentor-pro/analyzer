@@ -62,6 +62,7 @@ logging.basicConfig(level=logging.INFO, filename="py_log.log", filemode="w")
 def run_loop_bot(path: Union[str, None] = None, build_plots: Union[bool, None] = False, user_question: Union[str, None] = None, current_summary: Union[str, None] = "", table_description: Union[str, None] = ""):
     ag, df_head, df_info = preparation(path=path, build_plots=build_plots, current_summary=current_summary, table_description=table_description)
 
+
     while True:
         question = user_question  # this is for interacting with the user's request via a bot
         if question == "exit":

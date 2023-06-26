@@ -128,7 +128,7 @@ def on_click(message, settings=None):
         print(rows)
 
         for row in rows:
-            print('NEN:', row[0])
+
             if row[0] is not None:
 
                 btn = types.KeyboardButton(row[0])
@@ -222,6 +222,7 @@ def add_table(message, settings=None, error_message_flag=False):
 
                 con.commit()
             bot.reply_to(message, 'Файл сохранен')
+            settings["table_name"] = message.document.file_name
             bot.register_next_step_handler(message, main, settings)
         except Exception:
             bot.send_message(message.from_user.id, "Что-то пошло не так, попробуйте другой файл")
@@ -382,8 +383,8 @@ def call_to_model(message, settings=None):
                     current_summary = cur.fetchone()[0]
                     if current_summary is None:
                         current_summary = ""
-                    print(current_summary)
-                    print(type(current_summary))
+
+
                     new_summary = current_summary + summary
 
                     cur.execute("UPDATE users SET conv_sum = '%s' WHERE user_id = '%s'" % (new_summary, user_id))
@@ -391,13 +392,14 @@ def call_to_model(message, settings=None):
                     cur.execute("INSERT INTO users VALUES('%s', '%s')" % (user_id, summary))
 
                 cur.execute("select * from users")
-                print(cur.fetchall())
+
                 con.commit()
 
-            bot.send_message(message.from_user.id, f"Answer: {answer_from_model[0]}")
+
 
             pattern = r"\b\w+\.png\b"
-            if ".png" in answer_from_model:
+            if ".png" in answer_from_model[1]:
+                print("plots are here")
                 plot_files = re.findall(pattern, answer_from_model)
                 for plot_file in plot_files:
                     path_to_file = "Plots/" + plot_file
@@ -405,7 +407,10 @@ def call_to_model(message, settings=None):
 
                 bot.send_photo(message.from_user.id, open(path_to_file, "rb"))
                 os.remove(path_to_file)
+            else:
+                bot.send_message(message.from_user.id, f"Answer: {answer_from_model[0]}")
             bot.register_next_step_handler(message, call_to_model, settings)
+
 
 
 bot.polling()
