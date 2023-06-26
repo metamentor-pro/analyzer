@@ -48,7 +48,7 @@ def preparation(path: Union[str, None], build_plots: Union[bool, None], current_
         "Code should always produce a value"
     )
     context = ""  # there should be context that depends on task (memo + memo2 for example)
-    prompt = TableDescriptionPrompt(table_description = table_description, context = "", build_plots=build_plots, current_summary = current_summary)
+    prompt = TableDescriptionPrompt(table_description=table_description, context="", build_plots=build_plots, current_summary=current_summary)
     ag = BaseMinion(base_prompt=prompt.__str__(),
                     available_tools=[
                         Tool(name=python_tool.name, description=python_tool.description, func=python_tool._run)],

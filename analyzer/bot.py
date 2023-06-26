@@ -47,35 +47,59 @@ def help_info(message):
 @bot.message_handler(commands=["start", "exit"], content_types=["text", "document"])
 def main(message, settings=None):
     user_id = message.from_user.id
+
     with sq.connect("user_data.sql") as con:
         cur = con.cursor()
 
         cur.execute("""CREATE TABLE IF NOT EXISTS users (
-                    user_id TEXT UNIQUE,
+                    user_id INTEGER UNIQUE,
                     conv_sum TEXT)
                    """)
-
         con.commit()
     with sq.connect("user_data.sql") as con:
         cur = con.cursor()
-        cur.execute(""" CREATE TABLE IF NOT EXISTS table_data (user_id INTEGER, 
-                        table_name VARCHAR UNIQUE,
-                        table_description VARCHAR UNIQUE,
-                        FOREIGN KEY(user_id) REFERENCES users (user_id) on DELETE CASCADE)""")
+        cur.execute("SELECT * FROM users WHERE user_id = '%s'" % (user_id,))
+        existing_record = cur.fetchone()
+
+        if existing_record is None:
+            cur.execute("""INSERT INTO users(user_id) values(?)""", (user_id,))
+
+        cur.execute("SELECT * FROM users")
+        print(cur.fetchall())
 
         con.commit()
 
+    with sq.connect("user_data.sql") as con:
+        cur = con.cursor()
+        cur.execute(""" CREATE TABLE IF NOT EXISTS tables (user_id INTEGER, 
+                        table_name VARCHAR UNIQUE,
+                        table_description VARCHAR,
+                        FOREIGN KEY(user_id) REFERENCES users (user_id) on DELETE CASCADE)""")
+        con.commit()
+    with sq.connect("user_data.sql") as con:
+        cur = con.cursor()
+        cur.execute("SELECT * FROM tables WHERE user_id = '%s'" % (user_id,))
+        existing_record = cur.fetchone()
+
+        if existing_record is None:
+            cur.execute("""INSERT INTO tables(user_id) values(?)""", (user_id,))
+
+        cur.execute("SELECT * FROM tables")
+        print(cur.fetchall())
+
+        con.commit()
     if settings is None:
         settings = {"table_name": None,
                     "build_plots": False,
                     "user_id": None}
 
-    markup = types.ReplyKeyboardMarkup()
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn1 = types.KeyboardButton("Выбрать таблицу")
     btn2 = types.KeyboardButton("Добавить описание таблицы")
     btn3 = types.KeyboardButton("Режим визуализации")
     btn4 = types.KeyboardButton("Режим отправки запроса")
-    markup.row(btn1, btn2, btn3, btn4)
+    markup.row(btn1, btn2)
+    markup.row(btn3,btn4)
 
     bot.send_message(message.chat.id, "Вы можете  выбрать одну из опций", reply_markup=markup)
 
@@ -86,31 +110,38 @@ def main(message, settings=None):
 
 def on_click(message, settings=None):
     user_id = message.from_user.id
+
     if message.text == "Режим отправки запроса":
-        markup = types.ReplyKeyboardMarkup()
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         btn1 = types.KeyboardButton("exit")
         markup.add(btn1)
-        bot.send_message(message.chat.id, "Отправьте запроc. Пожалуйста, вводите запросы последовательно", reply_markup=markup)
+        bot.send_message(message.from_user.id, "Отправьте запроc. Пожалуйста, вводите запросы последовательно", reply_markup=markup)
         bot.register_next_step_handler(message, call_to_model, settings)
     elif message.text == "Выбрать таблицу":
-        markup = types.ReplyKeyboardMarkup()
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         with sq.connect("user_data.sql") as con:
             cur = con.cursor()
-            cur.execute("select table_name from table_data where user_id == '%s'" % (user_id))
+            cur.execute("select table_name from tables where user_id == '%s'" % (user_id,))
+            existing_record = cur.fetchall()
             rows = cur.fetchall()
             con.commit()
         btn = None
-        for row in rows:
-            btn = types.KeyboardButton(row[0])
-            markup.add(btn)
+        print(existing_record)
+        if existing_record is not None:
+            for row in rows:
+                print(row[0])
+                if row[0] is not None:
 
+                    btn = types.KeyboardButton(row[0])
+
+                    markup.add(btn)
         btn1 = types.KeyboardButton("Добавить новую таблицу")
         markup.row(btn1)
         bot.send_message(message.from_user.id, "Можете выбрать нужную таблицу или добавить новую", reply_markup=markup)
         bot.register_next_step_handler(message, choose_table, settings)
 
     elif message.text == "Режим визуализации":
-        markup = types.ReplyKeyboardMarkup()
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         btn1 = types.KeyboardButton("Выключить")
         btn2 = types.KeyboardButton("Включить")
         markup.row(btn1, btn2)
@@ -119,16 +150,24 @@ def on_click(message, settings=None):
         bot.register_next_step_handler(message, plots_handler, settings)
 
     elif message.text == "Добавить описание таблицы":
-        markup = types.ReplyKeyboardMarkup()
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+
         with sq.connect("user_data.sql") as con:
             cur = con.cursor()
-            cur.execute("select table_name from table_data where user_id == '%s'" % (user_id))
+            cur.execute("select table_name from tables where user_id == '%s'" % (user_id,))
             rows = cur.fetchall()
             con.commit()
+            existing_record = cur.fetchall()
+
         btn = None
-        for row in rows:
-            btn = types.KeyboardButton(row[0])
-            markup.add(btn)
+
+        if existing_record is not None:
+            for row in rows:
+                if row[0] is not None:
+                    btn = types.KeyboardButton(row[0])
+
+                    markup.add(btn)
+
         btn1 = types.KeyboardButton("exit")
         markup.add(btn1)
         bot.send_message(message.from_user.id, "Выберите, к какой таблице вы хотите добавить описание",
@@ -147,7 +186,7 @@ def choose_table(message, settings=None, error_table_flag=False):
     else:
         settings["table_name"] = message.text
 
-        markup = types.ReplyKeyboardMarkup()
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         btn1 = types.KeyboardButton("exit")
         markup.row(btn1)
 
@@ -175,11 +214,12 @@ def add_table(message, settings=None, error_message_flag=False):
 
             with sq.connect("user_data.sql") as con:
                 cur = con.cursor()
+                cur.execute("""SELECT * FROM tables WHERE table_name = (?)""", (message.document.file_name,))
+                existing_record = cur.fetchall()
+                print("this:", existing_record)
+                if not existing_record:
+                    cur.execute("""INSERT INTO tables(user_id, table_name) VALUES(?,?)""", (user_id, message.document.file_name))
 
-                cur.execute("""INSERT INTO table_data(user_id, table_name) values(?,?)""", (
-                    user_id, message.document.file_name))
-
-                cur.execute("select * from table_data")
 
                 con.commit()
             bot.reply_to(message, 'Файл сохранен')
@@ -193,7 +233,7 @@ def add_table(message, settings=None, error_message_flag=False):
 
 def plots_handler(message, settings=None):
 
-    markup = types.ReplyKeyboardMarkup()
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn1 = types.KeyboardButton("Вернуться в главное меню")
     markup.add(btn1)
 
@@ -208,21 +248,24 @@ def plots_handler(message, settings=None):
 
 
 def table_description(message, settings=None):
+    table_name = message.text
     if message.text == "exit":
         main(message, settings)
     else:
 
-        markup = types.ReplyKeyboardMarkup()
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         btn1 = types.KeyboardButton("exit")
         markup.add(btn1)
         bot.send_message(message.from_user.id,
                          "Таблица выбрана. Чтобы добавить описание таблицы, отправьте файл с описанием столбцов в формате txt или качестве сообщения.",
                          reply_markup=markup)
-        bot.register_next_step_handler(message, choose_description, settings)
+        bot.register_next_step_handler(message, choose_description, settings, table_name)
 
 
-def choose_description(message, settings=None):
-    markup = types.ReplyKeyboardMarkup()
+def choose_description(message, settings=None, table_name=None):
+    table_name = table_name
+    user_id = message.from_user.id
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn1 = types.KeyboardButton("exit")
     markup.add(btn1)
     if message.content_type == "text":
@@ -231,10 +274,13 @@ def choose_description(message, settings=None):
         print(description)
         with sq.connect("user_data.sql") as con:
             cur = con.cursor()
+            cur.execute("select table_name from tables where user_id == '%s'" % (user_id,))
 
-            cur.execute("""INSERT INTO table_data(table_description) values(?)""", (description,))
 
-            cur.execute("select * from table_data")
+            existing_record = cur.fetchall()
+            if existing_record:
+                cur.execute("""UPDATE tables SET table_description = '%s' WHERE table_name = '%s' """ % (description, table_name))
+
 
             con.commit()
         bot.send_message(message.from_user.id, 'Описание сохранено', reply_markup=markup)
@@ -254,10 +300,11 @@ def choose_description(message, settings=None):
             with sq.connect("user_data.sql") as con:
                 cur = con.cursor()
 
-                cur.execute("""INSERT INTO table_data(table_description) values(?)""", (description,))
+                cur.execute("select table_name from tables where user_id == '%s'" % (user_id,))
 
-                cur.execute("select * from table_data")
-
+                existing_record = cur.fetchall()
+                if existing_record:
+                    cur.execute("""UPDATE tables SET table_description = '%s' WHERE table_name = '%s' """ % (description, table_name))
                 con.commit()
             bot.send_message(message.from_user.id, 'Описание сохранено', reply_markup=markup)
             bot.register_next_step_handler(message, main, settings)
@@ -273,31 +320,6 @@ def call_to_model(message, settings=None):
     if message.text == "exit":
         main(message, settings)
     else:
-        user_id = message.from_user.id
-        with sq.connect("user_data.sql") as con:
-            cur = con.cursor()
-            cur.execute("SELECT * FROM users WHERE user_id = '%s'" % (user_id))
-            existing_record = cur.fetchone()
-
-            if existing_record:
-                cur.execute("SELECT conv_sum FROM users WHERE user_id = '%s'" % (user_id))
-                current_summary = cur.fetchone()[0]
-
-            con.commit()
-        with sq.connect("user_data.sql") as con:
-            cur = con.cursor()
-            cur.execute("SELECT * FROM tables WHERE user_id = '%s'" % (user_id))
-            existing_record = cur.fetchone()
-
-            if existing_record:
-                cur.execute("SELECT table_description FROM users WHERE user_id = '%s'" % (user_id))
-                table_description = cur.fetchone()[0]
-
-            con.commit()
-
-        plot_files = None
-        print(settings)
-        table = None
         if settings["table_name"] is None:
             bot.send_message(message.from_user.id, "Таблица не найдена, вы можете выбрать другую")
             bot.register_next_step_handler(message, main, settings)
@@ -307,12 +329,42 @@ def call_to_model(message, settings=None):
             bot.send_message(message.from_user.id,
                              "Вы можете выйти из режима работы с моделью с помощью 'exit'",
                              reply_markup=markup)
-
         else:
+            user_id = message.from_user.id
+            with sq.connect("user_data.sql") as con:
+                cur = con.cursor()
+                cur.execute("SELECT * FROM users WHERE user_id = '%s'" % (user_id,))
+                existing_record = cur.fetchone()
+
+                if existing_record:
+                    cur.execute("SELECT conv_sum FROM users WHERE user_id = '%s'" % (user_id,))
+                    current_summary = cur.fetchone()[0]
+                    if current_summary is None:
+                        current_summary = ""
+
+                con.commit()
+            with sq.connect("user_data.sql") as con:
+                cur = con.cursor()
+                cur.execute("SELECT * FROM tables WHERE user_id = '%s'" % (user_id,))
+                existing_record = cur.fetchone()
+
+                if existing_record:
+                    cur.execute("SELECT table_description FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (user_id, settings["table_name"]))
+                    table_description = cur.fetchone()[0]
+                    if table_description is None:
+                        table_description = ""
+                con.commit()
+
+            plot_files = None
+            print(settings)
+            table = None
+
+
+
             table = "data/" + settings["table_name"]
             build_plots = settings["build_plots"]
 
-            markup = types.ReplyKeyboardMarkup()
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
             btn1 = types.KeyboardButton("exit")
 
             markup.add(btn1)
@@ -326,12 +378,14 @@ def call_to_model(message, settings=None):
 
             with sq.connect("user_data.sql") as con:
                 cur = con.cursor()
-                cur.execute("SELECT * FROM users WHERE user_id = '%s'" % (user_id))
+                cur.execute("SELECT * FROM users WHERE user_id = '%s'" % (user_id,))
                 existing_record = cur.fetchone()
 
                 if existing_record:
-                    cur.execute("SELECT conv_sum FROM users WHERE user_id = '%s'" % (user_id))
+                    cur.execute("SELECT conv_sum FROM users WHERE user_id = '%s'" % (user_id,))
                     current_summary = cur.fetchone()[0]
+                    if current_summary is None:
+                        current_summary = ""
                     print(current_summary)
                     print(type(current_summary))
                     new_summary = current_summary + summary
