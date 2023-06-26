@@ -2,11 +2,12 @@ import os
 import telebot
 import sqlite3 as sq
 import interactor
-
+import asyncio
 
 import re
 import yaml
-
+import matplotlib
+matplotlib.use('Agg')
 from telebot import types
 
 user_question = None
@@ -15,20 +16,11 @@ plot_files = ""
 
 # to do: solve problem with matplotlib GUI outside main thread
 
-
-class Outside_main_thread(Exception):
-    def __init__(self, message, plot_files):
-        Exception.__init__(self)
-        self.message = message
-        self.plot_files = plot_files
-
-
 with open("config.yaml") as f:
     cfg = yaml.load(f, Loader=yaml.FullLoader)
 
 bot_name = cfg["bot_name"]
 bot_api = cfg["bot_api"]
-
 
 class Bot(telebot.TeleBot):
     def __init__(self):
@@ -72,7 +64,7 @@ def main(message, settings=None):
     with sq.connect("user_data.sql") as con:
         cur = con.cursor()
         cur.execute(""" CREATE TABLE IF NOT EXISTS tables (user_id INTEGER, 
-                        table_name VARCHAR UNIQUE,
+                        table_name VARCHAR,
                         table_description VARCHAR,
                         FOREIGN KEY(user_id) REFERENCES users (user_id) on DELETE CASCADE)""")
         con.commit()
@@ -90,7 +82,7 @@ def main(message, settings=None):
         con.commit()
     if settings is None:
         settings = {"table_name": None,
-                    "build_plots": False,
+                    "build_plots": True,
                     "user_id": None}
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -99,7 +91,7 @@ def main(message, settings=None):
     btn3 = types.KeyboardButton("Режим визуализации")
     btn4 = types.KeyboardButton("Режим отправки запроса")
     markup.row(btn1, btn2)
-    markup.row(btn3,btn4)
+    markup.row(btn3, btn4)
 
     bot.send_message(message.chat.id, "Вы можете  выбрать одну из опций", reply_markup=markup)
 
@@ -116,6 +108,7 @@ def on_click(message, settings=None):
         btn1 = types.KeyboardButton("exit")
         markup.add(btn1)
         bot.send_message(message.from_user.id, "Отправьте запроc. Пожалуйста, вводите запросы последовательно", reply_markup=markup)
+
         bot.register_next_step_handler(message, call_to_model, settings)
     elif message.text == "Выбрать таблицу":
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -145,7 +138,7 @@ def on_click(message, settings=None):
         btn1 = types.KeyboardButton("Выключить")
         btn2 = types.KeyboardButton("Включить")
         markup.row(btn1, btn2)
-        bot.send_message(message.from_user.id, "Можете выбрать режим визуализации данных, он выключен по умолчанию",
+        bot.send_message(message.from_user.id, "Можете выбрать режим визуализации данных, он включен по умолчанию",
                          reply_markup=markup)
         bot.register_next_step_handler(message, plots_handler, settings)
 
@@ -214,7 +207,7 @@ def add_table(message, settings=None, error_message_flag=False):
 
             with sq.connect("user_data.sql") as con:
                 cur = con.cursor()
-                cur.execute("""SELECT * FROM tables WHERE table_name = (?)""", (message.document.file_name,))
+                cur.execute("""SELECT * FROM tables WHERE table_name = (?) and user_id = (?)""", (message.document.file_name,user_id))
                 existing_record = cur.fetchall()
                 print("this:", existing_record)
                 if not existing_record:
@@ -387,7 +380,7 @@ def call_to_model(message, settings=None):
 
                     new_summary = current_summary + summary
 
-                    cur.execute("UPDATE users SET conv_sum = '%s' WHERE user_id = '%s'" % (new_summary, user_id))
+                    #cur.execute("UPDATE users SET conv_sum = '%s' WHERE user_id = '%s'" % (new_summary, user_id))
                 else:
                     cur.execute("INSERT INTO users VALUES('%s', '%s')" % (user_id, summary))
 
@@ -399,18 +392,17 @@ def call_to_model(message, settings=None):
 
             pattern = r"\b\w+\.png\b"
             if ".png" in answer_from_model[1]:
-                print("plots are here")
-                plot_files = re.findall(pattern, answer_from_model)
+
+                plot_files = re.findall(pattern, answer_from_model[1])
                 for plot_file in plot_files:
                     path_to_file = "Plots/" + plot_file
                     print(path_to_file)
 
-                bot.send_photo(message.from_user.id, open(path_to_file, "rb"))
-                os.remove(path_to_file)
+                    bot.send_photo(message.from_user.id, open(path_to_file, "rb"))
+                    os.remove(path_to_file)
             else:
                 bot.send_message(message.from_user.id, f"Answer: {answer_from_model[0]}")
             bot.register_next_step_handler(message, call_to_model, settings)
-
 
 
 bot.polling()
