@@ -14,13 +14,13 @@ user_question = None
 
 plot_files = ""
 
-# to do: solve problem with matplotlib GUI outside main thread
 
 with open("config.yaml") as f:
     cfg = yaml.load(f, Loader=yaml.FullLoader)
 
 bot_name = cfg["bot_name"]
 bot_api = cfg["bot_api"]
+
 
 class Bot(telebot.TeleBot):
     def __init__(self):
@@ -269,7 +269,6 @@ def choose_description(message, settings=None, table_name=None):
             cur = con.cursor()
             cur.execute("select table_name from tables where user_id == '%s'" % (user_id,))
 
-
             existing_record = cur.fetchall()
             if existing_record:
                 cur.execute("""UPDATE tables SET table_description = '%s' WHERE table_name = '%s' """ % (description, table_name))
@@ -368,24 +367,21 @@ def call_to_model(message, settings=None):
 
             with sq.connect("user_data.sql") as con:
                 cur = con.cursor()
-                cur.execute("SELECT * FROM users WHERE user_id = '%s'" % (user_id,))
-                existing_record = cur.fetchone()
 
-                if existing_record:
-                    cur.execute("SELECT conv_sum FROM users WHERE user_id = '%s'" % (user_id,))
-                    current_summary = cur.fetchone()[0]
-                    if current_summary is None:
-                        current_summary = ""
 
+                cur.execute("SELECT conv_sum FROM users WHERE user_id = '%s'" % (user_id,))
+                current_summary = cur.fetchone()[0]
+
+                if current_summary is None:
+                    current_summary = ""
 
                     new_summary = current_summary + summary
-
-                    #cur.execute("UPDATE users SET conv_sum = '%s' WHERE user_id = '%s'" % (new_summary, user_id))
                 else:
-                    cur.execute("INSERT INTO users VALUES('%s', '%s')" % (user_id, summary))
+                    new_summary = current_summary + summary
+                cur.execute("INSERT OR REPLACE INTO users VALUES('%s', '%s')" % (user_id, new_summary))
 
                 cur.execute("select * from users")
-
+                print(cur.fetchall())
                 con.commit()
 
 
