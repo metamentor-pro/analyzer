@@ -82,10 +82,10 @@ def main(message, settings=None):
                     "user_id": None}
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    btn1 = types.KeyboardButton("Выбрать таблицу")
-    btn2 = types.KeyboardButton("Добавить описание таблицы")
-    btn3 = types.KeyboardButton("Режим визуализации")
-    btn4 = types.KeyboardButton("Режим отправки запроса")
+    btn1 = types.KeyboardButton("🖹 Выбрать таблицу")
+    btn2 = types.KeyboardButton("➕ Добавить описание таблицы")
+    btn3 = types.KeyboardButton("🖻 Режим визуализации")
+    btn4 = types.KeyboardButton("❓ Режим отправки запроса")
     markup.row(btn1, btn2)
     markup.row(btn3, btn4)
 
@@ -99,14 +99,14 @@ def main(message, settings=None):
 def on_click(message, settings=None):
     user_id = message.from_user.id
 
-    if message.text == "Режим отправки запроса":
+    if message.text == "❓ Режим отправки запроса":
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        btn1 = types.KeyboardButton("exit")
+        btn1 = types.KeyboardButton("🚫 exit")
         markup.add(btn1)
         bot.send_message(message.from_user.id, "Отправьте запроc. Пожалуйста, вводите запросы последовательно", reply_markup=markup)
 
         bot.register_next_step_handler(message, call_to_model, settings)
-    elif message.text == "Выбрать таблицу":
+    elif message.text == "🖹 Выбрать таблицу":
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
 
         con = sq.connect("user_data.sql")
@@ -116,7 +116,6 @@ def on_click(message, settings=None):
         con.commit()
         con.close()
         btn = None
-        print(rows)
 
         for row in rows:
 
@@ -127,20 +126,26 @@ def on_click(message, settings=None):
                 markup.add(btn)
 
         btn1 = types.KeyboardButton("Добавить новую таблицу")
+        btn2 = types.KeyboardButton("🚫 exit")
         markup.row(btn1)
+        markup.row(btn2)
         bot.send_message(message.from_user.id, "Можете выбрать нужную таблицу или добавить новую", reply_markup=markup)
         bot.register_next_step_handler(message, choose_table, settings)
 
-    elif message.text == "Режим визуализации":
+    elif message.text == "🖻 Режим визуализации":
+        if settings["build_plots"] == False:
+            build_plots = "выключен"
+        else:
+            build_plots = "включен"
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         btn1 = types.KeyboardButton("Выключить")
         btn2 = types.KeyboardButton("Включить")
         markup.row(btn1, btn2)
-        bot.send_message(message.from_user.id, "Можете выбрать режим визуализации данных, он включен по умолчанию",
+        bot.send_message(message.from_user.id, f"Можете выбрать режим визуализации данных, он  {build_plots}  в данный момент",
                          reply_markup=markup)
         bot.register_next_step_handler(message, plots_handler, settings)
 
-    elif message.text == "Добавить описание таблицы":
+    elif message.text == "➕ Добавить описание таблицы":
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
 
         con = sq.connect("user_data.sql")
@@ -160,7 +165,7 @@ def on_click(message, settings=None):
                 markup.add(btn)
         con.close()
 
-        btn1 = types.KeyboardButton("exit")
+        btn1 = types.KeyboardButton("🚫 exit")
         markup.add(btn1)
         bot.send_message(message.from_user.id, "Выберите, к какой таблице вы хотите добавить описание",
                          reply_markup=markup)
@@ -168,9 +173,11 @@ def on_click(message, settings=None):
 
 
 def choose_table(message, settings=None, error_table_flag=False):
-    if message.text == "Добавить новую таблицу" or error_table_flag:
+    if message.text == "🚫 exit":
+        main(message, settings)
+    elif message.text == "Добавить новую таблицу" or error_table_flag:
         markup = types.ReplyKeyboardMarkup()
-        btn1 = types.KeyboardButton("exit")
+        btn1 = types.KeyboardButton("🚫 exit")
         markup.row(btn1)
         bot.send_message(message.from_user.id, "Чтобы добавить таблицу, отправьте файл в формате csv, XLSX или json", reply_markup=markup)
         bot.register_next_step_handler(message, add_table, settings)
@@ -179,16 +186,17 @@ def choose_table(message, settings=None, error_table_flag=False):
         settings["table_name"] = message.text
 
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        btn1 = types.KeyboardButton("exit")
+
+        btn1 = types.KeyboardButton("🚫 exit")
         markup.row(btn1)
 
         bot.send_message(message.from_user.id, "Таблица выбрана. Теперь вы можете задавать вопросы. Нажмите 'exit', чтобы выйти из этого режима", reply_markup=markup)
 
-        bot.register_next_step_handler(message, main, settings)
+        bot.register_next_step_handler(message, call_to_model, settings)
 
 
 def add_table(message, settings=None, error_message_flag=False):
-    if message.text == "exit":
+    if message.text == "🚫 exit":
         main(message, settings)
 
     else:
@@ -242,12 +250,12 @@ def plots_handler(message, settings=None):
 
 def table_description(message, settings=None):
     table_name = message.text
-    if message.text == "exit":
+    if message.text == "🚫 exit":
         main(message, settings)
     else:
 
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        btn1 = types.KeyboardButton("exit")
+        btn1 = types.KeyboardButton("🚫 exit")
         markup.add(btn1)
         bot.send_message(message.from_user.id,
                          "Таблица выбрана. Чтобы добавить описание таблицы, отправьте файл с описанием столбцов в формате txt или качестве сообщения.",
@@ -259,7 +267,7 @@ def choose_description(message, settings=None, table_name=None):
     table_name = table_name
     user_id = message.from_user.id
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    btn1 = types.KeyboardButton("exit")
+    btn1 = types.KeyboardButton("🚫 exit")
     markup.add(btn1)
     if message.content_type == "text":
         description = str(message.text)
@@ -307,14 +315,14 @@ def choose_description(message, settings=None, table_name=None):
 # to do: there should be some ways to optimize interaction with database
 
 def call_to_model(message, settings=None):
-    if message.text == "exit":
+    if message.text == "🚫 exit":
         main(message, settings)
     else:
         if settings["table_name"] is None:
             bot.send_message(message.from_user.id, "Таблица не найдена, вы можете выбрать другую")
             bot.register_next_step_handler(message, main, settings)
             markup = types.ReplyKeyboardMarkup()
-            btn1 = types.KeyboardButton("exit")
+            btn1 = types.KeyboardButton("🚫 exit")
             markup.add(btn1)
             bot.send_message(message.from_user.id,
                              "Вы можете выйти из режима работы с моделью с помощью 'exit'",
