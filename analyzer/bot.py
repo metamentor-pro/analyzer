@@ -39,7 +39,6 @@ def help_info(message):
 def main(message, settings=None):
     user_id = message.from_user.id
 
-
     con = sq.connect("user_data.sql")
     cur = con.cursor()
 
@@ -47,7 +46,6 @@ def main(message, settings=None):
                 (user_id INTEGER UNIQUE,
                 conv_sum TEXT)""")
     con.commit()
-
 
     cur.execute("SELECT * FROM users WHERE user_id = '%s'" % (user_id,))
     existing_record = cur.fetchone()
@@ -66,7 +64,6 @@ def main(message, settings=None):
                 table_description VARCHAR,
                 FOREIGN KEY(user_id) REFERENCES users (user_id) on DELETE CASCADE)""")
     con.commit()
-
 
     cur.execute("SELECT * FROM tables WHERE user_id = '%s'" % (user_id,))
     existing_record = cur.fetchone()
@@ -265,7 +262,6 @@ def choose_description(message, settings=None, table_name=None):
     btn1 = types.KeyboardButton("exit")
     markup.add(btn1)
     if message.content_type == "text":
-
         description = str(message.text)
         print(description)
         con = sq.connect("user_data.sql")
@@ -281,8 +277,6 @@ def choose_description(message, settings=None, table_name=None):
         bot.send_message(message.from_user.id, 'Описание сохранено', reply_markup=markup)
         bot.register_next_step_handler(message, main, settings)
     elif message.content_type == "document":
-
-            user_id = message.from_user.id
             file_id = message.document.file_id
             file_info = bot.get_file(file_id)
             file_path = file_info.file_path
@@ -350,7 +344,6 @@ def call_to_model(message, settings=None):
                 if table_description is None:
                     table_description = ""
             con.commit()
-
 
             plot_files = None
             print(settings)
