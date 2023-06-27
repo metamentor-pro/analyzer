@@ -1,9 +1,10 @@
 from langchain.memory import ConversationBufferMemory
+import openai
 import logging
 import re
 import typing
 from dataclasses import dataclass
-from typing import Any, List
+from typing import Any, List, Callable, Union
 from langchain import LLMChain
 from langchain.agents import LLMSingleActionAgent, AgentExecutor
 from langchain.base_language import BaseLanguageModel
@@ -27,6 +28,20 @@ def extract_variable_names(prompt: str, interaction_enabled: bool = False):
     return variable_names
 
 
+
+openai.api_key = ""
+
+
+def get_answer(prompt: str, model: str) -> str:
+    completion = openai.ChatCompletion.create(
+        model=model,
+        messages=[
+            {"role": "user", "content": prompt}
+        ]
+    )
+
+    return completion.choices[0].message.content
+
 class CustomPromptTemplate(StringPromptTemplate):
     template: str
     # The list of tools available
@@ -38,6 +53,7 @@ class CustomPromptTemplate(StringPromptTemplate):
     my_summarize_agent: Any = None
     last_summary: str = ""
     project: Any | None = None
+    callback: Union[Callable, None] = None
 
     @property
     def _prompt_type(self) -> str:
@@ -56,6 +72,8 @@ class CustomPromptTemplate(StringPromptTemplate):
         # Get the intermediate steps (AgentAction, AResult tuples)
         # Format them in a particular way
         intermediate_steps = kwargs.pop("intermediate_steps")
+        if self.callback is not None and len(intermediate_steps) > 0:
+            self.callback(intermediate_steps[-1][0].log)
         if (
                 self.steps_since_last_summarize == self.summarize_every_n_steps
                 and self.my_summarize_agent
@@ -102,7 +120,8 @@ class CustomPromptTemplate(StringPromptTemplate):
 @dataclass
 class BaseMinion:
     def __init__(self, base_prompt: str, available_tools: List[Tool], model: BaseLanguageModel,
-                 max_iterations: int = 50, df_head: Any = None, df_info: Any = None) -> None:
+                 max_iterations: int = 500, df_head: Any = None, df_info: Any = None,
+                 callback: Union[Callable, None] = None, summarize_model: Union[str, None] = None) -> None:
 
         global df_head_sub, df_info_sub
 
@@ -128,18 +147,25 @@ class BaseMinion:
         agent_toolnames = [tool.name for tool in available_tools]
 
         class Summarizer:
-            def __init__(self):
+            def __init__(self, inner_summarize_model: Union[str, None] = None):
                 self.summary = ""
-
+                self.summarize_model = inner_summarize_model
             def run(self, summary: str, thought_process: str):
-
-                return self.summary
+                if self.summarize_model is None:
+                    return self.summary
+                    # print("AAAAA", type(thought_process), thought_process)
+                return get_answer(f"Your task is to summarize the thought process of the model"
+                                  f"Here is a summary of what has happened:\n {summary};\n"
+                                  f"Here is the last actions happened: \n{thought_process}"
+                                  f"Begin!", self.summarize_model)
 
             def add_question_answer(self, question: str, answer: str):
                 self.summary += f"Previous question: {question}\nPrevious answer: {answer}\n\n"
 
                 return self.summary
-        self.summarizer = Summarizer()
+
+        self.summarizer = Summarizer(summarize_model)
+
         prompt = CustomPromptTemplate(
             template=base_prompt,
             tools=available_tools,
@@ -202,6 +228,7 @@ class Subagent_tool(BaseMinion):
             ),
             agent_toolnames=agent_toolnames,
             my_summarize_agent=self.summarizer,
+            #callback=callback
         )
         llm_chain = LLMChain(llm=llm, prompt=prompt)
         output_parser = CustomOutputParser()

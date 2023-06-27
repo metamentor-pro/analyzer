@@ -2,11 +2,15 @@ import os
 import telebot
 import sqlite3 as sq
 import interactor
+import time
+import requests
+
 
 import re
 import yaml
 import matplotlib
 matplotlib.use('Agg')
+
 from telebot import types
 
 user_question = None
@@ -79,7 +83,7 @@ def main(message, settings=None):
     if settings is None:
         settings = {"table_name": None,
                     "build_plots": True,
-                    "user_id": None}
+                    }
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn1 = types.KeyboardButton("🖹 Выбрать таблицу")
@@ -315,97 +319,109 @@ def choose_description(message, settings=None, table_name=None):
 # to do: there should be some ways to optimize interaction with database
 
 def call_to_model(message, settings=None):
+    user_question = message.text
     if message.text == "🚫 exit":
         main(message, settings)
     else:
-        if settings["table_name"] is None:
-            bot.send_message(message.from_user.id, "Таблица не найдена, вы можете выбрать другую")
-            bot.register_next_step_handler(message, main, settings)
-            markup = types.ReplyKeyboardMarkup()
-            btn1 = types.KeyboardButton("🚫 exit")
-            markup.add(btn1)
-            bot.send_message(message.from_user.id,
+        try:
+            if settings["table_name"] is None:
+                bot.send_message(message.from_user.id, "Таблица не найдена, вы можете выбрать другую")
+                bot.register_next_step_handler(message, main, settings)
+                markup = types.ReplyKeyboardMarkup()
+                btn1 = types.KeyboardButton("🚫 exit")
+                markup.add(btn1)
+                bot.send_message(message.from_user.id,
                              "Вы можете выйти из режима работы с моделью с помощью 'exit'",
                              reply_markup=markup)
-        else:
-            user_id = message.from_user.id
-            con = sq.connect("user_data.sql")
-            cur = con.cursor()
-            cur.execute("SELECT * FROM users WHERE user_id = '%s'" % (user_id,))
-            existing_record = cur.fetchone()
+            else:
+                user_id = message.from_user.id
+                con = sq.connect("user_data.sql")
+                cur = con.cursor()
+                cur.execute("SELECT * FROM users WHERE user_id = '%s'" % (user_id,))
+                existing_record = cur.fetchone()
 
-            if existing_record:
+                if existing_record:
+                    cur.execute("SELECT conv_sum FROM users WHERE user_id = '%s'" % (user_id,))
+                    current_summary = cur.fetchone()[0]
+                    if current_summary is None:
+                        current_summary = ""
+
+                con.commit()
+
+                cur = con.cursor()
+                cur.execute("SELECT * FROM tables WHERE user_id = '%s'" % (user_id,))
+                existing_record = cur.fetchone()
+
+                if existing_record:
+                    cur.execute("SELECT table_description FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (user_id, settings["table_name"]))
+                    table_description = cur.fetchone()[0]
+                    if table_description is None:
+                        table_description = ""
+                con.commit()
+
+                plot_files = None
+                print(settings)
+                table = None
+
+                table = "data/" + settings["table_name"]
+                build_plots = settings["build_plots"]
+
+                markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+                btn1 = types.KeyboardButton("exit")
+
+                markup.add(btn1)
+
+                bot.send_message(message.from_user.id, "Обрабатываю запрос, вы можете выйти из режима работы с моделью с помощью 'exit'", reply_markup=markup)
+
+
+
+                answer_from_model = interactor.run_loop_bot(table, build_plots, user_question, current_summary, table_description)
+                summary = answer_from_model[1]
+
+
+                cur = con.cursor()
+
+
                 cur.execute("SELECT conv_sum FROM users WHERE user_id = '%s'" % (user_id,))
                 current_summary = cur.fetchone()[0]
+
                 if current_summary is None:
                     current_summary = ""
 
-            con.commit()
+                    new_summary = current_summary + summary
+                else:
+                    new_summary = current_summary + summary
+                cur.execute("INSERT OR REPLACE INTO users VALUES(?, ?)", (user_id, new_summary))
 
-            cur = con.cursor()
-            cur.execute("SELECT * FROM tables WHERE user_id = '%s'" % (user_id,))
-            existing_record = cur.fetchone()
+                cur.execute("select * from users")
+                #print(cur.fetchall())
+                con.commit()
+                con.close()
 
-            if existing_record:
-                cur.execute("SELECT table_description FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (user_id, settings["table_name"]))
-                table_description = cur.fetchone()[0]
-                if table_description is None:
-                    table_description = ""
-            con.commit()
+                time.sleep(10)
+                pattern = r"\b\w+\.png\b"
+                if ".png" in answer_from_model[1]:
 
-            plot_files = None
-            print(settings)
-            table = None
+                    plot_files = re.findall(pattern, answer_from_model[1])
+                    for plot_file in plot_files:
+                        path_to_file = "Plots/" + plot_file
+                        #print(path_to_file)
+                        if os.path.exists(path_to_file):
+                            bot.send_photo(message.from_user.id, open(path_to_file, "rb"))
+                    for plot_file in plot_files:
 
-            table = "data/" + settings["table_name"]
-            build_plots = settings["build_plots"]
+                        path_to_file = "Plots/" + plot_file
+                        if os.path.exists(path_to_file):
+                            os.remove(path_to_file)
+                    matplotlib.pyplot.close("all")
+                    bot.send_message(message.from_user.id, f"Answer: {answer_from_model[0]}")
+                else:
+                    bot.send_message(message.from_user.id, f"Answer: {answer_from_model[0]}")
+                bot.register_next_step_handler(message, call_to_model, settings)
+        except requests.exceptions.ConnectionError:
+            bot.send_message(message.from_user.id, "something happend")
+            call_to_model(user_question, settings)
 
-            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-            btn1 = types.KeyboardButton("exit")
-
-            markup.add(btn1)
-
-            bot.send_message(message.from_user.id, "Обрабатываю запрос, вы можете выйти из режима работы с моделью с помощью 'exit'", reply_markup=markup)
-
-            user_question = message.text
-
-            answer_from_model = interactor.run_loop_bot(table, build_plots, user_question, current_summary, table_description)
-            summary = answer_from_model[1]
-
-
-            cur = con.cursor()
-
-
-            cur.execute("SELECT conv_sum FROM users WHERE user_id = '%s'" % (user_id,))
-            current_summary = cur.fetchone()[0]
-
-            if current_summary is None:
-                current_summary = ""
-
-                new_summary = current_summary + summary
-            else:
-                new_summary = current_summary + summary
-            cur.execute("INSERT OR REPLACE INTO users VALUES('%s', '%s')" % (user_id, new_summary))
-
-            cur.execute("select * from users")
-            print(cur.fetchall())
-            con.commit()
-            con.close()
-
-
-            pattern = r"\b\w+\.png\b"
-            if ".png" in answer_from_model[1]:
-
-                plot_files = re.findall(pattern, answer_from_model[1])
-                for plot_file in plot_files:
-                    path_to_file = "Plots/" + plot_file
-                    print(path_to_file)
-
-                    bot.send_photo(message.from_user.id, open(path_to_file, "rb"))
-                    os.remove(path_to_file)
-            else:
-                bot.send_message(message.from_user.id, f"Answer: {answer_from_model[0]}")
-            bot.register_next_step_handler(message, call_to_model, settings)
 
 
 bot.polling()

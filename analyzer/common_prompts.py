@@ -10,9 +10,11 @@ class TableDescriptionPrompt:
             plots_part = """You can use plots if you need them.
                             BUILD GRAPHS IF AND INLY IF YOU ARE ASKED TO DO SO.
                             If you have to much data to plot, try to group it by quantity.
-                            If you are working with temporary data, there are too many of them for normal display, then combine several dates into one.
+                            If you are working with temporary data and there are too many of them for normal display, then combine several dates into one.
                             Use seaborn and plotly instead of matplotlib if you can.
                             Pay attention to categorical variables, if they are too long, then reduce the size of the graph so that the names of variables are placed on the screen.
+                            ALWAYS MAKESURE THAT THERE ARE ENOUGH PLACE FOR NAMES OF VALUES IN PLOT
+                            Аlways try to choose the most appropriate type of schedule depending on the task and data
                             YOU MUST SAVE YOUR PLOT TO .PNG FILE, DO NOT PLOT IT IN THE TERMINAL, JUST SAVE IT TO FILE OR THE WORLD WILL BE DESTROYED, File should be in the folder called 'Plots'
                             If there are already file with the same name, just rename current file"""
         else:
