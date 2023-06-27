@@ -2,7 +2,6 @@ import os
 import telebot
 import sqlite3 as sq
 import interactor
-import asyncio
 
 import re
 import yaml
@@ -40,46 +39,46 @@ def help_info(message):
 def main(message, settings=None):
     user_id = message.from_user.id
 
-    with sq.connect("user_data.sql") as con:
-        cur = con.cursor()
 
-        cur.execute("""CREATE TABLE IF NOT EXISTS users (
-                    user_id INTEGER UNIQUE,
-                    conv_sum TEXT)
-                   """)
-        con.commit()
-    with sq.connect("user_data.sql") as con:
-        cur = con.cursor()
-        cur.execute("SELECT * FROM users WHERE user_id = '%s'" % (user_id,))
-        existing_record = cur.fetchone()
+    con = sq.connect("user_data.sql")
+    cur = con.cursor()
 
-        if existing_record is None:
-            cur.execute("""INSERT INTO users(user_id) values(?)""", (user_id,))
+    cur.execute("""CREATE TABLE IF NOT EXISTS users 
+                (user_id INTEGER UNIQUE,
+                conv_sum TEXT)""")
+    con.commit()
 
-        cur.execute("SELECT * FROM users")
-        print(cur.fetchall())
 
-        con.commit()
+    cur.execute("SELECT * FROM users WHERE user_id = '%s'" % (user_id,))
+    existing_record = cur.fetchone()
 
-    with sq.connect("user_data.sql") as con:
-        cur = con.cursor()
-        cur.execute(""" CREATE TABLE IF NOT EXISTS tables (user_id INTEGER, 
-                        table_name VARCHAR,
-                        table_description VARCHAR,
-                        FOREIGN KEY(user_id) REFERENCES users (user_id) on DELETE CASCADE)""")
-        con.commit()
-    with sq.connect("user_data.sql") as con:
-        cur = con.cursor()
-        cur.execute("SELECT * FROM tables WHERE user_id = '%s'" % (user_id,))
-        existing_record = cur.fetchone()
+    if existing_record is None:
+        cur.execute("""INSERT INTO users(user_id) values(?)""", (user_id,))
 
-        if existing_record is None:
-            cur.execute("""INSERT INTO tables(user_id) values(?)""", (user_id,))
+    cur.execute("SELECT * FROM users")
 
-        cur.execute("SELECT * FROM tables")
-        print(cur.fetchall())
+    print(cur.fetchall())
 
-        con.commit()
+    con.commit()
+
+    cur.execute(""" CREATE TABLE IF NOT EXISTS tables (user_id INTEGER, 
+                table_name VARCHAR,
+                table_description VARCHAR,
+                FOREIGN KEY(user_id) REFERENCES users (user_id) on DELETE CASCADE)""")
+    con.commit()
+
+
+    cur.execute("SELECT * FROM tables WHERE user_id = '%s'" % (user_id,))
+    existing_record = cur.fetchone()
+
+    if existing_record is None:
+        cur.execute("""INSERT INTO tables(user_id) values(?)""", (user_id,))
+
+    cur.execute("SELECT * FROM tables")
+    print(cur.fetchall())
+
+    con.commit()
+    con.close()
     if settings is None:
         settings = {"table_name": None,
                     "build_plots": True,
@@ -112,11 +111,13 @@ def on_click(message, settings=None):
         bot.register_next_step_handler(message, call_to_model, settings)
     elif message.text == "Выбрать таблицу":
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        with sq.connect("user_data.sql") as con:
-            cur = con.cursor()
-            cur.execute("select table_name from tables where user_id == '%s'" % (user_id,))
-            rows = cur.fetchall()
-            con.commit()
+
+        con = sq.connect("user_data.sql")
+        cur = con.cursor()
+        cur.execute("select table_name from tables where user_id == '%s'" % (user_id,))
+        rows = cur.fetchall()
+        con.commit()
+        con.close()
         btn = None
         print(rows)
 
@@ -145,12 +146,12 @@ def on_click(message, settings=None):
     elif message.text == "Добавить описание таблицы":
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
 
-        with sq.connect("user_data.sql") as con:
-            cur = con.cursor()
-            cur.execute("select table_name from tables where user_id == '%s'" % (user_id,))
-            rows = cur.fetchall()
-            con.commit()
-            existing_record = cur.fetchall()
+        con = sq.connect("user_data.sql")
+        cur = con.cursor()
+        cur.execute("select table_name from tables where user_id == '%s'" % (user_id,))
+        rows = cur.fetchall()
+        con.commit()
+        existing_record = cur.fetchall()
 
         btn = None
 
@@ -160,6 +161,7 @@ def on_click(message, settings=None):
                 btn = types.KeyboardButton(row[0])
 
                 markup.add(btn)
+        con.close()
 
         btn1 = types.KeyboardButton("exit")
         markup.add(btn1)
@@ -205,15 +207,16 @@ def add_table(message, settings=None, error_message_flag=False):
             with open(src, 'wb') as f:
                 f.write(downloaded_file)
 
-            with sq.connect("user_data.sql") as con:
-                cur = con.cursor()
-                cur.execute("""SELECT * FROM tables WHERE table_name = (?) and user_id = (?)""", (message.document.file_name,user_id))
-                existing_record = cur.fetchall()
-                print("this:", existing_record)
-                if not existing_record:
-                    cur.execute("""INSERT INTO tables(user_id, table_name) VALUES(?,?)""", (user_id, message.document.file_name))
+            con = sq.connect("user_data.sql")
+            cur = con.cursor()
+            cur.execute("""SELECT * FROM tables WHERE table_name = (?) and user_id = (?)""", (message.document.file_name,user_id))
+            existing_record = cur.fetchall()
+            print("this:", existing_record)
+            if not existing_record:
+                cur.execute("""INSERT INTO tables(user_id, table_name) VALUES(?,?)""", (user_id, message.document.file_name))
 
-                con.commit()
+            con.commit()
+            con.close()
             bot.reply_to(message, 'Файл сохранен')
             settings["table_name"] = message.document.file_name
             bot.register_next_step_handler(message, main, settings)
@@ -265,15 +268,16 @@ def choose_description(message, settings=None, table_name=None):
 
         description = str(message.text)
         print(description)
-        with sq.connect("user_data.sql") as con:
-            cur = con.cursor()
-            cur.execute("select table_name from tables where user_id == '%s'" % (user_id,))
+        con = sq.connect("user_data.sql")
+        cur = con.cursor()
+        cur.execute("select table_name from tables where user_id == '%s'" % (user_id,))
 
-            existing_record = cur.fetchall()
-            if existing_record:
-                cur.execute("""UPDATE tables SET table_description = '%s' WHERE table_name = '%s' """ % (description, table_name))
+        existing_record = cur.fetchall()
+        if existing_record:
+            cur.execute("""UPDATE tables SET table_description = '%s' WHERE table_name = '%s' and user_id = '%s' """ % (description, table_name, user_id))
 
-            con.commit()
+        con.commit()
+        con.close()
         bot.send_message(message.from_user.id, 'Описание сохранено', reply_markup=markup)
         bot.register_next_step_handler(message, main, settings)
     elif message.content_type == "document":
@@ -288,15 +292,16 @@ def choose_description(message, settings=None, table_name=None):
 
             description = downloaded_file.decode('utf-8')
 
-            with sq.connect("user_data.sql") as con:
-                cur = con.cursor()
+            con = sq.connect("user_data.sql")
+            cur = con.cursor()
 
-                cur.execute("select table_name from tables where user_id == '%s'" % (user_id,))
+            cur.execute("select table_name from tables where user_id == '%s'" % (user_id,))
 
-                existing_record = cur.fetchall()
-                if existing_record:
-                    cur.execute("""UPDATE tables SET table_description = '%s' WHERE table_name = '%s' """ % (description, table_name))
-                con.commit()
+            existing_record = cur.fetchall()
+            if existing_record:
+                cur.execute("""UPDATE tables SET table_description = '%s' WHERE table_name = '%s' """ % (description, table_name))
+            con.commit()
+            con.close()
             bot.send_message(message.from_user.id, 'Описание сохранено', reply_markup=markup)
             bot.register_next_step_handler(message, main, settings)
 
@@ -322,29 +327,30 @@ def call_to_model(message, settings=None):
                              reply_markup=markup)
         else:
             user_id = message.from_user.id
-            with sq.connect("user_data.sql") as con:
-                cur = con.cursor()
-                cur.execute("SELECT * FROM users WHERE user_id = '%s'" % (user_id,))
-                existing_record = cur.fetchone()
+            con = sq.connect("user_data.sql")
+            cur = con.cursor()
+            cur.execute("SELECT * FROM users WHERE user_id = '%s'" % (user_id,))
+            existing_record = cur.fetchone()
 
-                if existing_record:
-                    cur.execute("SELECT conv_sum FROM users WHERE user_id = '%s'" % (user_id,))
-                    current_summary = cur.fetchone()[0]
-                    if current_summary is None:
-                        current_summary = ""
+            if existing_record:
+                cur.execute("SELECT conv_sum FROM users WHERE user_id = '%s'" % (user_id,))
+                current_summary = cur.fetchone()[0]
+                if current_summary is None:
+                    current_summary = ""
 
-                con.commit()
-            with sq.connect("user_data.sql") as con:
-                cur = con.cursor()
-                cur.execute("SELECT * FROM tables WHERE user_id = '%s'" % (user_id,))
-                existing_record = cur.fetchone()
+            con.commit()
 
-                if existing_record:
-                    cur.execute("SELECT table_description FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (user_id, settings["table_name"]))
-                    table_description = cur.fetchone()[0]
-                    if table_description is None:
-                        table_description = ""
-                con.commit()
+            cur = con.cursor()
+            cur.execute("SELECT * FROM tables WHERE user_id = '%s'" % (user_id,))
+            existing_record = cur.fetchone()
+
+            if existing_record:
+                cur.execute("SELECT table_description FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (user_id, settings["table_name"]))
+                table_description = cur.fetchone()[0]
+                if table_description is None:
+                    table_description = ""
+            con.commit()
+
 
             plot_files = None
             print(settings)
@@ -365,25 +371,25 @@ def call_to_model(message, settings=None):
             answer_from_model = interactor.run_loop_bot(table, build_plots, user_question, current_summary, table_description)
             summary = answer_from_model[1]
 
-            with sq.connect("user_data.sql") as con:
-                cur = con.cursor()
+
+            cur = con.cursor()
 
 
-                cur.execute("SELECT conv_sum FROM users WHERE user_id = '%s'" % (user_id,))
-                current_summary = cur.fetchone()[0]
+            cur.execute("SELECT conv_sum FROM users WHERE user_id = '%s'" % (user_id,))
+            current_summary = cur.fetchone()[0]
 
-                if current_summary is None:
-                    current_summary = ""
+            if current_summary is None:
+                current_summary = ""
 
-                    new_summary = current_summary + summary
-                else:
-                    new_summary = current_summary + summary
-                cur.execute("INSERT OR REPLACE INTO users VALUES('%s', '%s')" % (user_id, new_summary))
+                new_summary = current_summary + summary
+            else:
+                new_summary = current_summary + summary
+            cur.execute("INSERT OR REPLACE INTO users VALUES('%s', '%s')" % (user_id, new_summary))
 
-                cur.execute("select * from users")
-                print(cur.fetchall())
-                con.commit()
-
+            cur.execute("select * from users")
+            print(cur.fetchall())
+            con.commit()
+            con.close()
 
 
             pattern = r"\b\w+\.png\b"
