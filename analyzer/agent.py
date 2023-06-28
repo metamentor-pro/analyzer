@@ -72,7 +72,10 @@ class CustomPromptTemplate(StringPromptTemplate):
         # Get the intermediate steps (AgentAction, AResult tuples)
         # Format them in a particular way
         intermediate_steps = kwargs.pop("intermediate_steps")
+
+        #print(intermediate_steps)
         if self.callback is not None and len(intermediate_steps) > 0:
+
             self.callback(intermediate_steps[-1][0].log)
         if (
                 self.steps_since_last_summarize == self.summarize_every_n_steps
@@ -80,13 +83,16 @@ class CustomPromptTemplate(StringPromptTemplate):
         ):
             self.steps_since_last_summarize = 0
             self.last_summary = self.my_summarize_agent.run(
+                # to do: there should be better ways to do that
                 summary=self.last_summary,
+
                 thought_process=self.thought_log(
                     intermediate_steps[
                      -self.summarize_every_n_steps: -self.keep_n_last_thoughts
                     ]
                 ),
             )
+        #print("this is summary:", self.last_summary)
         if self.my_summarize_agent:
             kwargs["agent_scratchpad"] = (
                     "Here is a summary of what has happened:\n" + self.last_summary
@@ -151,21 +157,29 @@ class BaseMinion:
                 self.summary = ""
                 self.summarize_model = inner_summarize_model
 
-            def run(self, summary: str, thought_process: str):
+            def run(self, summary: str, thought_process: str, sending_flag: str = ""):
+
 
                 if self.summarize_model is None:
                     return self.summary
-                    print("AAAAA", type(thought_process), thought_process)
-                return get_answer(f"Your task is to summarize the thought process of the model"
+                print("THOUGHTS:", thought_process)
+
+                res = get_answer(f"Your task is to summarize the thought process of the model in Russian language,"
+                                  f"there should not be any  code or formulas, just brief explanation of the actions."
+                                  f"YOU SHOULD ALWAYS DESCRIBE ONLY LAST ACTIONS"
                                   f"Here is a summary of what has happened:\n {summary};\n"
                                   f"Here is the last actions happened: \n{thought_process}"
                                   f"Begin!", self.summarize_model)
+
+
+                #print(res)
+                return res
 
             def add_question_answer(self, question: str, answer: str):
                 self.summary += f"Previous question: {question}\nPrevious answer: {answer}\n\n"
 
                 return self.summary
-
+        #print(self.callback)
         self.summarizer = Summarizer(summarize_model)
 
         prompt = CustomPromptTemplate(
@@ -189,9 +203,8 @@ class BaseMinion:
             agent=agent, tools=available_tools, verbose=True, max_iterations=max_iterations
         )
 
-
     def run(self, **kwargs):
-
+        sum_on_step = ""
         question = kwargs["input"]
         ans = (
                 self.agent_executor.run(**kwargs)
@@ -201,8 +214,8 @@ class BaseMinion:
         summary = self.summarizer.add_question_answer(question, ans)
         # to do: make better summary system
 
-        summarize_on_step = self.summarizer.run(summary,"")
-        print("sum_step:   ",summarize_on_step)
+
+        #print("sum_step:   ",summarize_on_step)
         answer = []
 
         answer.append(ans)

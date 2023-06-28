@@ -17,7 +17,7 @@ import typer
 import yaml
 
 
-def preparation(path: Union[str, None], build_plots: Union[bool, None], current_summary: Union[str, None] = "", table_description: Union[str, None] = ""):
+def preparation(path: Union[str, None], build_plots: Union[bool, None], current_summary: Union[str, None] = "", table_description: Union[str, None] = "", context: Union[str,None] = ""):
     with open("config.yaml") as f:
         cfg = yaml.load(f, Loader=yaml.FullLoader)
     if path is None:
@@ -52,7 +52,7 @@ def preparation(path: Union[str, None], build_plots: Union[bool, None], current_
     def callback(inp):
         print(inp)
 
-    prompt = TableDescriptionPrompt(table_description=table_description, context="", build_plots=build_plots, current_summary=current_summary)
+    prompt = TableDescriptionPrompt(table_description=table_description, context=context, build_plots=build_plots, current_summary=current_summary)
     ag = BaseMinion(base_prompt=prompt.__str__(),
                     available_tools=[
                         Tool(name=python_tool.name, description=python_tool.description, func=python_tool._run)],
@@ -63,8 +63,9 @@ def preparation(path: Union[str, None], build_plots: Union[bool, None], current_
 logging.basicConfig(level=logging.INFO, filename="py_log.log", filemode="w")
 
 
-def run_loop_bot(path: Union[str, None] = None, build_plots: Union[bool, None] = False, user_question: Union[str, None] = None, current_summary: Union[str, None] = "", table_description: Union[str, None] = ""):
-    ag, df_head, df_info = preparation(path=path, build_plots=build_plots, current_summary=current_summary, table_description=table_description)
+def run_loop_bot(path: Union[str, None] = None, build_plots: Union[bool, None] = False, user_question: Union[str, None] = None, current_summary: Union[str, None] = "",
+                 table_description: Union[str, None] = "", context: Union[str,None] = ""):
+    ag, df_head, df_info = preparation(path=path, build_plots=build_plots, current_summary=current_summary, table_description=table_description, context = context)
 
 
     while True:

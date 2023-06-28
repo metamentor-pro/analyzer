@@ -466,9 +466,9 @@ def call_to_model(message, settings=None):
 
                 plot_files = None
                 print(settings)
-                table = None
+                table_name = settings["table_name"]
 
-                table = "data/" + settings["table_name"]
+                table = "data/" + table_name
                 build_plots = settings["build_plots"]
 
                 markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -488,8 +488,16 @@ def call_to_model(message, settings=None):
                 else:
                     current_summary = current_summary[0]
 
+                cur.execute("SELECT context FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (user_id, table_name))
+                context = cur.fetchone()
+
+                if not context or context is None:
+                    context = " "
+                else:
+                    context  = context[0]
+
                 answer_from_model = interactor.run_loop_bot(table, build_plots, user_question, current_summary,
-                                                            table_description)
+                                                            table_description, context)
                 summary = answer_from_model[1]
                 new_summary = current_summary + summary
 
@@ -521,7 +529,7 @@ def call_to_model(message, settings=None):
                     bot.send_message(message.from_user.id, f"Answer: {answer_from_model[0]}")
                 bot.register_next_step_handler(message, call_to_model, settings)
         except requests.exceptions.ConnectionError:
-            bot.send_message(message.from_user.id, "something happend")
+            bot.send_message(message.from_user.id, "Что-то пошло не так, повторяю запрос")
             call_to_model(user_question, settings)
 
 
