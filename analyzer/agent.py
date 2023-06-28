@@ -150,10 +150,12 @@ class BaseMinion:
             def __init__(self, inner_summarize_model: Union[str, None] = None):
                 self.summary = ""
                 self.summarize_model = inner_summarize_model
+
             def run(self, summary: str, thought_process: str):
+
                 if self.summarize_model is None:
                     return self.summary
-                    # print("AAAAA", type(thought_process), thought_process)
+                    print("AAAAA", type(thought_process), thought_process)
                 return get_answer(f"Your task is to summarize the thought process of the model"
                                   f"Here is a summary of what has happened:\n {summary};\n"
                                   f"Here is the last actions happened: \n{thought_process}"
@@ -187,14 +189,20 @@ class BaseMinion:
             agent=agent, tools=available_tools, verbose=True, max_iterations=max_iterations
         )
 
+
     def run(self, **kwargs):
+
         question = kwargs["input"]
         ans = (
                 self.agent_executor.run(**kwargs)
                 or "No result. The execution was probably unsuccessful."
         )
+
         summary = self.summarizer.add_question_answer(question, ans)
         # to do: make better summary system
+
+        summarize_on_step = self.summarizer.run(summary,"")
+        print("sum_step:   ",summarize_on_step)
         answer = []
 
         answer.append(ans)
