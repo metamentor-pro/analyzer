@@ -82,10 +82,6 @@ def run_loop_bot(path: Union[str, None] = None, build_plots: Union[bool, None] =
             answer = ag.run(input=question, df_head=df_head, df_info=df_info.getvalue())
             return answer
 
-            #for i in callback:
-                #print(type(i))
-
-
         except Exception as e:
             print(e)
             return (f"Failed with error: {traceback.format_exc()}")

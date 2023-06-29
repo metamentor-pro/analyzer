@@ -17,7 +17,6 @@ df_head_sub = None
 df_info_sub = None
 
 
-
 def find_thought(text):
     pattern = r"Thought:(.*)"
     match = re.search(pattern, text)
@@ -26,6 +25,7 @@ def find_thought(text):
         return thought
     else:
         return None
+
 
 def extract_variable_names(prompt: str, interaction_enabled: bool = False):
     variable_pattern = r"\{(\w+)\}"
@@ -36,7 +36,6 @@ def extract_variable_names(prompt: str, interaction_enabled: bool = False):
                 variable_names.remove(name)
         variable_names.append("intermediate_steps")
     return variable_names
-
 
 
 openai.api_key = ""
@@ -51,6 +50,7 @@ def get_answer(prompt: str, model: str) -> str:
     )
 
     return completion.choices[0].message.content
+
 
 class CustomPromptTemplate(StringPromptTemplate):
     template: str
@@ -78,14 +78,13 @@ class CustomPromptTemplate(StringPromptTemplate):
                 result += action.log + f"\nAResult: {AResult}\n"
         return result
 
-
     def format(self, **kwargs) -> str:
         # Get the intermediate steps (AgentAction, AResult tuples)
         # Format them in a particular way
         intermediate_steps = kwargs.pop("intermediate_steps")
 
-        #if self.callback is not None and len(intermediate_steps) > 0:
-            #self.callback(intermediate_steps[-1][0].log)
+        # if self.callback is not None and len(intermediate_steps) > 0:
+        # self.callback(intermediate_steps[-1][0].log)
         if (
                 self.steps_since_last_summarize == self.summarize_every_n_steps
                 and self.my_summarize_agent
@@ -172,21 +171,18 @@ class BaseMinion:
 
             def run(self, summary: str, thought_process: str, sending_flag = False):
 
-
                 if self.summarize_model is None:
                     return self.summary
 
                 thought = find_thought(thought_process)
                 print("thoughts:", thought)
 
-
-
                 last_summary = get_answer(f"Your task is to summarize the thought process of the model in Russian language,"
-                                  f"there should not be any  code or formulas, just brief explanation of the actions."
-                                  f"YOU SHOULD ALWAYS DESCRIBE ONLY LAST ACTIONS"
-                                  f"Here is a summary of what has happened:\n {summary};\n"
-                                  f"Here is the last actions happened: \n{thought_process}"
-                                  f"Begin!", self.summarize_model)
+                                            f"there should not be any  code or formulas, just brief explanation of the actions."
+                                            f"YOU SHOULD ALWAYS DESCRIBE ONLY LAST ACTIONS"
+                                            f"Here is a summary of what has happened:\n {summary};\n"
+                                            f"Here is the last actions happened: \n{thought_process}"
+                                            f"Begin!", self.summarize_model)
                 if thought is not None:
                     return thought
                 else:
@@ -300,7 +296,6 @@ class Calculator(Subagent_tool):
 
     name: str = "Calculator"
     description: str = "A subagent tool that can be used for calculations "
-
 
     def func(self, args: str) -> str:
         if (df_head_sub is not None) and (df_info_sub is not None):

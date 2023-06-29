@@ -216,6 +216,7 @@ def choose_table_context(message, settings=None):
         bot.send_message(message.from_user.id, f"Таблица {table_name} выбрана, для добавления контекста отправьте текст или файл в формате txt или msg", reply_markup=markup)
         bot.register_next_step_handler(message, add_context, settings, table_name)
 
+
 def add_context(message, settings=None, table_name=None):
     if message.text == "🚫 exit":
         main(message, settings)
@@ -490,7 +491,6 @@ def call_to_model(message, settings=None, step_flag=False):
                 else:
                     context = context[0]
 
-
                 answer_from_model = interactor.run_loop_bot(table, build_plots, user_question, current_summary,
                                                             table_description, context, callback=callback)
                 summary = answer_from_model[1]
@@ -510,7 +510,7 @@ def call_to_model(message, settings=None, step_flag=False):
                     plot_files = re.findall(pattern, answer_from_model[1])
                     for plot_file in plot_files:
                         path_to_file = "Plots/" + plot_file
-                        #print(path_to_file)
+
                         if os.path.exists(path_to_file):
                             bot.send_photo(message.from_user.id, open(path_to_file, "rb"))
                     for plot_file in plot_files:

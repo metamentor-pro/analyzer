@@ -11,7 +11,7 @@ class TableDescriptionPrompt:
                             BUILD GRAPHS IF AND INLY IF YOU ARE ASKED TO DO SO.
                             If you have to much data to plot, try to group it by quantity.
                             If you are working with temporary data and there are too many of them for normal display, then combine several dates into one.
-                            Use seaborn and plotly instead of matplotlib if you can.
+                            Always use seaborn and plotly instead of matplotlib if you can.
                             Pay attention to categorical variables, if they are too long, then reduce the size of the graph so that the names of variables are placed on the screen.
                             ALWAYS MAKESURE THAT THERE ARE ENOUGH PLACE FOR NAMES OF VALUES IN PLOT
                             Аlways try to choose the most appropriate type of schedule depending on the task and data
