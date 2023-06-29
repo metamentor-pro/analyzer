@@ -2,7 +2,7 @@ import io
 import logging
 import traceback
 import pathlib
-from typing import Union
+from typing import Union, Callable
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -12,12 +12,15 @@ from langchain.chat_models import ChatOpenAI
 from agent import BaseMinion
 from common_prompts import TableDescriptionPrompt
 from custom_python_ast import CustomPythonAstREPLTool
-from msg_parser import memo, memo2
+
+
 import typer
 import yaml
 
 
-def preparation(path: Union[str, None], build_plots: Union[bool, None], current_summary: Union[str, None] = "", table_description: Union[str, None] = "", context: Union[str,None] = ""):
+def preparation(path: Union[str, None], build_plots: Union[bool, None], current_summary: Union[str, None] = "",
+                table_description: Union[str, None] = "", context: Union[str, None] = "", callback: Callable = None):
+
     with open("config.yaml") as f:
         cfg = yaml.load(f, Loader=yaml.FullLoader)
     if path is None:
@@ -47,10 +50,9 @@ def preparation(path: Union[str, None], build_plots: Union[bool, None], current_
         "If you want to see the output of a value, you should print it out with `print(...)`."
         "Code should always produce a value"
     )
-    context = ""  # there should be context that depends on task (memo + memo2 for example)
 
-    def callback(inp):
-        print(inp)
+
+
 
     prompt = TableDescriptionPrompt(table_description=table_description, context=context, build_plots=build_plots, current_summary=current_summary)
     ag = BaseMinion(base_prompt=prompt.__str__(),
@@ -64,8 +66,12 @@ logging.basicConfig(level=logging.INFO, filename="py_log.log", filemode="w")
 
 
 def run_loop_bot(path: Union[str, None] = None, build_plots: Union[bool, None] = False, user_question: Union[str, None] = None, current_summary: Union[str, None] = "",
-                 table_description: Union[str, None] = "", context: Union[str,None] = ""):
-    ag, df_head, df_info = preparation(path=path, build_plots=build_plots, current_summary=current_summary, table_description=table_description, context = context)
+
+                 table_description: Union[str, None] = "", context: Union[str, None] = "", callback: Callable = None):
+
+
+
+    ag, df_head, df_info = preparation(path=path, build_plots=build_plots, current_summary=current_summary, table_description=table_description, context=context, callback=callback)
 
 
     while True:
@@ -74,10 +80,14 @@ def run_loop_bot(path: Union[str, None] = None, build_plots: Union[bool, None] =
             break
         try:
             answer = ag.run(input=question, df_head=df_head, df_info=df_info.getvalue())
-
             return answer
-        except Exception as e:
 
+            #for i in callback:
+                #print(type(i))
+
+
+        except Exception as e:
+            print(e)
             return (f"Failed with error: {traceback.format_exc()}")
 
 
@@ -87,6 +97,7 @@ app = typer.Typer()
 
 @app.command()
 def run_loop(path: Union[str, None] = None, build_plots: Union[bool, None] = False):
+
     ag, df_head, df_info = preparation(path=path, build_plots=build_plots)
 
     while True:

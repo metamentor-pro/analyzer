@@ -17,6 +17,16 @@ df_head_sub = None
 df_info_sub = None
 
 
+
+def find_thought(text):
+    pattern = r"Thought:(.*)"
+    match = re.search(pattern, text)
+    if match:
+        thought = match.group(1).strip()
+        return thought
+    else:
+        return None
+
 def extract_variable_names(prompt: str, interaction_enabled: bool = False):
     variable_pattern = r"\{(\w+)\}"
     variable_names = re.findall(variable_pattern, prompt)
@@ -47,7 +57,7 @@ class CustomPromptTemplate(StringPromptTemplate):
     # The list of tools available
     tools: List[Tool]
     agent_toolnames: List[str]
-    summarize_every_n_steps: int = 4
+    summarize_every_n_steps: int = 2
     keep_n_last_thoughts: int = 1
     steps_since_last_summarize: int = 0
     my_summarize_agent: Any = None
@@ -68,15 +78,14 @@ class CustomPromptTemplate(StringPromptTemplate):
                 result += action.log + f"\nAResult: {AResult}\n"
         return result
 
+
     def format(self, **kwargs) -> str:
         # Get the intermediate steps (AgentAction, AResult tuples)
         # Format them in a particular way
         intermediate_steps = kwargs.pop("intermediate_steps")
 
-        print("intermediate:", intermediate_steps)
-        if self.callback is not None and len(intermediate_steps) > 0:
-
-            self.callback(intermediate_steps[-1][0].log)
+        #if self.callback is not None and len(intermediate_steps) > 0:
+            #self.callback(intermediate_steps[-1][0].log)
         if (
                 self.steps_since_last_summarize == self.summarize_every_n_steps
                 and self.my_summarize_agent
@@ -91,7 +100,9 @@ class CustomPromptTemplate(StringPromptTemplate):
                     ]
                 ),
             )
-        #print("this is summary:", self.last_summary)
+            if self.callback is not None:
+                self.callback(self.last_summary)
+
         if self.my_summarize_agent:
             kwargs["agent_scratchpad"] = (
                     "Here is a summary of what has happened:\n" + self.last_summary
@@ -119,6 +130,7 @@ class CustomPromptTemplate(StringPromptTemplate):
                 kwargs[key] = value
         logging.info("Prompt:\n\n" + self.template.format(**kwargs) + "\n\n\n")
         result = self.template.format(**kwargs)
+
         return result
 
 
@@ -127,6 +139,8 @@ class BaseMinion:
     def __init__(self, base_prompt: str, available_tools: List[Tool], model: BaseLanguageModel,
                  max_iterations: int = 500, df_head: Any = None, df_info: Any = None,
                  callback: Union[Callable, None] = None, summarize_model: Union[str, None] = None) -> None:
+
+        self.callback = callback
 
         global df_head_sub, df_info_sub
 
@@ -156,34 +170,36 @@ class BaseMinion:
                 self.summary = ""
                 self.summarize_model = inner_summarize_model
 
-            def run(self, summary: str, thought_process: str, sending_flag: str = ""):
+            def run(self, summary: str, thought_process: str, sending_flag = False):
 
 
                 if self.summarize_model is None:
                     return self.summary
-                print("THOUGHTS:", thought_process)
 
-                #res = []
+                thought = find_thought(thought_process)
+                print("thoughts:", thought)
 
-                return get_answer(f"Your task is to summarize the thought process of the model in Russian language,"
+
+
+                last_summary = get_answer(f"Your task is to summarize the thought process of the model in Russian language,"
                                   f"there should not be any  code or formulas, just brief explanation of the actions."
                                   f"YOU SHOULD ALWAYS DESCRIBE ONLY LAST ACTIONS"
                                   f"Here is a summary of what has happened:\n {summary};\n"
                                   f"Here is the last actions happened: \n{thought_process}"
                                   f"Begin!", self.summarize_model)
-
-                #res.append("new_sum:", new_sum)
-                #print(res)
-                #return res
+                if thought is not None:
+                    return thought
+                else:
+                    return last_summary
 
             def add_question_answer(self, question: str, answer: str):
                 self.summary += f"Previous question: {question}\nPrevious answer: {answer}\n\n"
 
                 return self.summary
-        #print(self.callback)
+
         self.summarizer = Summarizer(summarize_model)
 
-        prompt = CustomPromptTemplate(
+        self.prompt = CustomPromptTemplate(
             template=base_prompt,
             tools=available_tools,
             input_variables=extract_variable_names(
@@ -191,8 +207,9 @@ class BaseMinion:
             ),
             agent_toolnames=agent_toolnames,
             my_summarize_agent=self.summarizer,
+            callback=self.callback
         )
-        llm_chain = LLMChain(llm=llm, prompt=prompt)
+        llm_chain = LLMChain(llm=llm, prompt=self.prompt)
         output_parser = CustomOutputParser()
         agent = LLMSingleActionAgent(
             llm_chain=llm_chain,
@@ -215,13 +232,12 @@ class BaseMinion:
         summary = self.summarizer.add_question_answer(question, ans)
         # to do: make better summary system
 
+        final_answer = []
 
-        #print("sum_step:   ",summarize_on_step)
-        answer = []
-
-        answer.append(ans)
-        answer.append(summary)
-        return answer
+        final_answer.append(ans)
+        final_answer.append(summary)
+        return final_answer
+        #self.callback(answer)
 
 
 class Subagent_tool(BaseMinion):
@@ -229,8 +245,6 @@ class Subagent_tool(BaseMinion):
                  max_iterations: int = 50) -> None:
         llm = model
         agent_toolnames = [tool.name for tool in available_tools]
-
-
 
         class Summarizer:
             def __init__(self):
@@ -250,7 +264,7 @@ class Subagent_tool(BaseMinion):
             ),
             agent_toolnames=agent_toolnames,
             my_summarize_agent=self.summarizer,
-            #callback=callback
+
         )
         llm_chain = LLMChain(llm=llm, prompt=prompt)
         output_parser = CustomOutputParser()

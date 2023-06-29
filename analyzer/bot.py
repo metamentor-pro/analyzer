@@ -420,8 +420,13 @@ def choose_description(message, settings=None, table_name=None):
 
 # to do: there should be some ways to optimize interaction with database
 
-def call_to_model(message, settings=None):
+def call_to_model(message, settings=None, step_flag=False):
+
+    def callback(sum_on_step):
+        step_flag = True
+        bot.send_message(user_id, sum_on_step)
     user_question = message.text
+    table_name = settings["table_name"]
     if message.text == "🚫 exit":
         main(message, settings)
     else:
@@ -438,27 +443,17 @@ def call_to_model(message, settings=None):
             else:
                 user_id = message.from_user.id
                 con = sq.connect("user_data.sql")
-                cur = con.cursor()
-                cur.execute("SELECT * FROM users WHERE user_id = '%s'" % (user_id,))
-                existing_record = cur.fetchone()
-
-                if existing_record:
-                    cur.execute("SELECT conv_sum FROM users WHERE user_id = '%s'" % (user_id,))
-                    current_summary = cur.fetchone()[0]
-                    if current_summary is None:
-                        current_summary = ""
-
-                con.commit()
 
                 cur = con.cursor()
-                cur.execute("SELECT * FROM tables WHERE user_id = '%s'" % (user_id,))
+                cur.execute("SELECT * FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (user_id, table_name))
                 existing_record = cur.fetchone()
 
                 if existing_record:
                     cur.execute("SELECT table_description FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (user_id, settings["table_name"]))
                     table_description = cur.fetchone()
+
                     if not table_description or table_description[0] is None:
-                        table_description = ""
+                        table_description = " "
                     else:
                         table_description = table_description[0]
 
@@ -466,7 +461,6 @@ def call_to_model(message, settings=None):
 
                 plot_files = None
                 print(settings)
-                table_name = settings["table_name"]
 
                 table = "data/" + table_name
                 build_plots = settings["build_plots"]
@@ -491,13 +485,14 @@ def call_to_model(message, settings=None):
                 cur.execute("SELECT context FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (user_id, table_name))
                 context = cur.fetchone()
 
-                if not context or context is None:
+                if not context or context[0] is None:
                     context = " "
                 else:
-                    context  = context[0]
+                    context = context[0]
+
 
                 answer_from_model = interactor.run_loop_bot(table, build_plots, user_question, current_summary,
-                                                            table_description, context)
+                                                            table_description, context, callback=callback)
                 summary = answer_from_model[1]
                 new_summary = current_summary + summary
 
