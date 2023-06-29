@@ -529,8 +529,8 @@ def call_to_model(message, settings=None):
                     bot.send_message(message.from_user.id, f"Answer: {answer_from_model[0]}")
                 bot.register_next_step_handler(message, call_to_model, settings)
         except requests.exceptions.ConnectionError:
-            bot.send_message(message.from_user.id, "Что-то пошло не так, повторяю запрос")
-            call_to_model(user_question, settings)
+            bot.send_message(message.from_user.id, "Что-то пошло не так")
+            main(user_question, settings)
 
 
 try:

@@ -73,7 +73,7 @@ class CustomPromptTemplate(StringPromptTemplate):
         # Format them in a particular way
         intermediate_steps = kwargs.pop("intermediate_steps")
 
-        #print(intermediate_steps)
+        print("intermediate:", intermediate_steps)
         if self.callback is not None and len(intermediate_steps) > 0:
 
             self.callback(intermediate_steps[-1][0].log)
@@ -85,7 +85,6 @@ class CustomPromptTemplate(StringPromptTemplate):
             self.last_summary = self.my_summarize_agent.run(
                 # to do: there should be better ways to do that
                 summary=self.last_summary,
-
                 thought_process=self.thought_log(
                     intermediate_steps[
                      -self.summarize_every_n_steps: -self.keep_n_last_thoughts
@@ -164,16 +163,18 @@ class BaseMinion:
                     return self.summary
                 print("THOUGHTS:", thought_process)
 
-                res = get_answer(f"Your task is to summarize the thought process of the model in Russian language,"
+                #res = []
+
+                return get_answer(f"Your task is to summarize the thought process of the model in Russian language,"
                                   f"there should not be any  code or formulas, just brief explanation of the actions."
                                   f"YOU SHOULD ALWAYS DESCRIBE ONLY LAST ACTIONS"
                                   f"Here is a summary of what has happened:\n {summary};\n"
                                   f"Here is the last actions happened: \n{thought_process}"
                                   f"Begin!", self.summarize_model)
 
-
+                #res.append("new_sum:", new_sum)
                 #print(res)
-                return res
+                #return res
 
             def add_question_answer(self, question: str, answer: str):
                 self.summary += f"Previous question: {question}\nPrevious answer: {answer}\n\n"
