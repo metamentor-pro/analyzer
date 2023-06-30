@@ -183,6 +183,7 @@ class BaseMinion:
                                             f"Here is a summary of what has happened:\n {summary};\n"
                                             f"Here is the last actions happened: \n{thought_process}"
                                             f"Begin!", self.summarize_model)
+                print("THIS IS SUMMARY:",last_summary)
                 if thought is not None:
                     return thought
                 else:

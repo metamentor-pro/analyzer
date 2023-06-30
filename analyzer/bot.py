@@ -392,6 +392,7 @@ def choose_description(message, settings=None, table_name=None):
         bot.send_message(message.from_user.id, 'Описание сохранено', reply_markup=markup)
         bot.register_next_step_handler(message, main, settings)
     elif message.content_type == "document":
+        try:
             file_id = message.document.file_id
             file_info = bot.get_file(file_id)
             file_path = file_info.file_path
@@ -414,18 +415,22 @@ def choose_description(message, settings=None, table_name=None):
             bot.send_message(message.from_user.id, 'Описание сохранено', reply_markup=markup)
             bot.register_next_step_handler(message, main, settings)
 
-            # bot.send_message(message.from_user.id, "Что-то пошло не так, попробуйте другой файл")
-            # error_message_flag = True
-            # bot.register_next_step_handler(message, table_description, settings)
+        except:
+            bot.send_message(message.from_user.id, "Что-то пошло не так, попробуйте другой файл")
+            error_message_flag = True
+            bot.register_next_step_handler(message, table_description, settings)
 
 
 # to do: there should be some ways to optimize interaction with database
 
-def call_to_model(message, settings=None, step_flag=False):
+def call_to_model(message, settings=None):
 
     def callback(sum_on_step):
-        step_flag = True
-        bot.send_message(user_id, sum_on_step)
+        message_id = send_message.message_id
+        print(message_id)
+        print(chat_id)
+        bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=sum_on_step)
+    chat_id = message.chat.id
     user_question = message.text
     table_name = settings["table_name"]
     if message.text == "🚫 exit":
@@ -471,7 +476,9 @@ def call_to_model(message, settings=None, step_flag=False):
 
                 markup.add(btn1)
 
-                bot.send_message(message.from_user.id, "Обрабатываю запрос, вы можете выйти из режима работы с моделью с помощью 'exit'", reply_markup=markup)
+                send_message = bot.send_message(message.from_user.id, "Обрабатываю запрос, вы можете выйти из режима работы с моделью с помощью 'exit'", reply_markup=markup)
+
+                bot.edit_message_text(chat_id=chat_id, message_id=send_message.message_id, text="AAAAAAAAAAAAAAAA")
 
                 cur = con.cursor()
 
