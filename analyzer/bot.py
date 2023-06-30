@@ -427,9 +427,9 @@ def call_to_model(message, settings=None):
 
     def callback(sum_on_step):
         message_id = send_message.message_id
-        print(message_id)
-        print(chat_id)
-        bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=sum_on_step)
+
+        edited_message = bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=send_message.text + f"\n{sum_on_step}")
+
     chat_id = message.chat.id
     user_question = message.text
     table_name = settings["table_name"]
@@ -476,9 +476,11 @@ def call_to_model(message, settings=None):
 
                 markup.add(btn1)
 
-                send_message = bot.send_message(message.from_user.id, "Обрабатываю запрос, вы можете выйти из режима работы с моделью с помощью 'exit'", reply_markup=markup)
+                bot.send_message(message.from_user.id, "Обрабатываю запрос, вы можете выйти из режима работы с моделью с помощью 'exit'", reply_markup=markup)
+                send_message = bot.send_message(message.from_user.id, "Здесь будет описан процесс моих рассуждений:")
 
-                bot.edit_message_text(chat_id=chat_id, message_id=send_message.message_id, text="AAAAAAAAAAAAAAAA")
+                print(send_message.message_id)
+                #bot.edit_message_text(chat_id=chat_id, message_id=send_message.message_id, text="AAAAAAAAAAAAAAAA")
 
                 cur = con.cursor()
 

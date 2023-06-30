@@ -64,6 +64,7 @@ class CustomPromptTemplate(StringPromptTemplate):
     last_summary: str = ""
     project: Any | None = None
     callback: Union[Callable, None] = None
+    summary_line = ""
 
     @property
     def _prompt_type(self) -> str:
@@ -100,8 +101,11 @@ class CustomPromptTemplate(StringPromptTemplate):
                 ),
             )
             if self.callback is not None:
-                self.callback(self.last_summary)
-
+                if self.last_summary is None:
+                    self.last_summary = ""
+                else:
+                    self.summary_line += "\n" + self.last_summary
+                self.callback(self.summary_line)
         if self.my_summarize_agent:
             kwargs["agent_scratchpad"] = (
                     "Here is a summary of what has happened:\n" + self.last_summary
@@ -177,17 +181,13 @@ class BaseMinion:
                 thought = find_thought(thought_process)
                 print("thoughts:", thought)
 
-                last_summary = get_answer(f"Your task is to summarize the thought process of the model in Russian language,"
+                last_summary = get_answer(f"Your task is to translate the thought process of the model into Russian language,"
                                             f"there should not be any  code or formulas, just brief explanation of the actions."
                                             f"YOU SHOULD ALWAYS DESCRIBE ONLY LAST ACTIONS"
                                             f"Here is a summary of what has happened:\n {summary};\n"
-                                            f"Here is the last actions happened: \n{thought_process}"
-                                            f"Begin!", self.summarize_model)
-                print("THIS IS SUMMARY:",last_summary)
-                if thought is not None:
-                    return thought
-                else:
-                    return last_summary
+                                            f"Here is the last actions happened: \n{thought}", self.summarize_model)
+
+                return last_summary
 
             def add_question_answer(self, question: str, answer: str):
                 self.summary += f"Previous question: {question}\nPrevious answer: {answer}\n\n"
@@ -219,7 +219,7 @@ class BaseMinion:
         )
 
     def run(self, **kwargs):
-        sum_on_step = ""
+
         question = kwargs["input"]
         ans = (
                 self.agent_executor.run(**kwargs)
@@ -234,7 +234,6 @@ class BaseMinion:
         final_answer.append(ans)
         final_answer.append(summary)
         return final_answer
-        #self.callback(answer)
 
 
 class Subagent_tool(BaseMinion):
@@ -247,7 +246,7 @@ class Subagent_tool(BaseMinion):
             def __init__(self):
                 self.summary = ""
 
-            def run(self, summary: str, thought_process: str):
+            def run(self):
                 return self.summary
 
             def add_question_answer(self, question: str, answer: str):
