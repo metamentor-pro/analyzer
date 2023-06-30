@@ -102,12 +102,12 @@ def run_loop(path: Union[str, None] = None, build_plots: Union[bool, None] = Fal
 
         if question == "exit":
             break
-        try:
-            answer = ag.run(input=question, df_head=df_head, df_info=df_info.getvalue())
-            print(f"Answer: {answer[0]}")
+        #try:
+        answer = ag.run(input=question, df_head=df_head, df_info=df_info.getvalue())
+        print(f"Answer: {answer[0]}")
 
-        except Exception as e:
-            print(f"Failed with error: {traceback.format_exc()}")
+        #except Exception as e:
+            #print(f"Failed with error: {traceback.format_exc()}")
 
 
 if __name__ == "__main__":
