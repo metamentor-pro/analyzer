@@ -150,6 +150,7 @@ class BaseMinion:
         self.df_head = df_head
         self.df_info = df_info
 
+
         llm = model
         available_tools.append(WarningTool().get_tool())
 
@@ -157,6 +158,7 @@ class BaseMinion:
 
         subagents = {"Checker": Checker(self.base_prompt, self.available_tools, self.model, self.df_head, self.df_info),
                      "Calculator": Calculator(self.base_prompt, self.available_tools, self.model, self.df_head, self.df_info),
+                     "PlotSubagent": PlotSubagent(self.base_prompt, self.available_tools, self.model, self.df_head, self.df_info),
                      }
         for subagents_names in subagents.keys():
             subagent = subagents[subagents_names]
@@ -222,7 +224,6 @@ class BaseMinion:
         )
 
         summary = self.summarizer.add_question_answer(question, ans)
-        # to do: make better summary system
 
         final_answer = []
 
@@ -330,6 +331,7 @@ class Calculator(SubagentTool):
 class Checker(SubagentTool):
     def __init__(self, base_prompt: str, available_tools: List[Tool], model: BaseLanguageModel, df_head: Any = None, df_info: Any = None,
                  max_iterations: int = 50) -> None:
+        super().__init__(base_prompt, available_tools, model)
         self.base_prompt = base_prompt
         self.available_tools = available_tools
         self.model = model
@@ -337,6 +339,29 @@ class Checker(SubagentTool):
         self.df_info = df_info
     name: str = "Checker"
     description: str = "A subagent tool that can be used to check the results"
+
+    def func(self, args: str) -> str:
+        if (self.df_head is not None) and (self.df_info is not None):
+            result = self.run(input=args, df_head=self.df_head, df_info=self.df_info.getvalue())
+            return '\r' + result + '\n'
+        else:
+            return "Not enough data"
+
+
+class PlotSubagent(SubagentTool):
+    def __init__(self, base_prompt: str, available_tools: List[Tool], model: BaseLanguageModel, df_head: Any = None, df_info: Any = None,
+                 max_iterations: int = 50) -> None:
+
+        super().__init__(base_prompt, available_tools, model)
+        self.base_prompt = base_prompt
+        self.available_tools = available_tools
+        self.model = model
+        self.df_head = df_head
+        self.df_info = df_info
+        #print(self.base_prompt)
+        #print(self.available_tools)
+    name: str = "PlotSubagent"
+    description: str = "A subagent tool that can be used for building plots and providing visualisation "
 
     def func(self, args: str) -> str:
         if (self.df_head is not None) and (self.df_info is not None):

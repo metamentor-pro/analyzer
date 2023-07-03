@@ -8,6 +8,7 @@ class TableDescriptionPrompt:
     def __str__(self):
         if self.build_plots:
             plots_part = """You can use plots if you need them.
+                            Use PlotSubagent to build them.
                             BUILD GRAPHS IF AND INLY IF YOU ARE ASKED TO DO SO.
                             If you have to much data to plot, try to group it by quantity.
                             If you are working with temporary data and there are too many of them for normal display, then combine several dates into one.

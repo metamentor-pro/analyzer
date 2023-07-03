@@ -52,8 +52,6 @@ def preparation(path: Union[str, None], build_plots: Union[bool, None], current_
     )
 
 
-
-
     prompt = TableDescriptionPrompt(table_description=table_description, context=context, build_plots=build_plots, current_summary=current_summary)
     ag = BaseMinion(base_prompt=prompt.__str__(),
                     available_tools=[

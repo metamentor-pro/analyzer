@@ -472,7 +472,7 @@ def call_to_model(message, settings=None):
                 build_plots = settings["build_plots"]
 
                 markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-                btn1 = types.KeyboardButton("exit")
+                btn1 = types.KeyboardButton("🚫 exit")
 
                 markup.add(btn1)
 
