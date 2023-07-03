@@ -556,9 +556,9 @@ def call_to_model(message, settings=None):
             main(user_question, settings)
 
 
-#try:
-    #bot.polling()
-#except Exception as e:
-    #print("error is:", e)
-    #time.sleep(2)
+try:
+    bot.polling()
+except Exception as e:
+    print("error is:", e)
+    time.sleep(2)
 bot.polling()

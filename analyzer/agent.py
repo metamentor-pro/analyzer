@@ -322,7 +322,7 @@ class Calculator(SubagentTool):
 
     def func(self, args: str) -> str:
         if (self.df_head is not None) and (self.df_info is not None):
-            result = self.run(input=args, df_head=self.df_head, df_info=self.df_info.getvalue())
+            result = self.run(input=args, df_head=self.df_head, df_info=self.df_info)
             return '\r' + result + '\n'
         else:
             return "Not enough data"
@@ -342,7 +342,7 @@ class Checker(SubagentTool):
 
     def func(self, args: str) -> str:
         if (self.df_head is not None) and (self.df_info is not None):
-            result = self.run(input=args, df_head=self.df_head, df_info=self.df_info.getvalue())
+            result = self.run(input=args, df_head=self.df_head, df_info=self.df_info)
             return '\r' + result + '\n'
         else:
             return "Not enough data"
@@ -365,7 +365,7 @@ class PlotSubagent(SubagentTool):
 
     def func(self, args: str) -> str:
         if (self.df_head is not None) and (self.df_info is not None):
-            result = self.run(input=args, df_head=self.df_head, df_info=self.df_info.getvalue())
+            result = self.run(input=args, df_head=self.df_head, df_info=self.df_info)
             return '\r' + result + '\n'
         else:
             return "Not enough data"
