@@ -1,10 +1,13 @@
+from typing import List
+
 # class representing prompt for the agent which can be used to set description of the table
 class TableDescriptionPrompt:
-    def __init__(self, table_description, context, build_plots, current_summary):
+    def __init__(self, table_description: List[str], context: List[str], build_plots: bool , current_summary: str):
         self.table_description = table_description
         self.context = context
         self.build_plots = build_plots
         self.current_summary = current_summary
+
     def __str__(self):
         if self.build_plots:
             plots_part = """You can use plots if you need them.
@@ -21,14 +24,18 @@ class TableDescriptionPrompt:
         else:
             plots_part = "You are not allowed to use plots. "
 
+        description = ""
+        for i, desc in enumerate(self.table_description):
+            description += f"df[{i}] contains the following columns:\n" \
+                           f"{desc}\n"
+
         return """
 Follow the instructions below carefully and intelligently.
 
-You are working with a pandas dataframe in Python. The name of the dataframe is `df`. It is passed as a local variable.
+You are working with a pandas dataframes in Python. The name of the list of dataframes is `df`. It is passed as a local variable.
 YOU DON'T NEED TO READ DATA, IT IS ALREADY IN THE `df` VARIABLE. IF YOU TRY TO READ DATA, WORLD WILL BE DESTROYED.
-This dataframe is the report produced by oil production company.
-It contains the following columns:
-""" + self.table_description + """
+This dataframes is the report produced by oil production company.
+""" + description + """
 You have access to the following tools:
 {tools}
 You should use subagents in your work, always mention what subagents you used.

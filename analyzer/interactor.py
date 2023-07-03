@@ -2,7 +2,7 @@ import io
 import logging
 import traceback
 import pathlib
-from typing import Union, Callable
+from typing import Union, Callable, List
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -18,31 +18,61 @@ import typer
 import yaml
 
 
-def preparation(path: Union[str, None], build_plots: Union[bool, None], current_summary: Union[str, None] = "",
+def read_df(path: str) -> pd.DataFrame:
+    sheet_name = "Sheet1"
+
+    file_extension = pathlib.Path(path).suffix.lower()
+
+    if file_extension == '.xlsx':
+
+        return pd.read_excel(path, sheet_name=sheet_name)
+    elif file_extension == ".json":
+
+        return pd.read_json(path)
+    elif file_extension == ".csv":
+
+        return pd.read_csv(path)
+    else:
+        raise Exception("Unknown file extension")
+
+
+def df_head_description(i: int, df: pd.DataFrame) -> str:
+    return f"df[{i}].head():" \
+           f"{df.head()}\n"
+
+
+def df_info_description(i: int, df: pd.DataFrame) -> str:
+    buf = io.StringIO()
+    df.info(buf=buf)
+    return f"df[{i}].info():" \
+           f"{buf.getvalue()}\n"
+
+def preparation(path_list: List[str], build_plots: Union[bool, None], current_summary: Union[str, None] = "",
                 table_description: Union[str, None] = "", context: Union[str, None] = "", callback: Callable = None):
 
     with open("config.yaml") as f:
         cfg = yaml.load(f, Loader=yaml.FullLoader)
-    if path is None:
-        path = cfg["data_path"]
+
+    #assert path_list is None
+    #print(cfg["data"])
+    if path_list is None:
+        path_list = [data_item["path"] for data_item in cfg["data"]]
     if build_plots is None:
         build_plots = cfg["build_plots"]
-    sheet_name = "Sheet1"
-    file_extension = pathlib.Path(path).suffix
-    if file_extension == '.XLSX':
-        df = pd.read_excel(path, sheet_name=sheet_name)
-    elif file_extension == ".json":
-        df = pd.read_json(path)
-    elif file_extension == ".csv":
-        df = pd.read_csv(path)
-    else:
-        raise Exception("Unknown file extension")
-    df_head = df.head()
-    df_info = io.StringIO()
-    df.info(buf=df_info)
+
+    df_list = [read_df(path) for path in path_list]
+
+    df_head = ""
+    for i, df in enumerate(df_list):
+        df_head += df_head_description(i, df)
+
+    df_info = ""
+    for i, df in enumerate(df_list):
+        df_info += df_info_description(i, df)
+
     llm = ChatOpenAI(temperature=0.7, model='gpt-4',
                      openai_api_key="")
-    python_tool = CustomPythonAstREPLTool(locals={"df": df, "python": None, "python_repl_ast": None},
+    python_tool = CustomPythonAstREPLTool(locals={"df": df_list, "python": None, "python_repl_ast": None},
                                           globals={"pd": pd, "np": np, "sns": sns, "plotly": plotly})
     python_tool.description = (
         "A Python shell. Use this to execute python commands. "
@@ -52,7 +82,7 @@ def preparation(path: Union[str, None], build_plots: Union[bool, None], current_
     )
 
 
-    prompt = TableDescriptionPrompt(table_description=table_description, context=context, build_plots=build_plots, current_summary=current_summary)
+    prompt = TableDescriptionPrompt([data_item["description"] for data_item in cfg["data"]], context=context, build_plots=build_plots, current_summary=current_summary)
     ag = BaseMinion(base_prompt=prompt.__str__(),
                     available_tools=[
                         Tool(name=python_tool.name, description=python_tool.description, func=python_tool._run)],
@@ -63,21 +93,18 @@ def preparation(path: Union[str, None], build_plots: Union[bool, None], current_
 logging.basicConfig(level=logging.INFO, filename="py_log.log", filemode="w")
 
 
-def run_loop_bot(path: Union[str, None] = None, build_plots: Union[bool, None] = False, user_question: Union[str, None] = None, current_summary: Union[str, None] = "",
+def run_loop_bot(path_list: List[str] = None, build_plots: Union[bool, None] = False, user_question: Union[str, None] = None, current_summary: Union[str, None] = "",
 
                  table_description: Union[str, None] = "", context: Union[str, None] = "", callback: Callable = None):
 
-
-
-    ag, df_head, df_info = preparation(path=path, build_plots=build_plots, current_summary=current_summary, table_description=table_description, context=context, callback=callback)
-
+    ag, df_head, df_info = preparation(path_list=path_list, build_plots=build_plots, current_summary=current_summary, table_description=table_description, context=context, callback=callback)
 
     while True:
         question = user_question  # this is for interacting with the user's request via a bot
         if question == "exit":
             break
         try:
-            answer = ag.run(input=question, df_head=df_head, df_info=df_info.getvalue())
+            answer = ag.run(input=question, df_head=df_head, df_info=df_info)
             return answer
 
         except Exception as e:
@@ -90,9 +117,9 @@ app = typer.Typer()
 
 
 @app.command()
-def run_loop(path: Union[str, None] = None, build_plots: Union[bool, None] = False):
+def run_loop(path_list: List[str] = None, build_plots: Union[bool, None] = False):
 
-    ag, df_head, df_info = preparation(path=path, build_plots=build_plots)
+    ag, df_head, df_info = preparation(path_list=path_list, build_plots=build_plots)
 
     while True:
 
@@ -100,12 +127,12 @@ def run_loop(path: Union[str, None] = None, build_plots: Union[bool, None] = Fal
 
         if question == "exit":
             break
-        #try:
-        answer = ag.run(input=question, df_head=df_head, df_info=df_info.getvalue())
-        print(f"Answer: {answer[0]}")
+        try:
+            answer = ag.run(input=question, df_head=df_head, df_info=df_info)
+            print(f"Answer: {answer[0]}")
 
-        #except Exception as e:
-            #print(f"Failed with error: {traceback.format_exc()}")
+        except Exception as e:
+            print(f"Failed with error: {traceback.format_exc()}")
 
 
 if __name__ == "__main__":
