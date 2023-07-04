@@ -1,4 +1,5 @@
 data_path: data/data.json
 build_plots: false
-bot_api: 6004874058:AAHFjEWq6tBg5mGGGt8pF0h-nE_3JfMOuOU
+  #bot_api: 6004874058:AAHFjEWq6tBg5mGGGt8pF0h-nE_3JfMOuOU
+bot_api: "5354323448:AAG7aRv3YYZgUTKbumnks23Bovm2a5QZqcg"
 bot_name: auto_analyzer
