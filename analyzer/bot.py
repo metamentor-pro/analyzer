@@ -83,7 +83,7 @@ def main(message, settings=None):
     con.commit()
     con.close()
     if settings is None:
-        settings = {"table_name": None,
+        settings = {"table_name": [],
                     "build_plots": True,
                     }
 
@@ -133,9 +133,14 @@ def on_click(message, settings=None):
                 markup.add(btn)
 
         btn1 = types.KeyboardButton("Добавить новую таблицу")
-        btn2 = types.KeyboardButton("🚫 exit")
+        btn2 = types.KeyboardButton("Очистить набор таблиц")
         markup.row(btn1)
-        markup.row(btn2)
+
+        if len(settings["table_name"]) > 0:
+            bot.send_message(message.from_user.id, f"Сейчас доступны для анализа: {settings['table_name']}")
+            markup.row(btn2)
+        btn3 = types.KeyboardButton("🚫 exit")
+        markup.row(btn3)
         bot.send_message(message.from_user.id, "Можете выбрать нужную таблицу или добавить новую", reply_markup=markup)
         bot.register_next_step_handler(message, choose_table, settings)
 
@@ -216,6 +221,7 @@ def choose_table_context(message, settings=None):
         bot.send_message(message.from_user.id, f"Таблица {table_name} выбрана, для добавления контекста отправьте текст или файл в формате txt или msg", reply_markup=markup)
         bot.register_next_step_handler(message, add_context, settings, table_name)
 
+
 def add_context(message, settings=None, table_name=None):
     if message.text == "🚫 exit":
         main(message, settings)
@@ -281,6 +287,9 @@ def add_context(message, settings=None, table_name=None):
 def choose_table(message, settings=None, error_table_flag=False):
     if message.text == "🚫 exit":
         main(message, settings)
+    elif message.text == "Очистить набор таблиц":
+        settings["table_name"] = []
+        main(message, settings)
     elif message.text == "Добавить новую таблицу" or error_table_flag:
         markup = types.ReplyKeyboardMarkup()
         btn1 = types.KeyboardButton("🚫 exit")
@@ -289,7 +298,11 @@ def choose_table(message, settings=None, error_table_flag=False):
         bot.register_next_step_handler(message, add_table, settings)
 
     else:
-        settings["table_name"] = message.text
+        if message.text in settings["table_name"]:
+            bot.send_message(message.from_user.id, "Данная таблица уже есть в наборе")
+            main(message, settings)
+        else:
+            settings["table_name"].append(message.text)
 
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
 
@@ -329,7 +342,7 @@ def add_table(message, settings=None, error_message_flag=False):
             con.commit()
             con.close()
             bot.reply_to(message, 'Файл сохранен')
-            settings["table_name"] = message.document.file_name
+            settings["table_name"].append(message.document.file_name)
             bot.register_next_step_handler(message, main, settings)
         except Exception:
             bot.send_message(message.from_user.id, "Что-то пошло не так, попробуйте другой файл")
@@ -391,6 +404,7 @@ def choose_description(message, settings=None, table_name=None):
         bot.send_message(message.from_user.id, 'Описание сохранено', reply_markup=markup)
         bot.register_next_step_handler(message, main, settings)
     elif message.content_type == "document":
+        try:
             file_id = message.document.file_id
             file_info = bot.get_file(file_id)
             file_path = file_info.file_path
@@ -413,20 +427,27 @@ def choose_description(message, settings=None, table_name=None):
             bot.send_message(message.from_user.id, 'Описание сохранено', reply_markup=markup)
             bot.register_next_step_handler(message, main, settings)
 
-            # bot.send_message(message.from_user.id, "Что-то пошло не так, попробуйте другой файл")
-            # error_message_flag = True
-            # bot.register_next_step_handler(message, table_description, settings)
+        except:
+            bot.send_message(message.from_user.id, "Что-то пошло не так, попробуйте другой файл")
+            error_message_flag = True
+            bot.register_next_step_handler(message, table_description, settings)
 
 
 # to do: there should be some ways to optimize interaction with database
 
-def call_to_model(message, settings=None, step_flag=False):
+def call_to_model(message, settings=None):
 
     def callback(sum_on_step):
-        step_flag = True
-        bot.send_message(user_id, sum_on_step)
+        message_id = send_message.message_id
+
+        edited_message = bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=send_message.text + f"\n{sum_on_step}")
+
+    chat_id = message.chat.id
     user_question = message.text
     table_name = settings["table_name"]
+    context_line = ""
+    table_description_line = ""
+
     if message.text == "🚫 exit":
         main(message, settings)
     else:
@@ -441,37 +462,39 @@ def call_to_model(message, settings=None, step_flag=False):
                              "Вы можете выйти из режима работы с моделью с помощью 'exit'",
                              reply_markup=markup)
             else:
-                user_id = message.from_user.id
+                table_name_path = table_name.copy()
+                for table in range(len(table_name_path)):
+                    table_name_path[table] = "data/" + table_name_path[table]
                 con = sq.connect("user_data.sql")
+                for table in table_name:
+                    user_id = message.from_user.id
 
-                cur = con.cursor()
-                cur.execute("SELECT * FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (user_id, table_name))
-                existing_record = cur.fetchone()
 
-                if existing_record:
-                    cur.execute("SELECT table_description FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (user_id, settings["table_name"]))
-                    table_description = cur.fetchone()
+                    cur = con.cursor()
+                    cur.execute("SELECT * FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (user_id, table))
+                    existing_record = cur.fetchone()
 
-                    if not table_description or table_description[0] is None:
-                        table_description = " "
+                    if existing_record:
+
+                        cur.execute("SELECT table_description FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (user_id, table))
+                        table_description = cur.fetchone()
+
+                        if not table_description or table_description[0] is None:
+                            table_description_line = table + " "
+                        else:
+                            table_description_line = table + table_description[0]
+
+                    con.commit()
+
+                    cur.execute("SELECT context FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (user_id, table))
+                    context = cur.fetchone()
+
+                    if not context or context[0] is None:
+                        context_line += table + " "
                     else:
-                        table_description = table_description[0]
-
-                con.commit()
-
-                plot_files = None
-                print(settings)
-
-                table = "data/" + table_name
-                build_plots = settings["build_plots"]
-
-                markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-                btn1 = types.KeyboardButton("exit")
-
-                markup.add(btn1)
-
-                bot.send_message(message.from_user.id, "Обрабатываю запрос, вы можете выйти из режима работы с моделью с помощью 'exit'", reply_markup=markup)
-
+                        context_line += table + context[0]
+                print(context_line)
+                print(table_description_line)
                 cur = con.cursor()
 
                 cur.execute("SELECT conv_sum FROM users WHERE user_id = '%s'" % (user_id,))
@@ -482,17 +505,22 @@ def call_to_model(message, settings=None, step_flag=False):
                 else:
                     current_summary = current_summary[0]
 
-                cur.execute("SELECT context FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (user_id, table_name))
-                context = cur.fetchone()
-
-                if not context or context[0] is None:
-                    context = " "
-                else:
-                    context = context[0]
 
 
-                answer_from_model = interactor.run_loop_bot(table, build_plots, user_question, current_summary,
-                                                            table_description, context, callback=callback)
+                print(settings)
+                markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+                btn1 = types.KeyboardButton("🚫 exit")
+
+                markup.add(btn1)
+
+                bot.send_message(message.from_user.id,
+                                 "Обрабатываю запрос, вы можете выйти из режима работы с моделью с помощью 'exit'",
+                                 reply_markup=markup)
+                send_message = bot.send_message(message.from_user.id, "Здесь будет описан процесс моих рассуждений:")
+
+                build_plots = settings["build_plots"]
+                answer_from_model = interactor.run_loop_bot(table_name_path, build_plots, user_question, current_summary,
+                                                            table_description_line, context_line, callback=callback)
                 summary = answer_from_model[1]
                 new_summary = current_summary + summary
 
@@ -510,7 +538,7 @@ def call_to_model(message, settings=None, step_flag=False):
                     plot_files = re.findall(pattern, answer_from_model[1])
                     for plot_file in plot_files:
                         path_to_file = "Plots/" + plot_file
-                        #print(path_to_file)
+
                         if os.path.exists(path_to_file):
                             bot.send_photo(message.from_user.id, open(path_to_file, "rb"))
                     for plot_file in plot_files:
@@ -529,8 +557,8 @@ def call_to_model(message, settings=None, step_flag=False):
 
 
 try:
-    bot.polling(none_stop=True)
+    bot.polling()
 except Exception as e:
     print("error is:", e)
     time.sleep(2)
-    bot.polling(none_stop=True)
+bot.polling()
