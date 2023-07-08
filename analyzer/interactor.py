@@ -13,6 +13,7 @@ from agent import BaseMinion
 from common_prompts import TableDescriptionPrompt
 from custom_python_ast import CustomPythonAstREPLTool
 
+from processing import process
 
 import typer
 import yaml
@@ -24,8 +25,8 @@ def read_df(path: str) -> pd.DataFrame:
     file_extension = pathlib.Path(path).suffix.lower()
 
     if file_extension == '.xlsx':
-
-        return pd.read_excel(path, sheet_name=sheet_name)
+        prepared_path = process(path)
+        return pd.read_excel(prepared_path, sheet_name=sheet_name)
     elif file_extension == ".json":
 
         return pd.read_json(path)
