@@ -762,13 +762,10 @@ def call_to_model(message, settings=None):
         settings = get_settings(chat_id)
 
         user_question = message.text
-        table_name = list(map(str, settings["table_name"].split(",")))
-        print("available tables for model:", table_name)
-        context_line = ""
-        table_description_line = ""
+
         try:
             if settings["table_name"] is None:
-                bot.send_message(message.from_user.id, "Таблица не найдена, вы можете выбрать другую")
+                bot.send_message(message.from_user.id, "Таблицы не найдены, вы можете выбрать другие")
                 bot.register_next_step_handler(message, main, settings)
                 markup = types.ReplyKeyboardMarkup()
                 btn1 = types.KeyboardButton("🚫 exit")
@@ -777,7 +774,10 @@ def call_to_model(message, settings=None):
                              "Вы можете выйти из режима работы с моделью с помощью 'exit'",
                              reply_markup=markup)
             else:
-
+                table_name = list(map(str, settings["table_name"].split(",")))
+                print("available tables for model:", table_name)
+                context_line = ""
+                table_description_line = ""
                 table_name_path = table_name.copy()
                 for table in range(len(table_name_path)):
                     table_name_path[table] = "data/" + table_name_path[table]
