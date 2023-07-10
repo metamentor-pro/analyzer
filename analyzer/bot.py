@@ -34,6 +34,38 @@ class Bot(telebot.TeleBot):
 
 bot = Bot()
 
+def check_for_group(message):
+
+    try:
+        text = message.text
+        start, group_name = map(str, text.split())
+    except Exception as e:
+        print(e)
+        return False
+
+    if start == "/start":
+        con = sq.connect("user_data.sql")
+        cur = con.cursor()
+        cur.execute("SELECT * FROM groups where group_name == '%s'" % (group_name,))
+        existing_record = cur.fetchone()
+        cur.execute("UPDATE callback_manager SET group_flag = '%s' WHERE '%s'" % (True, message.from_user.id ))
+        con.commit()
+        con.close()
+        if existing_record is not None:
+
+            return True
+        else:
+            return False
+    else:
+        con = sq.connect("user_data.sql")
+        cur = con.cursor()
+        cur.execute("SELECT group_flag FROM callback_manager WHERE user_id == '%s' " % (message.chat_id,))
+        is_group = cur.fetchone()[0]
+        if is_group:
+            return True
+        else:
+            return False
+
 
 @bot.message_handler(commands=["help"])
 def help_info(message):
@@ -50,6 +82,7 @@ def main(message=None):
         print(message)
         print(e)
 
+    print(message.text)
     con = sq.connect("user_data.sql")
     cur = con.cursor()
 
@@ -61,7 +94,9 @@ def main(message=None):
     con.commit()
 
     cur.execute("""CREATE TABLE IF NOT EXISTS groups
-                (group_id INTEGER PRIMARY KEY)""")
+                (admin_id INTEGER,
+                group_name VARHCAR,
+                group_link VARCHAR)""")
     con.commit()
 
     cur.execute("""CREATE TABLE IF NOT EXISTS callback_manager
@@ -72,6 +107,7 @@ def main(message=None):
                 table_page INTEGER DEFAULT 1,
                 context_page INTEGER DEFAULT 1,
                 description_page INTEGER DEFAULT 1,
+                group_flag boolean DEFAULT False,
                 FOREIGN KEY(user_id) REFERENCES users (user_id) on DELETE CASCADE)""")
     con.commit()
     cur.execute("SELECT * FROM callback_manager WHERE user_id = '%s'" % (chat_id,))
@@ -80,8 +116,7 @@ def main(message=None):
     if not existing_record:
         cur.execute("INSERT  INTO callback_manager(user_id) VALUES(?)", (chat_id,))
     con.commit()
-    cur.execute("Select * from callback_manager")
-    dsf = cur.fetchall()
+
 
     cur.execute("SELECT * FROM users WHERE user_id = '%s'" % (chat_id,))
     existing_record = cur.fetchone()
@@ -112,17 +147,27 @@ def main(message=None):
     print(cur.fetchall())
     con.commit()
 
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    btn1 = types.KeyboardButton("🖹 Выбрать таблицу")
-    btn2 = types.KeyboardButton("➕ Добавить описание таблицы")
-    btn3 = types.KeyboardButton("🖻 Режим визуализации")
-    btn4 = types.KeyboardButton("❓ Режим отправки запроса")
-    btn5 = types.KeyboardButton("Добавить контекст")
-    btn6 = types.KeyboardButton("Группы таблиц")
-    markup.row(btn1, btn2, btn3)
-    markup.row(btn4, btn5, btn6)
+    if "/start" in message.text:
+        is_group = check_for_group(message)
+    else:
+        is_group = False
+    if not is_group:
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        btn1 = types.KeyboardButton("🖹 Выбрать таблицу")
+        btn2 = types.KeyboardButton("➕ Добавить описание таблицы")
+        btn3 = types.KeyboardButton("🖻 Режим визуализации")
+        btn4 = types.KeyboardButton("❓ Режим отправки запроса")
+        btn5 = types.KeyboardButton("Добавить контекст")
+        btn6 = types.KeyboardButton("Группы таблиц")
+        markup.row(btn1, btn2, btn3)
+        markup.row(btn4, btn5, btn6)
+        bot.send_message(chat_id, "Вы можете  выбрать одну из опций", reply_markup=markup)
 
-    bot.send_message(chat_id, "Вы можете  выбрать одну из опций", reply_markup=markup)
+    else:
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        btn4 = types.KeyboardButton("❓ Режим отправки запроса")
+        markup.row(btn4)
+        bot.send_message(chat_id, "Вы можете  выбрать одну из опций", reply_markup=markup)
 
     bot.register_next_step_handler(message, on_click)
 
@@ -171,7 +216,7 @@ def get_page(chat_id, page_type):
     cur = con.cursor()
     page = None
     if page_type == "table_page":
-        cur.execute("SELECT table_page FROM callback_manager WHERE user_id == '%s'"% (chat_id,))
+        cur.execute("SELECT table_page FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
         page = cur.fetchone()[0]
     elif page_type == "context_page":
         cur.execute("SELECT context_page FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
@@ -182,6 +227,7 @@ def get_page(chat_id, page_type):
     con.commit()
     con.close()
     return page
+
 
 def change_page(chat_id, page_type, new_page):
     con = sq.connect("user_data.sql")
@@ -277,14 +323,35 @@ def create_inline_keyboard(chat_id=None, keyboard_type=None, page=1, status_flag
     return markup
 
 
-def create_group_keyboard(chat_id=None):
+def create_group_keyboard(chat_id=None, show_groups=False):
     markup = types.InlineKeyboardMarkup()
-    btn1 = types.InlineKeyboardButton(text="Выбрать группу", callback_data="g|choose_group")
-    btn2 = types.InlineKeyboardButton(text="Создать группу", callback_data="g|create_group")
-    btn3 = types.InlineKeyboardButton(text="🚫 exit", callback_data="g|exit")
-    markup.add(btn1)
-    markup.add(btn2)
-    markup.add(btn3)
+
+    if show_groups:
+        con = sq.connect("user_data.sql")
+        cur = con.cursor()
+        cur.execute("select group_name from groups where admin_id == '%s' " % (chat_id,))
+        rows = cur.fetchall()
+        con.commit()
+        con.close()
+
+        for row in rows:
+
+            if row[0] is not None:
+                btn = types.InlineKeyboardButton(text=row[0], callback_data=f"g|{row[0]}")
+
+                markup.add(btn)
+
+        btn3 = types.InlineKeyboardButton(text="Назад", callback_data="g|back")
+        markup.add(btn3)
+
+    else:
+
+        btn1 = types.InlineKeyboardButton(text="Выбрать группу", callback_data="g|choose_group")
+        btn2 = types.InlineKeyboardButton(text="Создать группу", callback_data="g|create_group")
+        btn3 = types.InlineKeyboardButton(text="🚫 exit", callback_data="g|exit")
+        markup.add(btn1)
+        markup.add(btn2)
+        markup.add(btn3)
     return markup
 
 
@@ -562,6 +629,22 @@ def callback_query(call):
     if call.data == "exit":
         bot.delete_message(call.message.chat.id, call.message.message_id)
 
+    elif call.data == "create_group":
+        bot.send_message(chat_id, "Дайте название группе")
+        bot.register_next_step_handler(call.message, create_group)
+
+    elif call.data == "choose_group":
+        markup = create_group_keyboard(chat_id=chat_id, show_groups=True)
+        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                              text="Вы можете выбрать группу",
+                              reply_markup=markup)
+    elif call.data == "back":
+        markup = create_group_keyboard(chat_id=chat_id, show_groups=False)
+        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                              text="Вы можете выбрать группу или добавить новую",
+                              reply_markup=markup)
+
+
 
 def choose_table_context(call, settings=None):
     chat_id = call.message.chat.id
@@ -663,7 +746,7 @@ def add_table(message, call=None):
     chat_id = message.chat.id
     settings = get_settings(chat_id)
     if message.text == "🚫 exit":
-        main(message, settings)
+        main(message)
 
     else:
         try:
@@ -798,7 +881,20 @@ def choose_description(message, settings=None, table_name=None):
             bot.register_next_step_handler(message, table_description, settings)
 
 
-# to do: there should be some ways to optimize interaction with database
+def create_group(message):
+    admin_id = message.from_user.id
+    group_name = "group" + message.text
+    con = sq.connect("user_data.sql")
+    cur = con.cursor()
+    cur.execute("INSERT INTO groups(admin_id, group_name) VALUES(?,?)", (admin_id, group_name))
+    con.commit()
+    group_link = "https://t.me/auto_analyzer_bot?start=" + group_name
+    cur.execute("UPDATE groups SET group_link = '%s' WHERE admin_id = '%s'" % (group_link, admin_id))
+    con.close()
+    bot.send_message(admin_id, "Группа создана")
+    main(message)
+
+
 
 def call_to_model(message, settings=None):
 
