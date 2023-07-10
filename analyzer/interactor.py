@@ -24,8 +24,8 @@ def read_df(path: str) -> (pd.DataFrame, str):
     file_name = pathlib.Path(path).name
 
     if file_extension == '.xlsx':
-        prepared_path = process(path)
-        return pd.read_excel(prepared_path), file_name
+        prepared = process(path)
+        return pd.read_excel(prepared[0]), prepared[1]
     elif file_extension == ".json":
         return pd.read_json(path), file_name
     elif file_extension == ".csv":

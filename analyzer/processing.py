@@ -23,7 +23,7 @@ def get_data_range(sheet):
         start_col_name = openpyxl.utils.get_column_letter(start_col)
         end_col_name = openpyxl.utils.get_column_letter(end_col)
         data_range = f"{start_col_name}{start_row}:{end_col_name}{end_row}"
-        return data_range, start_row, start_col
+        return data_range, start_row, start_col, start_col_name, end_col_name
     else:
         return None
 
@@ -39,27 +39,40 @@ def move(file_path, save_path):
 
 def unmerge_cells(file_path, save_path):
     wb = openpyxl.load_workbook(file_path)
-    for st_name in wb.sheetnames:
-        st = wb[st_name]
-        mcr_coord_list = [mcr.coord for mcr in st.merged_cells.ranges]
-        for mcr in mcr_coord_list:
-            min_col, min_row, max_col, max_row = range_boundaries(mcr)
-            top_left_cell_value = st.cell(row=min_row, column=min_col).value
-            st.unmerge_cells(mcr)
-            if min_col == max_col:
-                for row in st.iter_rows(min_col=min_col, min_row=min_row, max_col=max_col, max_row=max_row):
-                    for cell in row:
-                        cell.value = top_left_cell_value
     sheet = wb.active
-    sheet.title = "Sheet1"
+
+    name = os.path.basename(file_path)
+
+    range = get_data_range(sheet)
+    check_range = f'{range[3]}{range[1]}:{range[4]}{range[1]}'
+    is_merged = False
+    for merged_range in sheet.merged_cells.ranges:
+        if merged_range.coord == check_range:
+            is_merged = True
+            break
+    if is_merged:
+        name = sheet.cell(row=range[1], column=range[2]).value
+
+    mcr_coord_list = [mcr.coord for mcr in sheet.merged_cells.ranges]
+    for mcr in mcr_coord_list:
+        min_col, min_row, max_col, max_row = range_boundaries(mcr)
+        top_left_cell_value = sheet.cell(row=min_row, column=min_col).value
+        sheet.unmerge_cells(mcr)
+        if min_col == max_col:
+            for row in sheet.iter_rows(min_col=min_col, min_row=min_row, max_col=max_col, max_row=max_row):
+                for cell in row:
+                    cell.value = top_left_cell_value
+    if is_merged:
+        sheet.delete_rows(range[1])
     wb.save(save_path)
+    return name
 
 
 def process(path):
     save_path = path[:-5] + '_prep.xlsx'
-    unmerge_cells(path, save_path)
+    name = unmerge_cells(path, save_path)
     move(save_path, save_path)
-    return save_path
+    return save_path, name
 
 
 def unmerge_sheets(file_path):
@@ -83,4 +96,4 @@ def unmerge_sheets(file_path):
             new_workbook.save(new_path + sheet_name + '.xlsx')
             new_pathes.append(new_path + sheet_name + '.xlsx')
         return new_pathes
-    return list(file_path)
+    return [file_path]
