@@ -53,16 +53,15 @@ def main(message=None, settings=None):
     con = sq.connect("user_data.sql")
     cur = con.cursor()
 
-    cur.execute("""CREATE TABLE IF NOT EXISTS users 
-                (user_id INTEGER UNIQUE,
+    cur.execute("""CREATE TABLE IF NOT EXISTS users
+                (user_id INTEGER PRIMARY KEY,
                 conv_sum TEXT,
                 current_tables VARCHAR,
-                build_plots boolean,
-                VARCHAR)""")
+                build_plots boolean)""")
     con.commit()
 
     cur.execute("""CREATE TABLE IF NOT EXISTS callback_manager
-                (user_id INTEGER UNIQUE,
+                (user_id INTEGER PRIMARY KEY,
                 table_callback boolean DEFAULT False,
                 context_callback boolean DEFAULT False,
                 description_callback boolean DEFAULT False,
@@ -90,7 +89,9 @@ def main(message=None, settings=None):
 
     con.commit()
 
-    cur.execute(""" CREATE TABLE IF NOT EXISTS tables (user_id INTEGER, 
+    cur.execute(""" CREATE TABLE IF NOT EXISTS tables 
+                (table_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER, 
                 table_name VARCHAR,
                 table_description TEXT,
                 context TEXT,
@@ -107,20 +108,6 @@ def main(message=None, settings=None):
     print(cur.fetchall())
     con.commit()
 
-    con = sq.connect("user_data.sql")
-    cur = con.cursor()
-    cur.execute("SELECT current_tables FROM users WHERE user_id = '%s'" % (chat_id,))
-    table_names = cur.fetchone()
-    cur.execute("SELECT build_plots FROM users WHERE user_id = '%s'" % (chat_id,))
-    build_plots = cur.fetchone()
-
-    con.close()
-
-    settings = {"table_name": table_names[0],
-                "build_plots": build_plots[0],
-                }
-
-    print(settings)
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn1 = types.KeyboardButton("🖹 Выбрать таблицу")
     btn2 = types.KeyboardButton("➕ Добавить описание таблицы")
@@ -132,7 +119,7 @@ def main(message=None, settings=None):
 
     bot.send_message(chat_id, "Вы можете  выбрать одну из опций", reply_markup=markup)
 
-    bot.register_next_step_handler(message, on_click, settings)
+    bot.register_next_step_handler(message, on_click)
 
 
 
@@ -148,6 +135,7 @@ def get_settings(chat_id):
     settings = {"table_name": table_names[0],
                 "build_plots": build_plots[0],
                 }
+    print(settings)
     return settings
 
 
@@ -215,13 +203,17 @@ def get_pages_amount(chat_id):
     con.commit()
     con.close()
     return amount
-def create_inline_keyboard(chat_id=None, keyboard_type=None):
+def create_inline_keyboard(chat_id=None, keyboard_type=None, page=1):
+    if page == 1:
+        offset = 1
+    else:
+        offset = ((page-1)*3 +1)
     markup = types.InlineKeyboardMarkup(row_width=3)
     prefix = keyboard_type[0]+"|"
     settings = get_settings(chat_id)
     con = sq.connect("user_data.sql")
     cur = con.cursor()
-    cur.execute("select table_name from tables where user_id == '%s'" % (chat_id,))
+    cur.execute("select table_name from tables where user_id == '%s' LIMIT 3 OFFSET '%s'" % (chat_id, offset))
     rows = cur.fetchall()
     con.commit()
     con.close()
@@ -245,15 +237,15 @@ def create_inline_keyboard(chat_id=None, keyboard_type=None):
         page = get_page(chat_id=chat_id, page_type=page_type)
         amount = get_pages_amount(chat_id=chat_id)
         markup.add(types.InlineKeyboardButton(text=f'{page}/{amount}', callback_data=f' '))
-        btn3 = types.InlineKeyboardButton(text="🚫 exit", callback_data="t|exit")
-        markup.add(btn3)
+
         right = types.InlineKeyboardButton(text="-->", callback_data="t|right")
         left = types.InlineKeyboardButton(text="<--", callback_data="t|left")
         markup.row(left, right)
+        btn3 = types.InlineKeyboardButton(text="🚫 exit", callback_data="t|exit")
+        markup.add(btn3)
 
     elif keyboard_type == "context":
-        btn3 = types.InlineKeyboardButton(text="🚫 exit", callback_data="c|exit")
-        markup.add(btn3)
+
         right = types.InlineKeyboardButton(text="-->", callback_data="c|right")
         left = types.InlineKeyboardButton(text="<--", callback_data="c|left")
         markup.row(left, right)
@@ -261,11 +253,10 @@ def create_inline_keyboard(chat_id=None, keyboard_type=None):
         page = get_page(chat_id=chat_id, page_type=page_type)
         amount = get_pages_amount(chat_id=chat_id)
         markup.add(types.InlineKeyboardButton(text=f'{page}/{amount}', callback_data=f' '))
-
+        btn3 = types.InlineKeyboardButton(text="🚫 exit", callback_data="t|exit")
+        markup.add(btn3)
 
     elif keyboard_type == "description":
-        btn3 = types.InlineKeyboardButton(text="🚫 exit", callback_data="d|exit")
-        markup.add(btn3)
         right = types.InlineKeyboardButton(text="-->", callback_data="d|right")
         left = types.InlineKeyboardButton(text="<--", callback_data="d|left")
         markup.row(left, right)
@@ -273,6 +264,8 @@ def create_inline_keyboard(chat_id=None, keyboard_type=None):
         page = get_page(chat_id=chat_id, page_type=page_type)
         amount = get_pages_amount(chat_id=chat_id)
         markup.add(types.InlineKeyboardButton(text=f'{page}/{amount}', callback_data=f' '))
+        btn3 = types.InlineKeyboardButton(text="🚫 exit", callback_data="t|exit")
+        markup.add(btn3)
     return markup
 
 
@@ -349,6 +342,7 @@ def on_click(message, settings=None):
                              reply_markup=markup)
         bot.register_next_step_handler(message, on_click, settings)
 
+
 @bot.callback_query_handler(func=lambda call: call.data.startswith("t|"))
 def callback_query(call):
 
@@ -375,32 +369,32 @@ def callback_query(call):
         cur.execute("UPDATE users SET current_tables = '%s'" % (new_cur,))
         con.commit()
         con.close()
+        amount = get_pages_amount(chat_id)
+        keyboard_type = "tables"
+        markup2 = create_inline_keyboard(chat_id=call.message.chat.id, keyboard_type=keyboard_type, page=amount)
+        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                              text="Вы можете выбрать таблицу или добавить новую",
+                              reply_markup=markup2)
     elif call.data == "right":
         amount = get_pages_amount(chat_id)
         if page < amount:
             new_page = page + 1
             change_page(chat_id=chat_id, page_type=page_type, new_page=new_page)
             keyboard_type = "tables"
-            markup2 = create_inline_keyboard(chat_id=call.message.chat.id, keyboard_type=keyboard_type)
+            markup2 = create_inline_keyboard(chat_id=call.message.chat.id, keyboard_type=keyboard_type, page=new_page)
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                   text="Вы можете выбрать таблицу или добавить новую",
                                   reply_markup=markup2)
-
-
-
 
     elif call.data == "left":
         if page > 1:
             new_page = page - 1
             change_page(chat_id=chat_id, page_type=page_type, new_page=new_page)
             keyboard_type = "tables"
-            markup2 = create_inline_keyboard(chat_id=call.message.chat.id, keyboard_type=keyboard_type)
+            markup2 = create_inline_keyboard(chat_id=call.message.chat.id, keyboard_type=keyboard_type, page=new_page)
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                   text="Вы можете выбрать таблицу или добавить новую",
                                   reply_markup=markup2)
-
-
-
 
     else:
         con = sq.connect("user_data.sql")
@@ -414,8 +408,9 @@ def callback_query(call):
         for row in rows:
 
             if row[0] is not None:
+
                 if call.data == row[0]:
-                    find_flag = True
+                    find_table_flag = True
                     choose_flag = True
                     choose_table(call, choose_flag)
         if not find_table_flag:
@@ -500,7 +495,7 @@ def callback_query(call):
             new_page = page + 1
             change_page(chat_id=chat_id, page_type=page_type, new_page=new_page)
             keyboard_type = "description"
-            markup2 = create_inline_keyboard(chat_id=call.message.chat.id, keyboard_type=keyboard_type)
+            markup2 = create_inline_keyboard(chat_id=call.message.chat.id, keyboard_type=keyboard_type, page=new_page)
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                   text="Вы можете выбрать таблицу или добавить новую",
                                   reply_markup=markup2)
@@ -509,7 +504,7 @@ def callback_query(call):
             new_page = page - 1
             change_page(chat_id=chat_id, page_type=page_type, new_page=new_page)
             keyboard_type = "description"
-            markup2 = create_inline_keyboard(chat_id=call.message.chat.id, keyboard_type=keyboard_type)
+            markup2 = create_inline_keyboard(chat_id=call.message.chat.id, keyboard_type=keyboard_type, page=new_page)
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                   text="Вы можете выбрать таблицу или добавить новую",
                                   reply_markup=markup2)
@@ -594,27 +589,38 @@ def add_context(message, settings=None, table_name=None):
 
 
 def choose_table(call, choose_flag=False):
-    chat_id = call.message.chat.id
-    text = call.data
-    if choose_flag is False:
-        bot.register_next_step_handler(call.message, add_table, call)
-    else:
-        settings = get_settings(chat_id)
-        if text not in settings["table_name"]:
-            if settings["table_name"] is not None:
-                settings["table_name"] += "," + text
-            else:
-                settings["table_name"] = text
-            bot.send_message(chat_id, "Таблица выбрана.")
-            con = sq.connect("user_data.sql")
-            cur = con.cursor()
-            cur.execute(
-                "UPDATE users SET current_tables = '%s' WHERE user_id == '%s'" % (settings["table_name"], chat_id))
-            con.commit()
-            con.close()
+    try:
+        chat_id = call.message.chat.id
+        text = call.data
+        message = call.message
+    except Exception as e:
+        print(e)
+        chat_id = call.chat.id
+        text = call.text
+        message = call
 
+    if choose_flag is False:
+        bot.register_next_step_handler(message, add_table, call)
+    else:
+
+        settings = get_settings(chat_id)
+        if settings["table_name"] is not None:
+            if text not in settings["table_name"]:
+                settings["table_name"] += "," + text
+                bot.send_message(chat_id, "Таблица добавлена")
+            else:
+                bot.send_message(chat_id, "Данная таблица уже добавлена в список")
         else:
-            bot.send_message(chat_id, "Данная таблица уже добавлена в список")
+
+            settings["table_name"] = text
+            bot.send_message(chat_id, "Таблица выбрана.")
+        con = sq.connect("user_data.sql")
+        cur = con.cursor()
+        cur.execute(
+            "UPDATE users SET current_tables = '%s' WHERE user_id == '%s'" % (settings["table_name"], chat_id))
+        con.commit()
+        con.close()
+        main(message)
 
 
 
@@ -641,29 +647,41 @@ def add_table(message, call=None):
 
             con = sq.connect("user_data.sql")
             cur = con.cursor()
-            cur.execute("""INSERT OR REPLACE INTO tables(user_id, table_name) VALUES(?,?)""", (chat_id, message.document.file_name))
-            con.commit()
-            cur.execute("SELECT * FROM tables")
+            cur.execute("SELECT * FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (chat_id, message.document.file_name))
+            existing_record = cur.fetchone()
+
+            if existing_record is None:
+                cur.execute("""INSERT INTO tables(user_id, table_name) VALUES(?,?)""", (chat_id, message.document.file_name))
+                con.commit()
+                cur.execute("SELECT * FROM tables")
+                cur.execute("UPDATE users SET current_tables = '%s' WHERE user_id == '%s'" % (
+                message.document.file_name, chat_id))
+                con.commit()
+
+                con.close()
+                bot.reply_to(message, 'Файл сохранен')
+                keyboard_type = "tables"
+                markup2 = create_inline_keyboard(chat_id=call.message.chat.id, keyboard_type=keyboard_type)
+                bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                      text="Вы можете выбрать таблицу или добавить новую",
+                                      reply_markup=markup2)
+                main(message, settings)
+            else:
+                bot.send_message(chat_id, "Данная таблица уже была добавлена, попробуйте другую")
+                bot.register_next_step_handler(message, add_table)
 
             if settings["table_name"] is not None:
                 settings["table_name"] += "," + message.document.file_name
             else:
                 settings["table_name"] = message.document.file_name
+        except telebot.apihelper.ApiTelegramException:
+            bot.register_next_step_handler(message, add_table)
 
-            cur.execute("UPDATE users SET current_tables = '%s' WHERE user_id == '%s'" %(message.document.file_name, chat_id))
-            con.commit()
-            con.close()
-            bot.reply_to(message, 'Файл сохранен')
-            keyboard_type = "tables"
-            markup2 = create_inline_keyboard(chat_id=call.message.chat.id,  keyboard_type=keyboard_type)
-            bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text="Вы можете выбрать таблицу или добавить новую",
-                                  reply_markup=markup2)
-            main(message, settings)
         except Exception as e:
             print(e)
             bot.send_message(chat_id, "Что-то пошло не так, попробуйте другой файл")
-            error_message_flag = True
-            bot.register_next_step_handler(message, add_table, settings)
+
+            bot.register_next_step_handler(message, add_table)
 
 # function that contains all params that was set by user and will be used during interaction with model
 
@@ -750,7 +768,7 @@ def choose_description(message, settings=None, table_name=None):
 def call_to_model(message, settings=None):
 
     if message.text == "🚫 exit":
-        main(message, settings)
+        main(message)
     else:
         chat_id = message.chat.id
 
@@ -779,6 +797,8 @@ def call_to_model(message, settings=None):
                 context_line = ""
                 table_description_line = ""
                 table_name_path = table_name.copy()
+                table_description = []
+                context_list = []
                 for table in range(len(table_name_path)):
                     table_name_path[table] = "data/" + table_name_path[table]
                 con = sq.connect("user_data.sql")
@@ -788,25 +808,30 @@ def call_to_model(message, settings=None):
                     cur.execute("SELECT * FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (chat_id, table))
                     existing_record = cur.fetchone()
 
-                    if existing_record:
+                    if existing_record is not None:
 
                         cur.execute("SELECT table_description FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (chat_id, table))
-                        table_description = cur.fetchone()
+                        description = cur.fetchone()
 
-                        if not table_description or table_description[0] is None:
+                        if not description or description[0] is None:
                             table_description_line = table + ":"
                         else:
-                            table_description_line = table + ":" + table_description[0]
+                            table_description_line = table + ":" + description[0]
 
+                        table_description.append(table_description_line)
+
+
+                        print("table description:", table_description)
                     con.commit()
 
                     cur.execute("SELECT context FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (chat_id, table))
                     context = cur.fetchone()
 
                     if not context or context[0] is None:
-                        context_line += table + ":"
+                        context_line = table + ":"
                     else:
-                        context_line += table + ":" + context[0]
+                        context_line = table + ":" + context[0]
+                    context_list.append(context_line)
                 print(context_line)
                 print(table_description_line)
                 cur = con.cursor()
@@ -818,7 +843,6 @@ def call_to_model(message, settings=None):
                     current_summary = ""
                 else:
                     current_summary = current_summary[0]
-
 
                 markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
                 btn1 = types.KeyboardButton("🚫 exit")
@@ -832,7 +856,7 @@ def call_to_model(message, settings=None):
 
                 build_plots = settings["build_plots"]
                 answer_from_model = interactor.run_loop_bot(table_name_path, build_plots, user_question, current_summary,
-                                                            table_description_line, context_line, callback=callback)
+                                                            table_description, context_list, callback=callback)
                 summary = answer_from_model[1]
                 new_summary = current_summary + summary
 
@@ -861,10 +885,10 @@ def call_to_model(message, settings=None):
                     bot.send_message(message.from_user.id, f"Answer: {answer_from_model[0]}")
                 else:
                     bot.send_message(message.from_user.id, f"Answer: {answer_from_model[0]}")
-                bot.register_next_step_handler(message, call_to_model, settings)
+                bot.register_next_step_handler(message, call_to_model)
         except requests.exceptions.ConnectionError:
             bot.send_message(message.from_user.id, "Что-то пошло не так")
-            main(user_question, settings)
+            main(user_question)
 
 
 #try:

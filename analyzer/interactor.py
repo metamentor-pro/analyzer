@@ -19,13 +19,13 @@ import yaml
 
 
 def read_df(path: str) -> pd.DataFrame:
-    sheet_name = "Sheet1"
+
 
     file_extension = pathlib.Path(path).suffix.lower()
 
     if file_extension == '.xlsx':
 
-        return pd.read_excel(path, sheet_name=sheet_name)
+        return pd.read_excel(path)
     elif file_extension == ".json":
 
         return pd.read_json(path)
@@ -48,7 +48,7 @@ def df_info_description(i: int, df: pd.DataFrame) -> str:
            f"{buf.getvalue()}\n"
 
 def preparation(path_list: List[str], build_plots: Union[bool, None], current_summary: Union[str, None] = "",
-                table_description: Union[str, None] = "", context: Union[str, None] = "", callback: Callable = None):
+                table_description: List[str] = None, context_list: List[str] = None, callback: Callable = None):
 
     with open("config.yaml") as f:
         cfg = yaml.load(f, Loader=yaml.FullLoader)
@@ -82,7 +82,7 @@ def preparation(path_list: List[str], build_plots: Union[bool, None], current_su
     )
 
 
-    prompt = TableDescriptionPrompt([data_item["description"] for data_item in cfg["data"]], context=context, build_plots=build_plots, current_summary=current_summary)
+    prompt = TableDescriptionPrompt(table_description=table_description, context=context_list, build_plots=build_plots, current_summary=current_summary)
     ag = BaseMinion(base_prompt=prompt.__str__(),
                     available_tools=[
                         Tool(name=python_tool.name, description=python_tool.description, func=python_tool._run)],
@@ -95,9 +95,9 @@ logging.basicConfig(level=logging.INFO, filename="py_log.log", filemode="w")
 
 def run_loop_bot(path_list: List[str] = None, build_plots: Union[bool, None] = False, user_question: Union[str, None] = None, current_summary: Union[str, None] = "",
 
-                 table_description: Union[str, None] = "", context: Union[str, None] = "", callback: Callable = None):
+                 table_description: List[str] = None, context_list: List[str] = None, callback: Callable = None):
 
-    ag, df_head, df_info = preparation(path_list=path_list, build_plots=build_plots, current_summary=current_summary, table_description=table_description, context=context, callback=callback)
+    ag, df_head, df_info = preparation(path_list=path_list, build_plots=build_plots, current_summary=current_summary, table_description=table_description, context_list=context_list, callback=callback)
 
     while True:
         question = user_question  # this is for interacting with the user's request via a bot

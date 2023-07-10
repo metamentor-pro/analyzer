@@ -29,6 +29,12 @@ class TableDescriptionPrompt:
             description += f"df[{i}] contains the following columns:\n" \
                            f"{desc}\n"
 
+        context = ""
+        for i in self.context:
+            print(context)
+            context += i
+
+
         return """
 Follow the instructions below carefully and intelligently.
 
@@ -39,7 +45,7 @@ This dataframes is the report produced by oil production company.
 You have access to the following tools:
 {tools}
 You should use subagents in your work, always mention what subagents you used.
-You are provided with the folowing context:""" + self.context + """
+You are provided with the folowing context:""" + context + """
 Take this context into account when analyzing and writing the answer 
 Here is the summary of your last conversation with user""" + self.current_summary + """ 
 pay attention to this summary during your work
