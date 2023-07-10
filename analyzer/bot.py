@@ -41,7 +41,7 @@ def help_info(message):
 
 
 @bot.message_handler(commands=["start", "exit"], content_types=["text", "document"])
-def main(message=None, settings=None):
+def main(message=None):
     try:
         chat_id = message.chat.id
 
@@ -58,6 +58,10 @@ def main(message=None, settings=None):
                 conv_sum TEXT,
                 current_tables VARCHAR,
                 build_plots boolean)""")
+    con.commit()
+
+    cur.execute("""CREATE TABLE IF NOT EXISTS groups
+                (group_id INTEGER PRIMARY KEY)""")
     con.commit()
 
     cur.execute("""CREATE TABLE IF NOT EXISTS callback_manager
@@ -114,14 +118,13 @@ def main(message=None, settings=None):
     btn3 = types.KeyboardButton("🖻 Режим визуализации")
     btn4 = types.KeyboardButton("❓ Режим отправки запроса")
     btn5 = types.KeyboardButton("Добавить контекст")
-    markup.row(btn1, btn2)
-    markup.row(btn3, btn4, btn5)
+    btn6 = types.KeyboardButton("Группы таблиц")
+    markup.row(btn1, btn2, btn3)
+    markup.row(btn4, btn5, btn6)
 
     bot.send_message(chat_id, "Вы можете  выбрать одну из опций", reply_markup=markup)
 
     bot.register_next_step_handler(message, on_click)
-
-
 
 
 def get_settings(chat_id):
@@ -162,6 +165,7 @@ def get_callback(chat_id, callback_type):
 
     return callback
 
+
 def get_page(chat_id, page_type):
     con = sq.connect("user_data.sql")
     cur = con.cursor()
@@ -194,6 +198,7 @@ def change_page(chat_id, page_type, new_page):
     con.commit()
     con.close()
 
+
 def get_pages_amount(chat_id):
     con = sq.connect("user_data.sql")
     cur = con.cursor()
@@ -203,6 +208,8 @@ def get_pages_amount(chat_id):
     con.commit()
     con.close()
     return amount
+
+
 def create_inline_keyboard(chat_id=None, keyboard_type=None, page=1, status_flag=True):
     if page == 1:
         offset = 1
@@ -267,6 +274,17 @@ def create_inline_keyboard(chat_id=None, keyboard_type=None, page=1, status_flag
         markup.add(types.InlineKeyboardButton(text=f'{page}/{amount}', callback_data=f' '))
         btn3 = types.InlineKeyboardButton(text="🚫 exit", callback_data="t|exit")
         markup.add(btn3)
+    return markup
+
+
+def create_group_keyboard(chat_id=None):
+    markup = types.InlineKeyboardMarkup()
+    btn1 = types.InlineKeyboardButton(text="Выбрать группу", callback_data="g|choose_group")
+    btn2 = types.InlineKeyboardButton(text="Создать группу", callback_data="g|create_group")
+    btn3 = types.InlineKeyboardButton(text="🚫 exit", callback_data="g|exit")
+    markup.add(btn1)
+    markup.add(btn2)
+    markup.add(btn3)
     return markup
 
 
@@ -341,6 +359,11 @@ def on_click(message, settings=None):
 
             bot.send_message(chat_id, "Выберите, к какой таблице вы хотите добавить контекст",
                              reply_markup=markup)
+        bot.register_next_step_handler(message, on_click, settings)
+    elif message.text == "Группы таблиц":
+        markup = create_group_keyboard(chat_id)
+        bot.send_message(chat_id, "Вы можете выбрать одну из опций", reply_markup=markup)
+
         bot.register_next_step_handler(message, on_click, settings)
 
 
@@ -529,6 +552,17 @@ def callback_query(call):
             bot.send_message(call.message.chat.id, "Эта таблица не была загружена")
 
 
+@bot.callback_query_handler(func=lambda call: call.data.startswith("g|"))
+def callback_query(call):
+    callback_type, action = map(str, call.data.split("|"))
+    call.data = action
+
+    chat_id = call.message.chat.id
+
+    if call.data == "exit":
+        bot.delete_message(call.message.chat.id, call.message.message_id)
+
+
 def choose_table_context(call, settings=None):
     chat_id = call.message.chat.id
     message = call.message
@@ -542,7 +576,7 @@ def choose_table_context(call, settings=None):
 def add_context(message, settings=None, table_name=None):
     chat_id = message.chat.id
     if message.text == "🚫 exit":
-        main(message, settings)
+        main(message)
 
     else:
         try:
@@ -560,7 +594,7 @@ def add_context(message, settings=None, table_name=None):
                 con.commit()
                 con.close()
                 bot.send_message(message.from_user.id, 'Контекст сохранен', reply_markup=markup)
-                bot.register_next_step_handler(message, main, settings)
+                bot.register_next_step_handler(message, main)
             elif message.content_type == "document":
                 file_id = message.document.file_id
                 file_info = bot.get_file(file_id)
@@ -581,12 +615,12 @@ def add_context(message, settings=None, table_name=None):
                 con.commit()
                 con.close()
                 bot.send_message(chat_id, 'Контекст сохранен', reply_markup=markup)
-                bot.register_next_step_handler(message, main, settings)
+                bot.register_next_step_handler(message, main)
 
         except Exception:
             bot.send_message(message.from_user.id, "Что-то пошло не так, попробуйте другой файл")
             error_message_flag = True
-            choose_table(message, settings, error_message_flag)
+            choose_table(message, error_message_flag)
 
 
 def choose_table(call, choose_flag=False):
