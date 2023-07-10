@@ -13,32 +13,30 @@ from agent import BaseMinion
 from common_prompts import TableDescriptionPrompt
 from custom_python_ast import CustomPythonAstREPLTool
 
-from processing import process
+from processing import process, unmerge_sheets
 
 import typer
 import yaml
 
 
-def read_df(path: str) -> pd.DataFrame:
-    sheet_name = "Sheet1"
-
+def read_df(path: str) -> (pd.DataFrame, str):
     file_extension = pathlib.Path(path).suffix.lower()
+    file_name = pathlib.Path(path).name
 
     if file_extension == '.xlsx':
         prepared_path = process(path)
-        return pd.read_excel(prepared_path, sheet_name=sheet_name)
+        return pd.read_excel(prepared_path), file_name
     elif file_extension == ".json":
-
-        return pd.read_json(path)
+        return pd.read_json(path), file_name
     elif file_extension == ".csv":
-
-        return pd.read_csv(path)
+        return pd.read_csv(path), file_name
     else:
         raise Exception("Unknown file extension")
 
 
-def df_head_description(i: int, df: pd.DataFrame) -> str:
-    return f"df[{i}].head():" \
+def df_head_description(i: int, df: pd.DataFrame, name) -> str:
+    return f"table: {name} \n"\
+           f"df[{i}].head():" \
            f"{df.head()}\n"
 
 
@@ -48,8 +46,9 @@ def df_info_description(i: int, df: pd.DataFrame) -> str:
     return f"df[{i}].info():" \
            f"{buf.getvalue()}\n"
 
+
 def preparation(path_list: List[str], build_plots: Union[bool, None], current_summary: Union[str, None] = "",
-                table_description: Union[str, None] = "", context: Union[str, None] = "", callback: Callable = None):
+                table_description: List[str] = None, context_list: List[str] = None, callback: Callable = None):
 
     with open("config.yaml") as f:
         cfg = yaml.load(f, Loader=yaml.FullLoader)
@@ -61,19 +60,24 @@ def preparation(path_list: List[str], build_plots: Union[bool, None], current_su
     if build_plots is None:
         build_plots = cfg["build_plots"]
 
-    df_list = [read_df(path) for path in path_list]
+    prepared_path_list = list()
+    for path in path_list:
+        prepared_path_list.extend(unmerge_sheets(path))
 
+    df_list = [read_df(path) for path in prepared_path_list]
     df_head = ""
-    for i, df in enumerate(df_list):
-        df_head += df_head_description(i, df)
+    for i, item in enumerate(df_list):
+        df_head += df_head_description(i, item[0], item[1])
 
+    df_work = list()
     df_info = ""
-    for i, df in enumerate(df_list):
-        df_info += df_info_description(i, df)
+    for i, item in enumerate(df_list):
+        df_info += df_info_description(i, item[0])
+        df_work.append(item[0])
 
     llm = ChatOpenAI(temperature=0.7, model='gpt-4',
                      openai_api_key="")
-    python_tool = CustomPythonAstREPLTool(locals={"df": df_list, "python": None, "python_repl_ast": None},
+    python_tool = CustomPythonAstREPLTool(locals={"df": df_work, "python": None, "python_repl_ast": None},
                                           globals={"pd": pd, "np": np, "sns": sns, "plotly": plotly})
     python_tool.description = (
         "A Python shell. Use this to execute python commands. "
@@ -82,8 +86,7 @@ def preparation(path_list: List[str], build_plots: Union[bool, None], current_su
         "Code should always produce a value"
     )
 
-
-    prompt = TableDescriptionPrompt([data_item["description"] for data_item in cfg["data"]], context=context, build_plots=build_plots, current_summary=current_summary)
+    prompt = TableDescriptionPrompt(table_description=table_description, context=context_list, build_plots=build_plots, current_summary=current_summary)
     ag = BaseMinion(base_prompt=prompt.__str__(),
                     available_tools=[
                         Tool(name=python_tool.name, description=python_tool.description, func=python_tool._run)],
@@ -95,10 +98,9 @@ logging.basicConfig(level=logging.INFO, filename="py_log.log", filemode="w")
 
 
 def run_loop_bot(path_list: List[str] = None, build_plots: Union[bool, None] = False, user_question: Union[str, None] = None, current_summary: Union[str, None] = "",
+                 table_description: List[str] = None, context_list: List[str] = None, callback: Callable = None):
 
-                 table_description: Union[str, None] = "", context: Union[str, None] = "", callback: Callable = None):
-
-    ag, df_head, df_info = preparation(path_list=path_list, build_plots=build_plots, current_summary=current_summary, table_description=table_description, context=context, callback=callback)
+    ag, df_head, df_info = preparation(path_list=path_list, build_plots=build_plots, current_summary=current_summary, table_description=table_description, context_list=context_list, callback=callback)
 
     while True:
         question = user_question  # this is for interacting with the user's request via a bot

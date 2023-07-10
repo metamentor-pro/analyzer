@@ -1,4 +1,5 @@
 import openpyxl
+import os
 from openpyxl.utils.cell import range_boundaries
 
 
@@ -36,7 +37,7 @@ def move(file_path, save_path):
         wb.save(save_path)
 
 
-def unmerge(file_path, save_path):
+def unmerge_cells(file_path, save_path):
     wb = openpyxl.load_workbook(file_path)
     for st_name in wb.sheetnames:
         st = wb[st_name]
@@ -56,8 +57,30 @@ def unmerge(file_path, save_path):
 
 def process(path):
     save_path = path[:-5] + '_prep.xlsx'
-    unmerge(path, save_path)
+    unmerge_cells(path, save_path)
     move(save_path, save_path)
-    return  save_path
+    return save_path
 
 
+def unmerge_sheets(file_path):
+    workbook = openpyxl.load_workbook(file_path)
+    if len(workbook.sheetnames) > 1:
+        new_pathes = list()
+        for sheet_name in workbook.sheetnames:
+            new_workbook = openpyxl.Workbook()
+            new_sheet = new_workbook.active
+            sheet = workbook[sheet_name]
+            for row in sheet.iter_rows(values_only=True):
+                new_sheet.append(row)
+            new_path = ""
+            index = file_path.rfind("/")
+            if index != -1:
+                new_path = file_path[:index] + "/unmerged_{}/".format(os.path.basename(file_path))
+
+            if not os.path.exists(new_path):
+                os.makedirs(new_path)
+
+            new_workbook.save(new_path + sheet_name + '.xlsx')
+            new_pathes.append(new_path + sheet_name + '.xlsx')
+        return new_pathes
+    return list(file_path)
