@@ -203,7 +203,7 @@ def get_pages_amount(chat_id):
     con.commit()
     con.close()
     return amount
-def create_inline_keyboard(chat_id=None, keyboard_type=None, page=1):
+def create_inline_keyboard(chat_id=None, keyboard_type=None, page=1, status_flag=True):
     if page == 1:
         offset = 1
     else:
@@ -231,7 +231,8 @@ def create_inline_keyboard(chat_id=None, keyboard_type=None, page=1):
         markup.row(btn1)
 
         if settings["table_name"] is not None and len(settings["table_name"]) > 0:
-            bot.send_message(chat_id, f"Сейчас доступны для анализа: {settings['table_name']}")
+            if status_flag:
+                bot.send_message(chat_id, f"Сейчас доступны для анализа: {settings['table_name']}")
             markup.add(btn2)
         page_type = "table_page"
         page = get_page(chat_id=chat_id, page_type=page_type)
@@ -351,7 +352,7 @@ def callback_query(call):
     call.data = action
     chat_id = call.message.chat.id
     page_type = "table_page"
-    page = get_page(chat_id=chat_id,page_type=page_type)
+    page = get_page(chat_id=chat_id, page_type=page_type)
     if call.data == "exit":
         con = sq.connect("user_data.sql")
         cur = con.cursor()
@@ -381,7 +382,7 @@ def callback_query(call):
             new_page = page + 1
             change_page(chat_id=chat_id, page_type=page_type, new_page=new_page)
             keyboard_type = "tables"
-            markup2 = create_inline_keyboard(chat_id=call.message.chat.id, keyboard_type=keyboard_type, page=new_page)
+            markup2 = create_inline_keyboard(chat_id=call.message.chat.id, keyboard_type=keyboard_type, page=new_page, status_flag=False)
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                   text="Вы можете выбрать таблицу или добавить новую",
                                   reply_markup=markup2)
@@ -391,7 +392,7 @@ def callback_query(call):
             new_page = page - 1
             change_page(chat_id=chat_id, page_type=page_type, new_page=new_page)
             keyboard_type = "tables"
-            markup2 = create_inline_keyboard(chat_id=call.message.chat.id, keyboard_type=keyboard_type, page=new_page)
+            markup2 = create_inline_keyboard(chat_id=call.message.chat.id, keyboard_type=keyboard_type, page=new_page, status_flag=False)
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                   text="Вы можете выбрать таблицу или добавить новую",
                                   reply_markup=markup2)
@@ -438,7 +439,7 @@ def callback_query(call):
             new_page = page + 1
             change_page(chat_id=chat_id, page_type=page_type, new_page=new_page)
             keyboard_type = "context"
-            markup2 = create_inline_keyboard(chat_id=call.message.chat.id, keyboard_type=keyboard_type)
+            markup2 = create_inline_keyboard(chat_id=call.message.chat.id, keyboard_type=keyboard_type, page=new_page, status_flag=False)
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                   text="Вы можете выбрать таблицу или добавить новую",
                                   reply_markup=markup2)
@@ -448,7 +449,7 @@ def callback_query(call):
             new_page = page - 1
             change_page(chat_id=chat_id, page_type=page_type, new_page=new_page)
             keyboard_type = "context"
-            markup2 = create_inline_keyboard(chat_id=call.message.chat.id, keyboard_type=keyboard_type)
+            markup2 = create_inline_keyboard(chat_id=call.message.chat.id, keyboard_type=keyboard_type, page=new_page, status_flag=False)
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                   text="Вы можете выбрать таблицу или добавить новую",
                                   reply_markup=markup2)
@@ -495,7 +496,7 @@ def callback_query(call):
             new_page = page + 1
             change_page(chat_id=chat_id, page_type=page_type, new_page=new_page)
             keyboard_type = "description"
-            markup2 = create_inline_keyboard(chat_id=call.message.chat.id, keyboard_type=keyboard_type, page=new_page)
+            markup2 = create_inline_keyboard(chat_id=call.message.chat.id, keyboard_type=keyboard_type, page=new_page, status_flag=False)
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                   text="Вы можете выбрать таблицу или добавить новую",
                                   reply_markup=markup2)
@@ -504,7 +505,7 @@ def callback_query(call):
             new_page = page - 1
             change_page(chat_id=chat_id, page_type=page_type, new_page=new_page)
             keyboard_type = "description"
-            markup2 = create_inline_keyboard(chat_id=call.message.chat.id, keyboard_type=keyboard_type, page=new_page)
+            markup2 = create_inline_keyboard(chat_id=call.message.chat.id, keyboard_type=keyboard_type, page=new_page, status_flag=False)
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                   text="Вы можете выбрать таблицу или добавить новую",
                                   reply_markup=markup2)
