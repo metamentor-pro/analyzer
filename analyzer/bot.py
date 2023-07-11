@@ -68,9 +68,9 @@ def check_for_group(message):
             return False
 
 
-def check_group_design(message=None):
-    print(message)
-    admin_id = message.chat.id
+def check_group_design(chat_id=None):
+
+    admin_id = chat_id
     con = sq.connect("user_data.sql")
     cur = con.cursor()
     cur.execute("SELECT  group_name FROM groups where admin_id = '%s' AND design_flag == 1 " % (admin_id))
@@ -230,7 +230,7 @@ def group_main(message=None, group_name=None):
     btn3 = types.KeyboardButton("🖻 Режим визуализации")
     btn4 = types.KeyboardButton("exit")
     btn5 = types.KeyboardButton("Добавить контекст")
-    btn6 = types.KeyboardButton("Поделиться ссылкой")
+    btn6 = types.KeyboardButton("Сохранить настройки группы")
     markup.row(btn1, btn2, btn3)
     markup.row(btn5, btn4, btn6)
     bot.send_message(chat_id, "Вы можете  выбрать одну из опций", reply_markup=markup)
@@ -328,6 +328,7 @@ def get_pages_amount(chat_id):
 
 
 def create_inline_keyboard(chat_id=None, keyboard_type=None, page=1, status_flag=True):
+
     if page == 1:
         offset = 1
     else:
