@@ -1,6 +1,7 @@
 import openpyxl
 import os
 from openpyxl.utils.cell import range_boundaries
+from openpyxl.styles import PatternFill
 
 
 def get_data_range(sheet):
@@ -29,7 +30,7 @@ def get_data_range(sheet):
 
 
 def move(file_path, save_path):
-    wb = openpyxl.load_workbook(file_path)
+    wb = openpyxl.load_workbook(file_path, data_only=True)
     sheet = wb.active
     range = get_data_range(sheet)
     if range:
@@ -38,12 +39,17 @@ def move(file_path, save_path):
 
 
 def unmerge_cells(file_path, save_path):
-    wb = openpyxl.load_workbook(file_path)
+    wb = openpyxl.load_workbook(file_path, data_only=True)
     sheet = wb.active
 
     name = os.path.basename(file_path)
 
     range = get_data_range(sheet)
+
+    for row in sheet[range[0]]:
+        for cell in row:
+            cell.fill = PatternFill(start_color=None, end_color=None, fill_type=None)
+
     check_range = f'{range[3]}{range[1]}:{range[4]}{range[1]}'
     is_merged = False
     for merged_range in sheet.merged_cells.ranges:
@@ -69,20 +75,20 @@ def unmerge_cells(file_path, save_path):
 
 
 def process(path):
-    save_path = path[:-5] + '_prep.xlsx'
+    save_path = path[:-5] + '_prepared.xlsx'
     name = unmerge_cells(path, save_path)
     move(save_path, save_path)
     return save_path, name
 
 
 def unmerge_sheets(file_path):
-    workbook = openpyxl.load_workbook(file_path)
-    if len(workbook.sheetnames) > 1:
+    wb = openpyxl.load_workbook(file_path)
+    if len(wb.sheetnames) > 1:
         new_pathes = list()
-        for sheet_name in workbook.sheetnames:
+        for sheet_name in wb.sheetnames:
             new_workbook = openpyxl.Workbook()
             new_sheet = new_workbook.active
-            sheet = workbook[sheet_name]
+            sheet = wb[sheet_name]
             for row in sheet.iter_rows(values_only=True):
                 new_sheet.append(row)
             new_path = ""
