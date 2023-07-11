@@ -2,7 +2,7 @@ from typing import List
 
 # class representing prompt for the agent which can be used to set description of the table
 class TableDescriptionPrompt:
-    def __init__(self, table_description: List[str], context: List[str], build_plots: bool , current_summary: str):
+    def __init__(self, table_description: List[str], context: List[str], build_plots: bool, current_summary: str):
         self.table_description = table_description
         self.context = context
         self.build_plots = build_plots
@@ -25,15 +25,16 @@ class TableDescriptionPrompt:
             plots_part = "You are not allowed to use plots. "
 
         description = ""
-        for i, desc in enumerate(self.table_description):
-            description += f"df[{i}] contains the following columns:\n" \
-                           f"{desc}\n"
+        if self.table_description:
+            for i, desc in enumerate(self.table_description):
+                description += f"df[{i}] contains the following columns:\n" \
+                               f"{desc}\n"
 
         context = ""
-        for i in self.context:
-            print(context)
-            context += i
-
+        if self.context:
+            for i in self.context:
+                print(context)
+                context += i
 
         return """
 Follow the instructions below carefully and intelligently.
@@ -85,7 +86,7 @@ If the question is incorrect in your opinion, report about it (via Final Result)
 You must include ALL assumptions you make (like oil price) to the Final Result.
 The final result should contain exact numbers, not variable names.
 Before writing code, you should EXPLAIN ALL FORMULAS.""" + plots_part + """
-This is result of printing ```df.head()```:
+This is result of printing ```df.head()``` with the name of the tables:
 {df_head}
 This is result of printing ```df.info()```:
 {df_info}
