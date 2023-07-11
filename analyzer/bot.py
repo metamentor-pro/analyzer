@@ -203,6 +203,26 @@ def main(message=None, group_name=None):
 
 
 def group_main(message=None, group_name=None):
+    con = sq.connect("user_data.sql")
+    cur = con.cursor()
+    cur.execute("""CREATE TABLE IF NOT EXISTS group_manager
+                (group_name VARCHAR PRIMARY KEY,
+                group_tables VARCHAR,
+                context_page INTEGER DEFAULT 1,
+                description_page INTEGER DEFAULT 1
+                """)
+    con.commit()
+
+    cur.execute("""CREATE TABLE IF NOT EXISTS group_tables
+                    (
+                    table_name VARCHAR,
+                    table_description TEXT,
+                    context TEXT
+                    """)
+
+    con.commit()
+    con.close()
+
     chat_id = message.chat.id
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn1 = types.KeyboardButton("🖹 Выбрать таблицу")
@@ -418,19 +438,13 @@ def on_click(message):
         bot.send_message(chat_id, "Отправьте запроc. Пожалуйста, вводите запросы последовательно", reply_markup=markup)
 
         bot.register_next_step_handler(message, call_to_model, settings)
+
     elif message.text == "🖹 Выбрать таблицу":
-        callback_type = "table_callback"
-        table_callback = get_callback(chat_id=chat_id, callback_type=callback_type)
-        if table_callback == 0:
-            keyboard_type = "tables"
-            markup = create_inline_keyboard(chat_id=chat_id, keyboard_type=keyboard_type)
-            table_callback = 1
-            con = sq.connect("user_data.sql")
-            cur = con.cursor()
-            cur.execute("UPDATE callback_manager SET table_callback = '%s'" % (table_callback,))
-            con.commit()
-            con.close()
-            bot.send_message(message.from_user.id, "Можете выбрать нужную таблицу или добавить новую", reply_markup=markup)
+
+        keyboard_type = "tables"
+        markup = create_inline_keyboard(chat_id=chat_id, keyboard_type=keyboard_type)
+
+        bot.send_message(message.from_user.id, "Можете выбрать нужную таблицу или добавить новую", reply_markup=markup)
 
         if group_name is not None:
             group_main(message)
@@ -452,21 +466,9 @@ def on_click(message):
 
     elif message.text == "➕ Добавить описание таблицы":
         keyboard_type = "description"
-        callback_type = "description_callback"
-        description_callback = get_callback(chat_id=chat_id, callback_type=callback_type)
+        markup = create_inline_keyboard(chat_id=chat_id, keyboard_type=keyboard_type)
 
-        if description_callback == 0:
-
-            markup = create_inline_keyboard(chat_id=chat_id, keyboard_type=keyboard_type)
-            table_callback = 1
-            con = sq.connect("user_data.sql")
-            cur = con.cursor()
-            cur.execute("UPDATE callback_manager SET description_callback = '%s'" % (table_callback,))
-            con.commit()
-            con.close()
-
-            bot.send_message(chat_id, "Выберите, к какой таблице вы хотите добавить описание",
-                         reply_markup=markup)
+        bot.send_message(chat_id, "Выберите, к какой таблице вы хотите добавить описание", reply_markup=markup)
 
         if group_name is not None:
             group_main(message)
@@ -475,19 +477,8 @@ def on_click(message):
 
     elif message.text == "Добавить контекст":
         keyboard_type = "context"
-        callback_type = "context_callback"
-        context_callback = get_callback(chat_id=chat_id, callback_type=callback_type)
-        if context_callback == 0:
-            markup = create_inline_keyboard(chat_id=chat_id, keyboard_type=keyboard_type)
-            table_callback = 1
-            con = sq.connect("user_data.sql")
-            cur = con.cursor()
-            cur.execute("UPDATE callback_manager SET context_callback = '%s'" % (table_callback,))
-            con.commit()
-            con.close()
-
-            bot.send_message(chat_id, "Выберите, к какой таблице вы хотите добавить контекст",
-                             reply_markup=markup)
+        markup = create_inline_keyboard(chat_id=chat_id, keyboard_type=keyboard_type)
+        bot.send_message(chat_id, "Выберите, к какой таблице вы хотите добавить контекст", reply_markup=markup)
 
     elif message.text == "Группы таблиц":
         markup = create_group_keyboard(chat_id)
@@ -512,11 +503,7 @@ def callback_query(call):
     page_type = "table_page"
     page = get_page(chat_id=chat_id, page_type=page_type)
     if call.data == "exit":
-        con = sq.connect("user_data.sql")
-        cur = con.cursor()
-        cur.execute("UPDATE callback_manager SET table_callback = '%s'" % (0,))
-        con.commit()
-        con.close()
+
         bot.delete_message(call.message.chat.id, call.message.message_id)
     elif call.data == "new_table":
         bot.send_message(call.message.chat.id, "Чтобы добавить таблицу, отправьте файл в формате csv, XLSX или json")
@@ -586,10 +573,7 @@ def callback_query(call):
     page = get_page(chat_id=chat_id, page_type=page_type)
     if call.data == "exit":
         con = sq.connect("user_data.sql")
-        cur = con.cursor()
-        cur.execute("UPDATE callback_manager SET context_callback = '%s'" % (0,))
-        con.commit()
-        con.close()
+
         bot.delete_message(call.message.chat.id, call.message.message_id)
 
     elif call.data == "right":
@@ -642,11 +626,6 @@ def callback_query(call):
     page_type = "description_page"
     page = get_page(chat_id=chat_id, page_type=page_type)
     if call.data == "exit":
-        con = sq.connect("user_data.sql")
-        cur = con.cursor()
-        cur.execute("UPDATE callback_manager SET description_callback = '%s'" % (0,))
-        con.commit()
-        con.close()
         bot.delete_message(call.message.chat.id, call.message.message_id)
 
     elif call.data == "right":
