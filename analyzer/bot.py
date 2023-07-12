@@ -41,7 +41,8 @@ def check_for_group(message):
 
     try:
         text = message.text
-        start, group_name = map(str, text.split())
+        start, group_data = map(str, text.split())
+        group, admin_id, group_name = map(str, text.split("|"))
     except Exception as e:
         print(e)
         return False
@@ -443,6 +444,7 @@ def get_context(chat_id=None):
     cur = con.cursor()
     cur.execute("")
 
+
 def get_description(chat_id=None):
     settings = get_settings(chat_id)
     table_name = list(map(str, settings["table_name"].split(",")))
@@ -522,7 +524,7 @@ def on_click(message):
         markup.add(btn1)
         bot.send_message(chat_id, "Отправьте запроc. Пожалуйста, вводите запросы последовательно", reply_markup=markup)
 
-        bot.register_next_step_handler(message, call_to_model, settings)
+        bot.register_next_step_handler(message, call_to_model)
 
     elif message.text == "🖹 Выбрать таблицу":
 
@@ -547,7 +549,7 @@ def on_click(message):
         markup.row(btn1, btn2)
         bot.send_message(chat_id, f"Можете выбрать режим визуализации данных, он  {build_plots}  в данный момент",
                          reply_markup=markup)
-        bot.register_next_step_handler(message, plots_handler, settings)
+        bot.register_next_step_handler(message, plots_handler)
 
     elif message.text == "➕ Добавить описание таблицы":
         keyboard_type = "description"
@@ -587,6 +589,7 @@ def on_click(message):
         con.commit()
 
         group_link = cur.fetchone()
+
         if group_link is not None:
             group_link = group_link[0]
         con.close()
@@ -873,7 +876,7 @@ def choose_table(call, choose_flag=False):
 
 def add_table(message, call=None):
     chat_id = message.chat.id
-    message =message
+    message = message
     group_name = check_group_design(chat_id)
     if message.text == "🚫 exit":
         main(message)
@@ -984,12 +987,12 @@ def plots_handler(message, settings=None):
         bot.send_message(message.chat.id, "Режим визуализации включён", reply_markup=markup)
 
 
-def table_description(call, settings=None):
+def table_description(call):
     table_name = call.data
     message = call.message
     bot.send_message(message.chat.id, """Таблица выбрана. Чтобы добавить описание таблицы, отправьте файл с описанием столбцов в формате txt или качестве сообщения.""")
 
-    bot.register_next_step_handler(message, choose_description, settings, table_name)
+    bot.register_next_step_handler(message, choose_description, table_name)
 
 
 def choose_description(message, settings=None, table_name=None):
@@ -1071,7 +1074,7 @@ def choose_description(message, settings=None, table_name=None):
 
 def create_group(message):
     admin_id = message.chat.id
-    group_name = "group" + message.text
+    group_name = "group|" + str(admin_id) + "|" + message.text
     con = sq.connect("user_data.sql")
     cur = con.cursor()
     cur.execute("SELECT * FROM groups WHERE admin_id == '%s' AND group_name == '%s'" % (admin_id, group_name))
@@ -1229,9 +1232,9 @@ def call_to_model(message):
             main(user_question)
 
 
-#try:
-    #bot.polling()
-#except Exception as e:
-    #print("error is:", e)
-    #time.sleep(2)
-bot.polling()
+try:
+    bot.polling()
+except Exception as e:
+    print("error is:", e)
+    time.sleep(2)
+    bot.polling()
