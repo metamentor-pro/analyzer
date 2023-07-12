@@ -42,8 +42,9 @@ def check_for_group(message):
     try:
         text = message.text
         start, group_data = map(str, text.split())
-        group, admin_id, group_name = map(str, text.split("+"))
+        group, admin_id, group_name = map(str, text.split("_"))
         print(group_name)
+
     except Exception as e:
         print(e)
         return False
@@ -1075,7 +1076,8 @@ def choose_description(message, settings=None, table_name=None):
 
 def create_group(message):
     admin_id = message.chat.id
-    group_name = "group+" + str(admin_id) + "+" + message.text
+    group_name = message.text
+    group_name_for_link = "group_" + str(admin_id) + "_" + message.text
     con = sq.connect("user_data.sql")
     cur = con.cursor()
     cur.execute("SELECT * FROM groups WHERE admin_id == '%s' AND group_name == '%s'" % (admin_id, group_name))
@@ -1083,7 +1085,7 @@ def create_group(message):
     if existing_record is None:
         cur.execute("INSERT INTO groups(admin_id, group_name) VALUES(?,?)", (admin_id, group_name))
         con.commit()
-        group_link = "https://t.me/auto_analyzer_bot?start=" + group_name
+        group_link = "https://t.me/auto_analyzer_bot?start=" + group_name_for_link
         cur.execute("UPDATE groups SET group_link = '%s' WHERE admin_id = '%s'" % (group_link, admin_id))
         con.commit()
         cur.execute("INSERT INTO group_manager(admin_id, group_name) VALUES(?,?)", (admin_id, group_name))
