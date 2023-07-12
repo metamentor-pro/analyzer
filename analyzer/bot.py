@@ -100,6 +100,13 @@ def help_info(message):
 * Используйте кнопку 'Режим отправки запроса' для взаимодействия со мной\n
 * Используйте кнопку 'Режим визуализации' для настройки режима построения графиков \n
 * Используйте кнопку 'Группы таблиц' для создания и настройки групп таблиц""")
+    bot.send_message(message.chat.id, """Пример  запроса: 'Проведи исследовательский анализ данных по предоставленной таблице'""")
+    bot.send_message(message.chat.id, """Для того, чтобы начать общение с ботом: \n
+1) Нажмите кнопку 'Выбрать таблицу', затем добавьте новую таблицу или воспользуйтесь уже добавленной \n
+2) После этого вы можете добавить описание и контекст к вашим данным для лучшей работы модели \n
+3) Нажмите кнопку 'Режим отправки запроса' и напишите свой запрос модели, дождитесь ответа, \n
+после получения ответа можете задать вопрос или выйти из режима в главное меню""")
+    bot.send_message(message.chat.id, "Желаю удачи!")
 
 
 @bot.message_handler(commands=["start", "exit"], content_types=["text", "document"])
@@ -408,7 +415,7 @@ def create_inline_keyboard(chat_id=None, keyboard_type=None, page=1, status_flag
 
     cur.execute(query % (chat_id, offset))
     rows = cur.fetchall()
-    print("rows", rows)
+
     con.commit()
     con.close()
     btn = None
@@ -1168,8 +1175,8 @@ def choose_description(message, table_name=None):
 
 def create_group(message):
     admin_id = message.chat.id
-    group_name = message.text
-    group_name_for_link = "group_" + str(admin_id) + "_" + message.text
+    group_name = message.text.replace(" ", "-")
+    group_name_for_link = "group_" + str(admin_id) + "_" + message.text.replace(" ", "-")
     con = sq.connect("user_data.sql")
     cur = con.cursor()
     cur.execute("SELECT * FROM groups WHERE admin_id == '%s' AND group_name == '%s'" % (admin_id, group_name))
@@ -1240,13 +1247,22 @@ def call_to_model(message):
                 cur = con.cursor()
                 table_description = get_description(chat_id)
                 context_list = get_context(chat_id)
+                cur.execute("SELECT group_flag FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
+                table_name = list(map(str, settings["table_name"].split(",")))
 
-                print(context_list)
+                group_flag = cur.fetchone()[0]
+                con.commit()
+                if group_flag:
+                    cur.execute("SELECT group_name FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
+                    group_name = cur.fetchone()[0]
+                    cur.execute("SELECT admin_id FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
+                    admin_id = cur.fetchone()[0]
+                    cur.execute("SELECT group_conv FROM groups WHERE admin_id == '%s' AND group_name == '%s'" % (admin_id, group_name))
+                    current_summary = cur.fetchone()
+                else:
 
-                cur = con.cursor()
-
-                cur.execute("SELECT conv_sum FROM users WHERE user_id = '%s'" % (chat_id,))
-                current_summary = cur.fetchone()
+                    cur.execute("SELECT conv_sum FROM users WHERE user_id = '%s'" % (chat_id,))
+                    current_summary = cur.fetchone()
 
                 if not current_summary or current_summary[0] is None:
                     current_summary = ""
@@ -1270,9 +1286,12 @@ def call_to_model(message):
                 summary = answer_from_model[1]
                 new_summary = current_summary + summary
 
-                cur.execute("INSERT OR REPLACE INTO users(user_id, conv_sum) VALUES(?, ?)", (chat_id, new_summary))
+                if group_flag:
+                    cur.execute("UPDATE groups SET group_conv = '%s' WHERE admin_id == '%s' AND group_name == '%s'" % (new_summary, admin_id, group_name))
 
-                cur.execute("select * from users")
+                else:
+                    cur.execute("UPDATE users SET conv_sum = '%s' WHERE user_id == '%s'" % (new_summary, chat_id))
+
                 con.commit()
                 con.close()
 
@@ -1301,9 +1320,9 @@ def call_to_model(message):
             main(user_question)
 
 
-#try:
-    #bot.polling()
-#except Exception as e:
-    #print("error is:", e)
-    #time.sleep(2)
-bot.polling()
+try:
+    bot.polling()
+except Exception as e:
+    print("error is:", e)
+    time.sleep(2)
+    bot.polling()
