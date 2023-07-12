@@ -16,7 +16,7 @@ data:
       column_386 – column with data on fluid production, taking into account intra-shift losses (m³/day).
       column_475 – column with planned fluid production from geologists (m³/day).
 build_plots: false
- #bot_api: 6004874058:AAHFjEWq6tBg5mGGGt8pF0h-nE_3JfMOuOU
-bot_api: "6244896218:AAFwtx-NsiIoC24fu5VHahWSB9Du0deMqZg"
+bot_api: 6004874058:AAHFjEWq6tBg5mGGGt8pF0h-nE_3JfMOuOU
+#bot_api: "6244896218:AAFwtx-NsiIoC24fu5VHahWSB9Du0deMqZg"
 bot_name: auto_analyzer
-demo: [false, 10]
+demo: [false, 10, false]
