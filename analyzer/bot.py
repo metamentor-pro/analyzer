@@ -1125,7 +1125,7 @@ def call_to_model(message):
         try:
             if settings["table_name"] is None:
                 bot.send_message(message.from_user.id, "Таблицы не найдены, вы можете выбрать другие")
-                bot.register_next_step_handler(message, main, settings)
+                bot.register_next_step_handler(message, main)
                 markup = types.ReplyKeyboardMarkup()
                 btn1 = types.KeyboardButton("🚫 exit")
                 markup.add(btn1)
@@ -1196,6 +1196,7 @@ def call_to_model(message):
                 send_message = bot.send_message(message.from_user.id, "Здесь будет описан процесс моих рассуждений:")
 
                 build_plots = settings["build_plots"]
+
                 answer_from_model = interactor.run_loop_bot(table_name_path, build_plots, user_question, current_summary,
                                                             table_description, context_list, callback=callback)
                 summary = answer_from_model[1]
