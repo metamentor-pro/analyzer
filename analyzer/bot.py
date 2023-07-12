@@ -668,6 +668,10 @@ def on_click(message):
         keyboard_type = "context"
         markup = create_inline_keyboard(chat_id=chat_id, keyboard_type=keyboard_type)
         bot.send_message(chat_id, "Выберите, к какой таблице вы хотите добавить контекст", reply_markup=markup)
+        if group_name is not None:
+            group_main(message)
+        else:
+            main(message)
 
     elif message.text == "Группы таблиц":
         markup = create_group_keyboard(chat_id)
@@ -692,12 +696,15 @@ def on_click(message):
 
         group_link = cur.fetchone()
 
+        cur.execute("UPDATE groups SET design_flag = 0 WHERE admin_id == '%s' " % (message.chat.id,))
+        con.commit()
+
         if group_link is not None:
             group_link = group_link[0]
         con.close()
         bot.send_message(message.chat.id, "Изменения группы сохранены, ссылка для взаимодействия с группой: ")
         bot.send_message(message.chat.id, f'{group_link}')
-        bot.register_next_step_handler(message, main)
+        main(message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("t|"))
@@ -770,12 +777,10 @@ def callback_query(call):
     callback_type, action = map(str, call.data.split("|"))
     call.data = action
     chat_id = call.message.chat.id
-    group_name = check_group_design(chat_id)
+    print("here")
     page_type = "context_page"
     page = get_page(chat_id=chat_id, page_type=page_type)
     if call.data == "exit":
-        con = sq.connect("user_data.sql")
-
         bot.delete_message(call.message.chat.id, call.message.message_id)
 
     elif call.data == "right":
@@ -836,7 +841,7 @@ def callback_query(call):
                                   text="Вы можете выбрать таблицу или добавить новую",
                                   reply_markup=markup2)
     else:
-       table_description(call)
+        table_description(call)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("g|"))
@@ -905,7 +910,7 @@ def add_context(message, table_name=None):
 
                 con.close()
                 bot.send_message(message.from_user.id, 'Контекст сохранен')
-                bot.register_next_step_handler(message, main)
+
                 main(message)
         elif message.content_type == "document":
             file_id = message.document.file_id
@@ -1062,7 +1067,7 @@ def add_table(message, call=None):
 
 def plots_handler(message, settings=None):
     chat_id = message.chat.id
-
+    settings = get_settings(chat_id)
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn1 = types.KeyboardButton("Вернуться в главное меню")
     markup.add(btn1)
