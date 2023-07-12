@@ -43,7 +43,7 @@ def check_for_group(message):
         text = message.text
         start, group_data = map(str, text.split())
         group, admin_id, group_name = map(str, text.split("_"))
-        print(group_name)
+
 
     except Exception as e:
         print(e)
@@ -57,6 +57,9 @@ def check_for_group(message):
         cur.execute("UPDATE callback_manager SET group_flag = '%s' WHERE user_id =='%s'" % (True, message.chat.id))
         con.commit()
         cur.execute("UPDATE callback_manager SET group_name = '%s' WHERE user_id == '%s'" % (group_name, message.chat.id))
+        con.commit()
+        cur.execute("UPDATE callback_manager SET admin_id = '%s' WHERE user_id == '%s'" % (admin_id, message.chat.id))
+        con.commit()
         con.close()
         if existing_record is not None:
 
@@ -89,7 +92,13 @@ def check_group_design(chat_id=None):
 
 @bot.message_handler(commands=["help"])
 def help_info(message):
-    bot.send_message(message.chat.id, "Я - автономный помощник для проведения различной аналитики")
+    bot.send_message(message.chat.id, "Здравствуйте, автономный помощник для проведения различной аналитики")
+    bot.send_message(message.chat.id, """* Используйте кнопку 'Выбрать Таблицу' для выбора и добавления таблиц \n
+* Используйте кнопку 'Добавить описание' для добавления описания к нужным таблицам \n
+* Используйте кнопку 'Добавить контекст' для добавления контекста к нужным таблицам \n
+* Используйте кнопку 'Режим отправки запроса' для взаимодействия со мной\n
+* Используйте кнопку 'Режим визуализации' для настройки режима построения графиков \n
+* Используйте кнопку 'Группы таблиц' для создания и настройки групп таблиц""")
 
 
 @bot.message_handler(commands=["start", "exit"], content_types=["text", "document"])
@@ -101,7 +110,8 @@ def main(message=None):
         chat_id = message
         print(message)
         print(e)
-    print("message.text", message.text)
+
+
     con = sq.connect("user_data.sql")
     cur = con.cursor()
 
@@ -109,8 +119,8 @@ def main(message=None):
                 (user_id INTEGER PRIMARY KEY,
                 conv_sum TEXT,
                 current_tables VARCHAR,
-                build_plots boolean DEFAULT True,
-                req_count INTEGER DEFAULT 0)""")
+                build_plots boolean DEFAULT True
+                )""")
     con.commit()
 
     cur.execute("""CREATE TABLE IF NOT EXISTS groups
@@ -131,6 +141,8 @@ def main(message=None):
                 description_page INTEGER DEFAULT 1,
                 group_flag boolean DEFAULT False,
                 group_name VARCHAR,
+                admin_id INTEGER,
+                req_count INTEGER DEFAULT 0,
                 FOREIGN KEY(user_id) REFERENCES users (user_id) on DELETE CASCADE)""")
     con.commit()
 
@@ -171,7 +183,7 @@ def main(message=None):
 
     cur.execute("SELECT * FROM tables WHERE user_id = '%s'" % (chat_id,))
     existing_record = cur.fetchone()
-
+    print(cur.fetchall())
     if not existing_record:
         cur.execute("""INSERT INTO tables(user_id) values(?)""", (chat_id,))
 
@@ -212,8 +224,7 @@ def main(message=None):
 # to do: better foreign keys
 
 def group_main(message=None):
-    con = sq.connect("user_data.sql")
-    cur = con.cursor()
+
     chat_id = message.chat.id
     group_name = check_group_design(chat_id)
     con = sq.connect("user_data.sql")
@@ -239,7 +250,6 @@ def group_main(message=None):
                                """)
         con.commit()
 
-
         chat_id = message.chat.id
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         btn1 = types.KeyboardButton("🖹 Выбрать таблицу")
@@ -256,7 +266,20 @@ def group_main(message=None):
 
 def get_settings(chat_id):
     group_name = check_group_design(chat_id)
-    if group_name is not None:
+
+    con = sq.connect("user_data.sql")
+    cur = con.cursor()
+    cur.execute("SELECT group_flag FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
+
+    group_flag = cur.fetchone()[0]
+
+    if group_flag:
+        cur.execute("SELECT group_name FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
+        group_name = cur.fetchone()[0]
+        cur.execute("SELECT admin_id FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
+        chat_id = cur.fetchone()[0]
+
+    if group_name is not None or group_flag:
         con = sq.connect("user_data.sql")
         cur = con.cursor()
         cur.execute("SELECT current_tables FROM groups WHERE admin_id = '%s' and group_name == '%s'" % (chat_id, group_name))
@@ -444,13 +467,42 @@ def get_context(chat_id=None):
     settings = get_settings(chat_id)
     con = sq.connect("user_data.sql")
     cur = con.cursor()
-    cur.execute("")
+    cur.execute("SELECT group_flag FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
+    table_name = list(map(str, settings["table_name"].split(",")))
+
+    group_flag = cur.fetchone()[0]
+    context_list = []
+    if group_flag:
+        cur.execute("SELECT group_name FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
+        group_name = cur.fetchone()[0]
+        cur.execute("SELECT admin_id FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
+        chat_id = cur.fetchone()[0]
+        for table in table_name:
+            cur.execute("SELECT context from group_tables WHERE admin_id == '%s' AND  group_name == '%s'" % (
+            chat_id, group_name))
+            context = cur.fetchone()
+            if not context or context[0] is None:
+                context_line = table + ":"
+            else:
+                context_line = table + ":" + context[0]
+            context_list.append(context_line)
+
+
+    else:
+        for table in table_name:
+            cur.execute("SELECT context FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (chat_id, table))
+            context = cur.fetchone()
+            if not context or context[0] is None:
+                context_line = table + ":"
+            else:
+                context_line = table + ":" + context[0]
+            context_list.append(context_line)
+    return context_list
 
 
 def get_description(chat_id=None):
     settings = get_settings(chat_id)
     table_name = list(map(str, settings["table_name"].split(",")))
-
     table_description_line = ""
     table_name_path = table_name.copy()
     table_description = []
@@ -458,29 +510,63 @@ def get_description(chat_id=None):
     for table in range(len(table_name_path)):
         table_name_path[table] = "data/" + table_name_path[table]
     con = sq.connect("user_data.sql")
+    cur = con.cursor()
+    cur.execute("SELECT group_flag FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
+
+    group_flag = cur.fetchone()[0]
+    if group_flag:
+        cur.execute("SELECT group_name FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
+        group_name = cur.fetchone()[0]
+        cur.execute("SELECT admin_id FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
+        admin_id = cur.fetchone()[0]
+
+        for table in table_name:
+
+            cur = con.cursor()
+            cur.execute("SELECT * FROM group_tables WHERE admin_id = '%s' AND table_name = '%s' AND group_name == '%s'" % (admin_id, table, group_name))
+            existing_record = cur.fetchone()
+
+            if existing_record is not None:
+
+                cur.execute("SELECT table_description FROM group_tables WHERE admin_id = '%s' AND table_name = '%s' AND group_name  == '%s'" % (admin_id, table, group_name))
+                description = cur.fetchone()
+
+                if not description or description[0] is None:
+                    table_description_line = table + ":"
+                else:
+                    table_description_line = table + ":" + description[0]
+                print(table_description_line)
+
+                table_description.append(table_description_line)
+
+                print("table description:", table_description)
+            con.commit()
+            con.close()
 
 
-    for table in table_name:
+    else:
+        for table in table_name:
 
-        cur = con.cursor()
-        cur.execute("SELECT * FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (chat_id, table))
-        existing_record = cur.fetchone()
+            cur = con.cursor()
+            cur.execute("SELECT * FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (chat_id, table))
+            existing_record = cur.fetchone()
 
-        if existing_record is not None:
+            if existing_record is not None:
 
-            cur.execute(
-                "SELECT table_description FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (chat_id, table))
-            description = cur.fetchone()
+                cur.execute(
+                    "SELECT table_description FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (chat_id, table))
+                description = cur.fetchone()
 
-            if not description or description[0] is None:
-                table_description_line = table + ":"
-            else:
-                table_description_line = table + ":" + description[0]
+                if not description or description[0] is None:
+                    table_description_line = table + ":"
+                else:
+                    table_description_line = table + ":" + description[0]
 
-            table_description.append(table_description_line)
+                table_description.append(table_description_line)
 
-            print("table description:", table_description)
-        con.commit()
+                print("table description:", table_description)
+            con.commit()
+    return table_description
 
 
 def create_group_keyboard(chat_id=None, show_groups=False):
@@ -519,8 +605,10 @@ def on_click(message):
     chat_id = message.chat.id
     settings = get_settings(chat_id)
     group_name = check_group_design(chat_id)
+    if message.text == "/help":
+        help_info(message)
 
-    if message.text == "❓ Режим отправки запроса":
+    elif message.text == "❓ Режим отправки запроса":
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         btn1 = types.KeyboardButton("🚫 exit")
         markup.add(btn1)
@@ -797,14 +885,16 @@ def add_context(message, table_name=None):
                 con.commit()
                 con.close()
                 bot.send_message(message.from_user.id, 'Контекст сохранен')
+                group_main(message)
 
             else:
                 cur.execute("""UPDATE tables SET context = '%s' WHERE table_name = '%s' and user_id = '%s' """ % (context, table_name, chat_id))
                 con.commit()
+
                 con.close()
                 bot.send_message(message.from_user.id, 'Контекст сохранен')
                 bot.register_next_step_handler(message, main)
-                group_main(message)
+                main(message)
         elif message.content_type == "document":
             file_id = message.document.file_id
             file_info = bot.get_file(file_id)
@@ -833,7 +923,7 @@ def add_context(message, table_name=None):
                 con.commit()
                 con.close()
                 bot.send_message(chat_id, 'Контекст сохранен')
-                bot.register_next_step_handler(message, main)
+                main(message)
 
     except Exception as e:
         print(e)
@@ -997,8 +1087,9 @@ def table_description(call):
     bot.register_next_step_handler(message, choose_description, table_name)
 
 
-def choose_description(message, settings=None, table_name=None):
+def choose_description(message, table_name=None):
     table_name = table_name
+    print(table_name)
     chat_id = message.from_user.id
     group_name = check_group_design(chat_id)
     if message.content_type == "text":
@@ -1141,43 +1232,16 @@ def call_to_model(message):
                 context_line = ""
                 table_description_line = ""
                 table_name_path = table_name.copy()
-                table_description = []
-                context_list = []
+
                 for table in range(len(table_name_path)):
                     table_name_path[table] = "data/" + table_name_path[table]
                 con = sq.connect("user_data.sql")
-                for table in table_name:
+                cur = con.cursor()
+                table_description = get_description(chat_id)
+                context_list = get_context(chat_id)
 
-                    cur = con.cursor()
-                    cur.execute("SELECT * FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (chat_id, table))
-                    existing_record = cur.fetchone()
+                print(context_list)
 
-                    if existing_record is not None:
-
-                        cur.execute("SELECT table_description FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (chat_id, table))
-                        description = cur.fetchone()
-
-                        if not description or description[0] is None:
-                            table_description_line = table + ":"
-                        else:
-                            table_description_line = table + ":" + description[0]
-
-                        table_description.append(table_description_line)
-
-
-                        print("table description:", table_description)
-                    con.commit()
-
-                    cur.execute("SELECT context FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (chat_id, table))
-                    context = cur.fetchone()
-
-                    if not context or context[0] is None:
-                        context_line = table + ":"
-                    else:
-                        context_line = table + ":" + context[0]
-                    context_list.append(context_line)
-                print(context_line)
-                print(table_description_line)
                 cur = con.cursor()
 
                 cur.execute("SELECT conv_sum FROM users WHERE user_id = '%s'" % (chat_id,))
@@ -1236,9 +1300,9 @@ def call_to_model(message):
             main(user_question)
 
 
-try:
-    bot.polling()
-except Exception as e:
-    print("error is:", e)
-    time.sleep(2)
-    bot.polling()
+#try:
+    #bot.polling()
+#except Exception as e:
+    #print("error is:", e)
+    #time.sleep(2)
+bot.polling()
