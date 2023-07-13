@@ -113,7 +113,7 @@ def help_info(message):
 2) После этого вы можете добавить описание и контекст к вашим данным для лучшей работы модели \n
 3) Нажмите кнопку 'Режим отправки запроса' и напишите свой запрос модели, дождитесь ответа, \n
 после получения ответа можете задать вопрос или выйти из режима в главное меню""")
-    bot.send_message(message.chat.id, "Желаю удачи!")
+    bot.send_message(message.chat.id, "В случае проблем с ботом попробуйте перезапустить его через команду '/start'")
 
 
 @bot.message_handler(commands=["start", "exit"], content_types=["text", "document"])
@@ -442,7 +442,7 @@ def create_inline_keyboard(chat_id=None, keyboard_type=None, page=1, status_flag
             markup.add(btn)
     if keyboard_type == "tables":
         btn1 = types.InlineKeyboardButton(text="Добавить новую таблицу", callback_data=f"t|new_table")
-        btn2 = types.InlineKeyboardButton(text="Очистить набор таблиц", callback_data=f"t|delete_tables")
+        btn2 = types.InlineKeyboardButton(text="Убрать последнюю таблицу из набора", callback_data=f"t|delete_tables")
         markup.row(btn1)
         print("settings", settings)
         if settings["table_name"] is not None and len(settings["table_name"]) > 0:
@@ -503,7 +503,8 @@ def get_context(chat_id=None):
 
     group_flag = cur.fetchone()[0]
     context_list = []
-    if group_flag:
+
+    if group_flag == True:
         cur.execute("SELECT group_name FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
         group_name = cur.fetchone()[0]
         cur.execute("SELECT admin_id FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
@@ -542,7 +543,7 @@ def get_description(chat_id=None):
     cur.execute("SELECT group_flag FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
 
     group_flag = cur.fetchone()[0]
-    if group_flag:
+    if group_flag == True:
 
         cur.execute("SELECT group_name FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
         group_name = cur.fetchone()[0]
@@ -742,25 +743,25 @@ def callback_query(call):
 
         choose_table(call)
     elif call.data == "delete_tables":
-        if group_name is not None:
-            bd_name = "groups"
-            name_id = "admin_id"
-        else:
-            bd_name = "users"
-            name_id = "user_id"
-        query = f"UPDATE {bd_name} SET current_tables = '%s' WHERE {name_id}"
-        new_cur = ""
+        settings = get_settings(chat_id)
+        table_name = list(map(str, settings["table_name"].split(",")))
+        bot.send_message(chat_id, f"Таблица {table_name[-1]} удалена из текущего списка")
+        settings["table_name"] = ''
+        del table_name[-1]
+        for i in table_name:
+            settings["table_name"] += i + ","
+
         con = sq.connect("user_data.sql")
         cur = con.cursor()
-        cur.execute(query % (new_cur, chat_id))
-        con.commit()
+        if group_name is not None:
+            cur.execute("UPDATE groups SET current_tables = '%s' WHERE admin_id == '%s' AND group_name == '%s'" % (settings["table_name"], chat_id, group_name))
+            con.commit()
+        else:
+            cur.execute("UPDATE users SET current_tables = '%s' WHERE user_id == '%s'" % (settings["table_name"], chat_id))
+            con.commit()
+
         con.close()
-        amount = get_pages_amount(chat_id)
-        keyboard_type = "tables"
-        markup2 = create_inline_keyboard(chat_id=call.message.chat.id, keyboard_type=keyboard_type, page=amount)
-        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
-                              text="Вы можете выбрать таблицу или добавить новую",
-                              reply_markup=markup2)
+
     elif call.data == "right":
         amount = get_pages_amount(chat_id)
         if page < amount:
@@ -982,7 +983,7 @@ def choose_table(call, choose_flag=False):
         settings = get_settings(chat_id)
         if settings["table_name"] is not None:
             if text not in settings["table_name"]:
-                settings["table_name"] += "," + text
+                settings["table_name"] += ", " + text
                 bot.send_message(chat_id, "Таблица добавлена")
             else:
                 bot.send_message(chat_id, "Данная таблица уже добавлена в список")
@@ -1272,7 +1273,7 @@ def call_to_model(message):
         settings = get_settings(chat_id)
         user_question = message.text
         try:
-            if settings["table_name"] is None:
+            if settings["table_name"] is None or settings["table_name"] == "":
                 bot.send_message(message.from_user.id, "Таблицы не найдены, вы можете выбрать другие")
                 bot.register_next_step_handler(message, main)
                 markup = types.ReplyKeyboardMarkup()
@@ -1289,7 +1290,7 @@ def call_to_model(message):
                 table_name_path = table_name.copy()
 
                 for table in range(len(table_name_path)):
-                    table_name_path[table] = "data/" + table_name_path[table]
+                    table_name_path[table] = "data/" + table_name_path[table].strip()
 
                 table_description = get_description(chat_id)
                 context_list = get_context(chat_id)
@@ -1368,9 +1369,9 @@ def call_to_model(message):
             main(user_question)
 
 
-#try:
-    #bot.polling()
-#except Exception as e:
-    #print("error is:", e)
-    #time.sleep(2)
-bot.polling()
+try:
+    bot.polling()
+except Exception as e:
+    print("error is:", e)
+    time.sleep(2)
+    bot.polling()
