@@ -962,7 +962,7 @@ def add_context(message, table_name=None):
         print(e)
         bot.send_message(message.chat.id, "Что-то пошло не так, попробуйте другой файл")
         error_message_flag = True
-        choose_table(message, error_message_flag)
+        add_context(message, error_message_flag)
 
 
 def choose_table(call, choose_flag=False):
@@ -1005,6 +1005,7 @@ def choose_table(call, choose_flag=False):
 
 
 def add_table(message, call=None):
+
     chat_id = message.chat.id
     message = message
     group_name = check_group_design(chat_id)
@@ -1049,7 +1050,7 @@ def add_table(message, call=None):
                     group_main(message)
                 else:
                     bot.send_message(chat_id, "Данная таблица уже была добавлена, попробуйте другую")
-                    bot.register_next_step_handler(message, add_table)
+                    bot.register_next_step_handler(message, add_table, call)
 
             else:
 
@@ -1072,16 +1073,16 @@ def add_table(message, call=None):
                     main(message=message)
                 else:
                     bot.send_message(chat_id, "Данная таблица уже была добавлена, попробуйте другую")
-                    bot.register_next_step_handler(message, add_table)
+                    bot.register_next_step_handler(message, add_table, call)
 
         except telebot.apihelper.ApiTelegramException:
-            bot.register_next_step_handler(message, add_table)
+            bot.register_next_step_handler(message, add_table, call)
 
         except Exception as e:
             print(e)
             bot.send_message(chat_id, "Что-то пошло не так, попробуйте другой файл")
 
-            bot.register_next_step_handler(message, add_table)
+            bot.register_next_step_handler(message, add_table, call)
 
 
 def plots_handler(message, settings=None):
