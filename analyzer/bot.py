@@ -45,7 +45,6 @@ def check_for_group(message):
         start, group_data = map(str, text.split())
         group, admin_id, group_name = map(str, text.split("_"))
 
-
     except Exception as e:
         print(e)
         return False
@@ -119,7 +118,6 @@ def main(message=None):
         chat_id = message
         print(message)
         print(e)
-
 
     con = sq.connect("user_data.sql")
     cur = con.cursor()
@@ -407,7 +405,7 @@ def create_inline_keyboard(chat_id=None, keyboard_type=None, page=1, status_flag
         if page == 1:
             offset = 1
         else:
-            offset = ((page-1)*3 +1)
+            offset = ((page-1)*3 + 1)
     markup = types.InlineKeyboardMarkup(row_width=3)
     prefix = keyboard_type[0]+"|"
     settings = get_settings(chat_id)
@@ -446,7 +444,10 @@ def create_inline_keyboard(chat_id=None, keyboard_type=None, page=1, status_flag
 
         right = types.InlineKeyboardButton(text="-->", callback_data=f"t|right")
         left = types.InlineKeyboardButton(text="<--", callback_data=f"t|left")
-        markup.row(left, right)
+        if page > 1:
+            markup.row(left, right)
+        else:
+            markup.row(right)
         btn3 = types.InlineKeyboardButton(text="🚫 exit", callback_data=f"t|exit")
         markup.add(btn3)
 
@@ -454,7 +455,10 @@ def create_inline_keyboard(chat_id=None, keyboard_type=None, page=1, status_flag
 
         right = types.InlineKeyboardButton(text="-->", callback_data=f"c|right")
         left = types.InlineKeyboardButton(text="<--", callback_data=f"c|left")
-        markup.row(left, right)
+        if page > 1:
+            markup.row(left, right)
+        else:
+            markup.row(right)
         page_type = "context_page"
         page = get_page(chat_id=chat_id, page_type=page_type)
         amount = get_pages_amount(chat_id=chat_id)
@@ -465,7 +469,10 @@ def create_inline_keyboard(chat_id=None, keyboard_type=None, page=1, status_flag
     elif keyboard_type == "description":
         right = types.InlineKeyboardButton(text="-->", callback_data=f"d|right")
         left = types.InlineKeyboardButton(text="<--", callback_data=f"d|left")
-        markup.row(left, right)
+        if page > 1:
+            markup.row(left, right)
+        else:
+            markup.row(right)
         page_type = "description_page"
         page = get_page(chat_id=chat_id, page_type=page_type)
         amount = get_pages_amount(chat_id=chat_id)
@@ -499,7 +506,6 @@ def get_context(chat_id=None):
                 context_line = table + ":" + context[0]
             context_list.append(context_line)
 
-
     else:
         for table in table_name:
             cur.execute("SELECT context FROM tables WHERE user_id = '%s' AND table_name = '%s'" % (chat_id, table))
@@ -515,7 +521,6 @@ def get_context(chat_id=None):
 def get_description(chat_id=None):
     settings = get_settings(chat_id)
     table_name = list(map(str, settings["table_name"].split(",")))
-    table_description_line = ""
     table_name_path = table_name.copy()
     table_description = []
 
@@ -554,7 +559,6 @@ def get_description(chat_id=None):
                 print("table description:", table_description)
             con.commit()
             con.close()
-
 
     else:
         for table in table_name:
@@ -1239,7 +1243,6 @@ def call_to_model(message):
         print(req_count, max_requests)
         cur.execute("UPDATE callback_manager SET req_count = '%s' WHERE user_id == '%s'" % (req_count, message.chat.id))
         con.commit()
-
 
     if message.text == "🚫 exit":
         main(message)
