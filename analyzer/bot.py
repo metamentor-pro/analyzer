@@ -1301,7 +1301,7 @@ def call_to_model(message):
 
                 group_flag = cur.fetchone()[0]
                 con.commit()
-                if group_flag:
+                if group_flag == True:
                     cur.execute("SELECT group_name FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
                     group_name = cur.fetchone()[0]
                     cur.execute("SELECT admin_id FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
@@ -1335,7 +1335,7 @@ def call_to_model(message):
                 summary = answer_from_model[1]
                 new_summary = current_summary + summary
 
-                if group_flag:
+                if group_flag == True:
                     cur.execute("UPDATE groups SET group_conv = '%s' WHERE admin_id == '%s' AND group_name == '%s'" % (new_summary, admin_id, group_name))
 
                 else:
