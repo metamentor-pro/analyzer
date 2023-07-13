@@ -279,6 +279,7 @@ def group_main(message=None):
 
 
 def get_settings(chat_id):
+
     group_name = check_group_design(chat_id)
 
     con = sq.connect("user_data.sql")
@@ -286,15 +287,15 @@ def get_settings(chat_id):
     cur.execute("SELECT group_flag FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
 
     group_flag = cur.fetchone()[0]
-    print("group_flag", group_flag)
 
-    if group_flag:
+    if group_flag == True:
         cur.execute("SELECT group_name FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
         group_name = cur.fetchone()[0]
         cur.execute("SELECT admin_id FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
         chat_id = cur.fetchone()[0]
 
-    if group_name is not None or group_flag:
+    if (group_name is not None) or group_flag == True:
+
         con = sq.connect("user_data.sql")
         cur = con.cursor()
         cur.execute("SELECT current_tables FROM groups WHERE admin_id = '%s' and group_name == '%s'" % (chat_id, group_name))
@@ -304,12 +305,15 @@ def get_settings(chat_id):
         con.close()
 
     else:
+
         con = sq.connect("user_data.sql")
         cur = con.cursor()
         cur.execute("SELECT current_tables FROM users WHERE user_id = '%s'" % (chat_id,))
         table_names = cur.fetchone()
         cur.execute("SELECT build_plots FROM users WHERE user_id = '%s'" % (chat_id,))
         build_plots = cur.fetchone()
+        cur.execute("SELECT * FROM users")
+        print("dgdg", cur.fetchall(), chat_id)
         con.close()
 
     if table_names is not None:
@@ -440,7 +444,7 @@ def create_inline_keyboard(chat_id=None, keyboard_type=None, page=1, status_flag
         btn1 = types.InlineKeyboardButton(text="Добавить новую таблицу", callback_data=f"t|new_table")
         btn2 = types.InlineKeyboardButton(text="Очистить набор таблиц", callback_data=f"t|delete_tables")
         markup.row(btn1)
-
+        print("settings", settings)
         if settings["table_name"] is not None and len(settings["table_name"]) > 0:
             if status_flag:
                 bot.send_message(chat_id, f"Сейчас доступны для анализа: {settings['table_name']}")
@@ -565,7 +569,6 @@ def get_description(chat_id=None):
                 table_description.append(table_description_line)
 
             con.commit()
-
 
     else:
         for table in table_name:
@@ -778,9 +781,8 @@ def callback_query(call):
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                   text="Вы можете выбрать таблицу или добавить новую",
                                   reply_markup=markup2)
-
     else:
-        find_table_flag = True
+
         choose_flag = True
         choose_table(call, choose_flag)
 
@@ -994,6 +996,7 @@ def choose_table(call, choose_flag=False):
             cur.execute("UPDATE groups SET current_tables = '%s' WHERE admin_id == '%s' and group_name == '%s'" % (settings["table_name"], chat_id, group_name))
             con.commit()
         else:
+
             cur.execute(
                 "UPDATE users SET current_tables = '%s' WHERE user_id == '%s'" % (settings["table_name"], chat_id))
             con.commit()
@@ -1009,8 +1012,6 @@ def add_table(message, call=None):
 
     else:
         try:
-            settings = get_settings(chat_id)
-
             file_id = message.document.file_id
             file_info = bot.get_file(file_id)
             file_path = file_info.file_path
@@ -1367,9 +1368,9 @@ def call_to_model(message):
             main(user_question)
 
 
-try:
-    bot.polling()
-except Exception as e:
-    print("error is:", e)
-    time.sleep(2)
-    bot.polling()
+#try:
+    #bot.polling()
+#except Exception as e:
+    #print("error is:", e)
+    #time.sleep(2)
+bot.polling()
