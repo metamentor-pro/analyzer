@@ -1356,10 +1356,10 @@ def call_to_model(message):
                 print(summary)
 
                 if group_flag:
-                    cur.execute("UPDATE groups SET group_conv = '?' WHERE admin_id == '?' AND group_name == ''", (new_summary, admin_id, group_name))
+                    cur.execute("UPDATE groups SET group_conv = ? WHERE admin_id == ? AND group_name == ?", (new_summary, admin_id, group_name))
 
                 else:
-                    cur.execute("UPDATE users SET conv_sum = '?' WHERE user_id == '?'", (new_summary, chat_id))
+                    cur.execute("UPDATE users SET conv_sum = ? WHERE user_id == ?", (new_summary, chat_id))
 
                 con.commit()
                 con.close()
