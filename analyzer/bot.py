@@ -51,29 +51,33 @@ def check_for_group(message):
         if text == "/start":
             con = sq.connect("user_data.sql")
             cur = con.cursor()
-            cur.execute("UPDATE callback_manager SET group_flag = '%s' WHERE user_id =='%s'" % (False, message.chat.id))
+            cur.execute("UPDATE callback_manager SET group_flag = '%s' WHERE user_id =='%s'" % (0, message.chat.id))
             con.commit()
         return False
-    print(message.text)
+
     if start == "/start":
         con = sq.connect("user_data.sql")
         cur = con.cursor()
         cur.execute("SELECT * FROM groups where group_name == '%s'" % (group_name,))
         existing_record = cur.fetchone()
         if existing_record is not None:
-            cur.execute("UPDATE callback_manager SET group_flag = '%s' WHERE user_id =='%s'" % (True, message.chat.id))
+
+            cur.execute("UPDATE callback_manager SET group_flag = '%s' WHERE user_id =='%s'" % (1, message.chat.id))
             con.commit()
             cur.execute("UPDATE callback_manager SET group_name = '%s' WHERE user_id == '%s'" % (group_name, message.chat.id))
             con.commit()
             cur.execute("UPDATE callback_manager SET admin_id = '%s' WHERE user_id == '%s'" % (admin_id, message.chat.id))
             con.commit()
+
             con.close()
+
             return True
         else:
-            cur.execute("UPDATE callback_manager SET group_flag = '%s' WHERE user_id =='%s'" % (False, message.chat.id))
+            cur.execute("UPDATE callback_manager SET group_flag = '%s' WHERE user_id =='%s'" % (0, message.chat.id))
             con.commit()
             return False
     else:
+        print("THERE")
         con = sq.connect("user_data.sql")
         cur = con.cursor()
         cur.execute("SELECT group_flag FROM callback_manager WHERE user_id == '%s' " % (message.chat_id,))
@@ -89,7 +93,7 @@ def check_group_design(chat_id=None):
     admin_id = chat_id
     con = sq.connect("user_data.sql")
     cur = con.cursor()
-    cur.execute("SELECT  group_name FROM groups where admin_id = '%s' AND design_flag == 1 " % (admin_id,))
+    cur.execute("SELECT group_name FROM groups where admin_id = '%s' AND design_flag == 1 " % (admin_id,))
     group_name = cur.fetchone()
     if group_name is not None:
         return group_name[0]
@@ -133,19 +137,19 @@ def main(message=None):
                 (user_id INTEGER PRIMARY KEY,
                 conv_sum TEXT,
                 current_tables VARCHAR,
-                build_plots boolean DEFAULT True
+                build_plots boolean DEFAULT 1
                 )""")
     con.commit()
 
     cur.execute("""CREATE TABLE IF NOT EXISTS groups
                 (group_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 admin_id INTEGER,
-                group_plot boolean DEFAULT True,
+                group_plot boolean DEFAULT 1,
                 group_name VARCHAR,
                 group_link VARCHAR,
                 group_conv TEXT,
                 current_tables VARCHAR,
-                design_flag boolean DEFAULT False)""")
+                design_flag boolean DEFAULT 0)""")
     con.commit()
 
     cur.execute("""CREATE TABLE IF NOT EXISTS callback_manager
@@ -153,7 +157,7 @@ def main(message=None):
                 table_page INTEGER DEFAULT 1,
                 context_page INTEGER DEFAULT 1,
                 description_page INTEGER DEFAULT 1,
-                group_flag boolean DEFAULT False,
+                group_flag boolean DEFAULT 0,
                 group_name VARCHAR,
                 admin_id INTEGER,
                 req_count INTEGER DEFAULT 0,
@@ -195,15 +199,6 @@ def main(message=None):
                 FOREIGN KEY(user_id) REFERENCES users (user_id) on DELETE CASCADE)""")
     con.commit()
 
-    cur.execute("SELECT * FROM tables WHERE user_id = '%s'" % (chat_id,))
-    existing_record = cur.fetchone()
-    print(cur.fetchall())
-    if not existing_record:
-        cur.execute("""INSERT INTO tables(user_id) values(?)""", (chat_id,))
-
-    cur.execute("SELECT * FROM tables")
-
-    con.commit()
     con.close()
     # to do: fix this
     if message.text is not None:
@@ -287,14 +282,27 @@ def get_settings(chat_id):
     cur.execute("SELECT group_flag FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
 
     group_flag = cur.fetchone()[0]
+    cur.execute("SELECT * FROM callback_manager WHERE user_id = '%s'" % (chat_id,))
+    existing_record = cur.fetchone()
+    print("callback", existing_record)
 
-    if group_flag == True:
+    if group_flag:
+
         cur.execute("SELECT group_name FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
         group_name = cur.fetchone()[0]
         cur.execute("SELECT admin_id FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
         chat_id = cur.fetchone()[0]
+        print("RIGHT HERE")
+        con = sq.connect("user_data.sql")
+        cur = con.cursor()
+        cur.execute(
+            "SELECT current_tables FROM groups WHERE admin_id = '%s' and group_name == '%s'" % (chat_id, group_name))
+        table_names = cur.fetchone()
+        cur.execute("SELECT group_plot FROM groups WHERE admin_id = '%s' and group_name = '%s'" % (chat_id, group_name))
+        build_plots = cur.fetchone()
+        con.close()
 
-    if (group_name is not None) or group_flag == True:
+    elif group_name is not None:
 
         con = sq.connect("user_data.sql")
         cur = con.cursor()
@@ -304,8 +312,8 @@ def get_settings(chat_id):
         build_plots = cur.fetchone()
         con.close()
 
-    else:
 
+    else:
         con = sq.connect("user_data.sql")
         cur = con.cursor()
         cur.execute("SELECT current_tables FROM users WHERE user_id = '%s'" % (chat_id,))
@@ -313,7 +321,7 @@ def get_settings(chat_id):
         cur.execute("SELECT build_plots FROM users WHERE user_id = '%s'" % (chat_id,))
         build_plots = cur.fetchone()
         cur.execute("SELECT * FROM users")
-        print("dgdg", cur.fetchall(), chat_id)
+
         con.close()
 
     if table_names is not None:
@@ -324,7 +332,7 @@ def get_settings(chat_id):
         settings = {"table_name": None,
                     "build_plots": True,
                     }
-
+    print(settings)
     return settings
 
 
@@ -415,7 +423,7 @@ def create_inline_keyboard(chat_id=None, keyboard_type=None, page=1, status_flag
     else:
         query = "select table_name from tables where user_id == '%s' LIMIT 3 OFFSET '%s'"
         if page == 1:
-            offset = 1
+            offset = 0
         else:
             offset = ((page-1)*3 + 1)
     markup = types.InlineKeyboardMarkup(row_width=3)
@@ -433,7 +441,7 @@ def create_inline_keyboard(chat_id=None, keyboard_type=None, page=1, status_flag
     con.commit()
     con.close()
     btn = None
-    print("rows", rows)
+
     for row in rows:
 
         if row[0] is not None:
@@ -444,7 +452,7 @@ def create_inline_keyboard(chat_id=None, keyboard_type=None, page=1, status_flag
         btn1 = types.InlineKeyboardButton(text="Добавить новую таблицу", callback_data=f"t|new_table")
         btn2 = types.InlineKeyboardButton(text="Убрать последнюю таблицу из набора", callback_data=f"t|delete_tables")
         markup.row(btn1)
-        print("settings", settings)
+
         if settings["table_name"] is not None and len(settings["table_name"]) > 0:
             if status_flag:
                 bot.send_message(chat_id, f"Сейчас доступны для анализа: {settings['table_name']}")
@@ -746,10 +754,16 @@ def callback_query(call):
         settings = get_settings(chat_id)
         table_name = list(map(str, settings["table_name"].split(",")))
         bot.send_message(chat_id, f"Таблица {table_name[-1]} удалена из текущего списка")
-        settings["table_name"] = ''
-        del table_name[-1]
-        for i in table_name:
-            settings["table_name"] += i + ","
+
+        table_name = table_name[:-1]
+        if len(settings["table_name"]) == 0:
+            settings["table_name"] = ''
+
+        else:
+            settings["table_name"] = ''
+            for i in range(len(table_name)-1):
+                settings["table_name"] += table_name[i] + ","
+            settings["table_name"] += table_name[-1]
 
         con = sq.connect("user_data.sql")
         cur = con.cursor()
@@ -786,6 +800,7 @@ def callback_query(call):
 
         choose_flag = True
         choose_table(call, choose_flag)
+    bot.answer_callback_query(call.id)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("c|"))
@@ -822,7 +837,7 @@ def callback_query(call):
     else:
 
         choose_table_context(call)
-
+    bot.answer_callback_query(call.id)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("d|"))
 def callback_query(call):
@@ -858,7 +873,7 @@ def callback_query(call):
                                   reply_markup=markup2)
     else:
         table_description(call)
-
+    bot.answer_callback_query(call.id)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("g|"))
 def callback_query(call):
@@ -891,7 +906,7 @@ def callback_query(call):
                               reply_markup=markup)
     else:
         choose_group(group_name=call.data, admin_id=call.message.chat.id, message=call.message)
-
+    bot.answer_callback_query(call.id)
 
 def choose_table_context(call):
     chat_id = call.message.chat.id
@@ -1259,9 +1274,14 @@ def call_to_model(message):
 
         cur.execute("UPDATE callback_manager SET req_count = '%s' WHERE user_id == '%s'" % (req_count, message.chat.id))
         con.commit()
-        con.commit()
+
 
     if message.text == "🚫 exit":
+        con = sq.connect("user_data.sql")
+        cur = con.cursor()
+        cur.execute("UPDATE callback_manager SET group_flag = 0 WHERE user_id == '%s'" % (message.chat.id,))
+        con.commit()
+        con.close()
         main(message)
     else:
         chat_id = message.chat.id
@@ -1286,19 +1306,17 @@ def call_to_model(message):
             else:
                 table_name = list(map(str, settings["table_name"].split(",")))
                 print("available tables for model:", table_name)
-                context_line = ""
-                table_description_line = ""
+
                 table_name_path = table_name.copy()
 
                 for table in range(len(table_name_path)):
                     table_name_path[table] = "data/" + table_name_path[table].strip()
 
-                table_description = get_description(chat_id)
+                table_description: list[str] = get_description(chat_id)
                 context_list = get_context(chat_id)
                 con = sq.connect("user_data.sql")
                 cur = con.cursor()
                 cur.execute("SELECT group_flag FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
-                table_name = list(map(str, settings["table_name"].split(",")))
 
                 group_flag = cur.fetchone()[0]
                 con.commit()
@@ -1335,8 +1353,9 @@ def call_to_model(message):
                                                             table_description, context_list, callback=callback)
                 summary = answer_from_model[1]
                 new_summary = current_summary + summary
+                print(summary)
 
-                if group_flag == True:
+                if group_flag:
                     cur.execute("UPDATE groups SET group_conv = '%s' WHERE admin_id == '%s' AND group_name == '%s'" % (new_summary, admin_id, group_name))
 
                 else:
