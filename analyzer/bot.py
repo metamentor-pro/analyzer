@@ -729,7 +729,7 @@ def on_click(message):
         con.close()
         bot.send_message(message.chat.id, "Изменения группы сохранены, ссылка для взаимодействия с группой: ")
         bot.send_message(message.chat.id, f'{group_link}')
-        bot.register_next_step_handler(message, main)
+        main(message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("t|"))
@@ -800,6 +800,7 @@ def callback_query(call):
 
         choose_flag = True
         choose_table(call, choose_flag)
+    bot.answer_callback_query(call.id)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("c|"))
@@ -836,7 +837,7 @@ def callback_query(call):
     else:
 
         choose_table_context(call)
-
+    bot.answer_callback_query(call.id)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("d|"))
 def callback_query(call):
@@ -872,7 +873,7 @@ def callback_query(call):
                                   reply_markup=markup2)
     else:
         table_description(call)
-
+    bot.answer_callback_query(call.id)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("g|"))
 def callback_query(call):
@@ -905,7 +906,7 @@ def callback_query(call):
                               reply_markup=markup)
     else:
         choose_group(group_name=call.data, admin_id=call.message.chat.id, message=call.message)
-
+    bot.answer_callback_query(call.id)
 
 def choose_table_context(call):
     chat_id = call.message.chat.id
