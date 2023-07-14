@@ -3,6 +3,7 @@ import telebot
 import sqlite3 as sq
 import interactor
 import time
+import traceback
 import requests
 
 
@@ -46,7 +47,6 @@ def check_for_group(message):
         group, admin_id, group_name = map(str, text.split("_"))
 
     except Exception as e:
-        print(e)
         text = message.text
         if text == "/start":
             con = sq.connect("user_data.sql")
@@ -1370,9 +1370,12 @@ def call_to_model(message):
             main(user_question)
 
 
-try:
-    bot.polling()
-except Exception as e:
-    print("error is:", e)
-    time.sleep(2)
-    bot.polling()
+while True:
+    try:
+        bot.polling()
+    except KeyboardInterrupt:
+        break
+    except Exception as e:
+        print(traceback.format_exc())
+        print("error is:", e)
+        time.sleep(2)
