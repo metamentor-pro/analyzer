@@ -51,7 +51,7 @@ def check_for_group(message):
         if text == "/start":
             con = sq.connect("user_data.sql")
             cur = con.cursor()
-            cur.execute("UPDATE callback_manager SET group_flag = '%s' WHERE user_id =='%s'" % (False, message.chat.id))
+            cur.execute("UPDATE callback_manager SET group_flag = '%s' WHERE user_id =='%s'" % (0, message.chat.id))
             con.commit()
         return False
 
@@ -62,7 +62,7 @@ def check_for_group(message):
         existing_record = cur.fetchone()
         if existing_record is not None:
 
-            cur.execute("UPDATE callback_manager SET group_flag = '%s' WHERE user_id =='%s'" % (True, message.chat.id))
+            cur.execute("UPDATE callback_manager SET group_flag = '%s' WHERE user_id =='%s'" % (1, message.chat.id))
             con.commit()
             cur.execute("UPDATE callback_manager SET group_name = '%s' WHERE user_id == '%s'" % (group_name, message.chat.id))
             con.commit()
@@ -73,7 +73,7 @@ def check_for_group(message):
 
             return True
         else:
-            cur.execute("UPDATE callback_manager SET group_flag = '%s' WHERE user_id =='%s'" % (False, message.chat.id))
+            cur.execute("UPDATE callback_manager SET group_flag = '%s' WHERE user_id =='%s'" % (0, message.chat.id))
             con.commit()
             return False
     else:
@@ -137,19 +137,19 @@ def main(message=None):
                 (user_id INTEGER PRIMARY KEY,
                 conv_sum TEXT,
                 current_tables VARCHAR,
-                build_plots boolean DEFAULT True
+                build_plots boolean DEFAULT 1
                 )""")
     con.commit()
 
     cur.execute("""CREATE TABLE IF NOT EXISTS groups
                 (group_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 admin_id INTEGER,
-                group_plot boolean DEFAULT True,
+                group_plot boolean DEFAULT 1,
                 group_name VARCHAR,
                 group_link VARCHAR,
                 group_conv TEXT,
                 current_tables VARCHAR,
-                design_flag boolean DEFAULT False)""")
+                design_flag boolean DEFAULT 0)""")
     con.commit()
 
     cur.execute("""CREATE TABLE IF NOT EXISTS callback_manager
@@ -157,7 +157,7 @@ def main(message=None):
                 table_page INTEGER DEFAULT 1,
                 context_page INTEGER DEFAULT 1,
                 description_page INTEGER DEFAULT 1,
-                group_flag boolean DEFAULT False,
+                group_flag boolean DEFAULT 0,
                 group_name VARCHAR,
                 admin_id INTEGER,
                 req_count INTEGER DEFAULT 0,
@@ -285,7 +285,7 @@ def get_settings(chat_id):
     cur.execute("SELECT * FROM callback_manager WHERE user_id = '%s'" % (chat_id,))
     existing_record = cur.fetchone()
     print("callback", existing_record)
-    print(group_flag)
+
     if group_flag:
 
         cur.execute("SELECT group_name FROM callback_manager WHERE user_id == '%s'" % (chat_id,))
@@ -729,7 +729,7 @@ def on_click(message):
         con.close()
         bot.send_message(message.chat.id, "Изменения группы сохранены, ссылка для взаимодействия с группой: ")
         bot.send_message(message.chat.id, f'{group_link}')
-        main(message)
+        bot.register_next_step_handler(message, main)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("t|"))
@@ -1273,9 +1273,14 @@ def call_to_model(message):
 
         cur.execute("UPDATE callback_manager SET req_count = '%s' WHERE user_id == '%s'" % (req_count, message.chat.id))
         con.commit()
-        con.commit()
+
 
     if message.text == "🚫 exit":
+        con = sq.connect("user_data.sql")
+        cur = con.cursor()
+        cur.execute("UPDATE callback_manager SET group_flag = 0 WHERE user_id == '%s'" % (message.chat.id,))
+        con.commit()
+        con.close()
         main(message)
     else:
         chat_id = message.chat.id
@@ -1349,7 +1354,7 @@ def call_to_model(message):
                 new_summary = current_summary + summary
                 print(summary)
 
-                if group_flag == True:
+                if group_flag:
                     cur.execute("UPDATE groups SET group_conv = '%s' WHERE admin_id == '%s' AND group_name == '%s'" % (new_summary, admin_id, group_name))
 
                 else:
