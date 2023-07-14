@@ -46,30 +46,31 @@ def unmerge_cells(file_path, save_path):
 
     range = get_data_range(sheet)
 
-    for row in sheet[range[0]]:
-        for cell in row:
-            cell.fill = PatternFill(start_color=None, end_color=None, fill_type=None)
+    if range is not None:
+        for row in sheet[range[0]]:
+            for cell in row:
+                cell.fill = PatternFill(start_color=None, end_color=None, fill_type=None)
 
-    check_range = f'{range[3]}{range[1]}:{range[4]}{range[1]}'
-    is_merged = False
-    for merged_range in sheet.merged_cells.ranges:
-        if merged_range.coord == check_range:
-            is_merged = True
-            break
-    if is_merged:
-        name = sheet.cell(row=range[1], column=range[2]).value
+        check_range = f'{range[3]}{range[1]}:{range[4]}{range[1]}'
+        is_merged = False
+        for merged_range in sheet.merged_cells.ranges:
+            if merged_range.coord == check_range:
+                is_merged = True
+                break
+        if is_merged:
+            name = sheet.cell(row=range[1], column=range[2]).value
 
-    mcr_coord_list = [mcr.coord for mcr in sheet.merged_cells.ranges]
-    for mcr in mcr_coord_list:
-        min_col, min_row, max_col, max_row = range_boundaries(mcr)
-        top_left_cell_value = sheet.cell(row=min_row, column=min_col).value
-        sheet.unmerge_cells(mcr)
-        if min_col == max_col:
-            for row in sheet.iter_rows(min_col=min_col, min_row=min_row, max_col=max_col, max_row=max_row):
-                for cell in row:
-                    cell.value = top_left_cell_value
-    if is_merged:
-        sheet.delete_rows(range[1])
+        mcr_coord_list = [mcr.coord for mcr in sheet.merged_cells.ranges]
+        for mcr in mcr_coord_list:
+            min_col, min_row, max_col, max_row = range_boundaries(mcr)
+            top_left_cell_value = sheet.cell(row=min_row, column=min_col).value
+            sheet.unmerge_cells(mcr)
+            if min_col == max_col:
+                for row in sheet.iter_rows(min_col=min_col, min_row=min_row, max_col=max_col, max_row=max_row):
+                    for cell in row:
+                        cell.value = top_left_cell_value
+        if is_merged:
+            sheet.delete_rows(range[1])
     wb.save(save_path)
     return name
 
