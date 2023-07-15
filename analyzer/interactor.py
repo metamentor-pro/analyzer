@@ -61,14 +61,14 @@ def preparation(path_list: List[str], build_plots: Union[bool, None], current_su
         build_plots = cfg["build_plots"]
 
     prepared_path_list = list()
-    print(path_list)
+
     for path in path_list:
         file_extension = pathlib.Path(path).suffix.lower()
         if file_extension == ".xlsx":
             prepared_path_list.extend(unmerge_sheets(path))
         else:
             prepared_path_list.append(path)
-    print(prepared_path_list)
+
     df_list = [read_df(path) for path in prepared_path_list]
     df_head = ""
     for i, item in enumerate(df_list):
