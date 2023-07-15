@@ -1,5 +1,6 @@
 import sqlite3 as sq
 
+
 def check_for_group(message):
 
     try:
@@ -60,7 +61,6 @@ def check_group_design(chat_id=None):
         return group_name[0]
     else:
         return None
-
 
 
 def get_settings(chat_id):
@@ -176,7 +176,6 @@ def get_description(chat_id=None):
 
     group_flag = cur.fetchone()[0]
     if group_flag == True:
-
         cur.execute("SELECT group_name FROM callback_manager WHERE user_id == ?", (chat_id,))
         group_name = cur.fetchone()[0]
         cur.execute("SELECT admin_id FROM callback_manager WHERE user_id == ?", (chat_id,))

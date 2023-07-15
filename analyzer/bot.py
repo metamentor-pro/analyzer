@@ -170,6 +170,7 @@ def main(message=None):
 
     bot.register_next_step_handler(message, on_click)
 
+
 def create_inline_keyboard(chat_id=None, keyboard_type=None, page=1, status_flag=True):
     group_name = check_group_design(chat_id)
 
@@ -178,13 +179,13 @@ def create_inline_keyboard(chat_id=None, keyboard_type=None, page=1, status_flag
         if page == 1:
             offset = 0
         else:
-            offset = ((page - 1) * 3 )
+            offset = ((page - 1) * 3)
     else:
         query = "select table_name from tables where user_id == ? LIMIT 3 OFFSET ?"
         if page == 1:
             offset = 0
         else:
-            offset = ((page-1)*3 )
+            offset = ((page-1)*3)
     markup = types.InlineKeyboardMarkup(row_width=3)
     prefix = keyboard_type[0]+"|"
     settings = get_settings(chat_id)
@@ -221,46 +222,32 @@ def create_inline_keyboard(chat_id=None, keyboard_type=None, page=1, status_flag
         amount = get_pages_amount(chat_id=chat_id)
         markup.add(types.InlineKeyboardButton(text=f'{page}/{amount}', callback_data=f' '))
 
-        right = types.InlineKeyboardButton(text="-->", callback_data=f"t|right")
-        left = types.InlineKeyboardButton(text="<--", callback_data=f"t|left")
-        if page > 1:
-            markup.row(left, right)
-        else:
-            markup.row(right)
-        btn3 = types.InlineKeyboardButton(text="🚫 exit", callback_data=f"t|exit")
-        markup.add(btn3)
-
     elif keyboard_type == "context":
 
-        right = types.InlineKeyboardButton(text="-->", callback_data=f"c|right")
-        left = types.InlineKeyboardButton(text="<--", callback_data=f"c|left")
-        if page > 1:
-            markup.row(left, right)
-        else:
-            markup.row(right)
         page_type = "context_page"
         page = get_page(chat_id=chat_id, page_type=page_type)
         amount = get_pages_amount(chat_id=chat_id)
         markup.add(types.InlineKeyboardButton(text=f'{page}/{amount}', callback_data=f' '))
-        btn3 = types.InlineKeyboardButton(text="🚫 exit", callback_data=f"c|exit")
-        markup.add(btn3)
 
     elif keyboard_type == "description":
-        right = types.InlineKeyboardButton(text="-->", callback_data=f"d|right")
-        left = types.InlineKeyboardButton(text="<--", callback_data=f"d|left")
-        if page > 1:
-            markup.row(left, right)
-        else:
-            markup.row(right)
         page_type = "description_page"
         page = get_page(chat_id=chat_id, page_type=page_type)
         amount = get_pages_amount(chat_id=chat_id)
         markup.add(types.InlineKeyboardButton(text=f'{page}/{amount}', callback_data=f' '))
-        btn3 = types.InlineKeyboardButton(text="🚫 exit", callback_data=f"d|exit")
-        markup.add(btn3)
+
+    right = types.InlineKeyboardButton(text="-->", callback_data=f"{prefix}right")
+    left = types.InlineKeyboardButton(text="<--", callback_data=f"{prefix}left")
+    if page > 1:
+        markup.row(left, right)
+    else:
+        markup.row(right)
+
+    btn3 = types.InlineKeyboardButton(text="🚫 exit", callback_data=f"{prefix}exit")
+    markup.add(btn3)
     return markup
 
 # to do: better foreign keys
+
 
 def group_main(message=None):
 
@@ -300,7 +287,6 @@ def group_main(message=None):
         markup.row(btn5, btn4, btn6)
         bot.send_message(chat_id, "Вы можете  выбрать одну из опций", reply_markup=markup)
         bot.register_next_step_handler(message, on_click)
-
 
 
 def create_group_keyboard(chat_id=None, show_groups=False):
@@ -536,6 +522,7 @@ def callback_query(call):
         choose_table_context(call)
     bot.answer_callback_query(call.id)
 
+
 @bot.callback_query_handler(func=lambda call: call.data.startswith("d|"))
 def callback_query(call):
 
@@ -572,6 +559,7 @@ def callback_query(call):
         table_description(call)
     bot.answer_callback_query(call.id)
 
+
 @bot.callback_query_handler(func=lambda call: call.data.startswith("g|"))
 def callback_query(call):
     callback_type, action = map(str, call.data.split("|"))
@@ -604,6 +592,7 @@ def callback_query(call):
     else:
         choose_group(group_name=call.data, admin_id=call.message.chat.id, message=call.message)
     bot.answer_callback_query(call.id)
+
 
 def choose_table_context(call):
     chat_id = call.message.chat.id
@@ -1088,12 +1077,12 @@ def call_to_model(message):
             main(user_question)
 
 
-while True:
-    try:
-        bot.polling()
-    except KeyboardInterrupt:
-        break
-    except Exception as e:
-        print(traceback.format_exc())
-        print("error is:", e)
-        time.sleep(2)
+#while True:
+    #try:
+bot.polling()
+    #except KeyboardInterrupt:
+        #break
+    #except Exception as e:
+        #print(traceback.format_exc())
+        #print("error is:", e)
+        #time.sleep(2)
