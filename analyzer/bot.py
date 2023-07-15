@@ -1077,12 +1077,12 @@ def call_to_model(message):
             main(user_question)
 
 
-#while True:
-    #try:
-bot.polling()
-    #except KeyboardInterrupt:
-        #break
-    #except Exception as e:
-        #print(traceback.format_exc())
-        #print("error is:", e)
-        #time.sleep(2)
+while True:
+    try:
+        bot.polling()
+    except KeyboardInterrupt:
+        break
+    except Exception as e:
+        print(traceback.format_exc())
+        print("error is:", e)
+        time.sleep(2)
