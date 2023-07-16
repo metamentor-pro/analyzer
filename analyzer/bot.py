@@ -40,6 +40,60 @@ class Bot(telebot.TeleBot):
 
 bot = Bot()
 
+connection = sq.connect("user_data.sql")
+cursor = connection.cursor()
+
+cursor.execute("""CREATE TABLE IF NOT EXISTS users
+              (user_id INTEGER PRIMARY KEY,
+              conv_sum TEXT,
+              current_tables VARCHAR,
+              build_plots boolean DEFAULT 1
+              )""")
+connection.commit()
+
+cursor.execute("""CREATE TABLE IF NOT EXISTS groups
+              (group_id INTEGER PRIMARY KEY AUTOINCREMENT,
+              admin_id INTEGER,
+              group_plot boolean DEFAULT 1,
+              group_name VARCHAR,
+              group_link VARCHAR,
+              group_conv TEXT,
+              current_tables VARCHAR,
+              design_flag boolean DEFAULT 0)""")
+connection.commit()
+
+cursor.execute("""CREATE TABLE IF NOT EXISTS callback_manager
+              (user_id INTEGER PRIMARY KEY,
+              table_page INTEGER DEFAULT 1,
+              context_page INTEGER DEFAULT 1,
+              description_page INTEGER DEFAULT 1,
+              group_flag boolean DEFAULT 0,
+              group_name VARCHAR,
+              admin_id INTEGER,
+              req_count INTEGER DEFAULT 0,
+              FOREIGN KEY(user_id) REFERENCES users (user_id) on DELETE CASCADE)""")
+connection.commit()
+
+cursor.execute("""CREATE TABLE IF NOT EXISTS group_manager
+                                  (admin_id INTEGER,
+                                  group_name,
+                                  table_page INTEGER DEFAULT 1,
+                                  context_page INTEGER DEFAULT 1,
+                                  description_page INTEGER DEFAULT 1)
+                                  """)
+connection.commit()
+
+cursor.execute(""" CREATE TABLE IF NOT EXISTS tables 
+                (table_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER, 
+                table_name VARCHAR,
+                table_description TEXT,
+                context TEXT,
+                FOREIGN KEY(user_id) REFERENCES users (user_id) on DELETE CASCADE)""")
+connection.commit()
+
+connection.close()
+
 
 @bot.message_handler(commands=["help"])
 def help_info(message):
@@ -72,38 +126,6 @@ def main(message=None):
 
     con = sq.connect("user_data.sql")
     cur = con.cursor()
-
-    cur.execute("""CREATE TABLE IF NOT EXISTS users
-                (user_id INTEGER PRIMARY KEY,
-                conv_sum TEXT,
-                current_tables VARCHAR,
-                build_plots boolean DEFAULT 1
-                )""")
-    con.commit()
-
-    cur.execute("""CREATE TABLE IF NOT EXISTS groups
-                (group_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                admin_id INTEGER,
-                group_plot boolean DEFAULT 1,
-                group_name VARCHAR,
-                group_link VARCHAR,
-                group_conv TEXT,
-                current_tables VARCHAR,
-                design_flag boolean DEFAULT 0)""")
-    con.commit()
-
-    cur.execute("""CREATE TABLE IF NOT EXISTS callback_manager
-                (user_id INTEGER PRIMARY KEY,
-                table_page INTEGER DEFAULT 1,
-                context_page INTEGER DEFAULT 1,
-                description_page INTEGER DEFAULT 1,
-                group_flag boolean DEFAULT 0,
-                group_name VARCHAR,
-                admin_id INTEGER,
-                req_count INTEGER DEFAULT 0,
-                FOREIGN KEY(user_id) REFERENCES users (user_id) on DELETE CASCADE)""")
-    con.commit()
-
     cur.execute("SELECT * FROM callback_manager WHERE user_id = ?", (chat_id,))
     existing_record = cur.fetchone()
 
@@ -121,26 +143,8 @@ def main(message=None):
     cur.execute("SELECT * FROM users")
 
     con.commit()
-
-    cur.execute("""CREATE TABLE IF NOT EXISTS group_manager
-                                  (admin_id INTEGER,
-                                  group_name,
-                                  table_page INTEGER DEFAULT 1,
-                                  context_page INTEGER DEFAULT 1,
-                                  description_page INTEGER DEFAULT 1)
-                                  """)
-    con.commit()
-
-    cur.execute(""" CREATE TABLE IF NOT EXISTS tables 
-                (table_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER, 
-                table_name VARCHAR,
-                table_description TEXT,
-                context TEXT,
-                FOREIGN KEY(user_id) REFERENCES users (user_id) on DELETE CASCADE)""")
-    con.commit()
-
     con.close()
+
     # to do: fix this
     if message.text is not None:
         if "/start" in message.text:
@@ -259,8 +263,7 @@ def group_main(message=None):
     print(cur.fetchall())
 
     if message.text == "Нет":
-        con = sq.connect("user_data.sql")
-        cur = con.cursor()
+
         cur.execute("UPDATE groups SET design_flag = False WHERE admin_id == ? AND group_name == ?", (chat_id, group_name))
         con.commit()
 
@@ -286,19 +289,19 @@ def group_main(message=None):
         markup.row(btn1, btn2, btn3)
         markup.row(btn5, btn4, btn6)
         bot.send_message(chat_id, "Вы можете  выбрать одну из опций", reply_markup=markup)
+        con.close()
         bot.register_next_step_handler(message, on_click)
 
 
 def create_group_keyboard(chat_id=None, show_groups=False):
     markup = types.InlineKeyboardMarkup()
-
+    con = sq.connect("user_data.sql")
+    cur = con.cursor()
     if show_groups:
-        con = sq.connect("user_data.sql")
-        cur = con.cursor()
         cur.execute("select group_name from groups where admin_id == ? ", (chat_id,))
         rows = cur.fetchall()
         con.commit()
-        con.close()
+
 
         for row in rows:
 
@@ -318,6 +321,7 @@ def create_group_keyboard(chat_id=None, show_groups=False):
         markup.add(btn1)
         markup.add(btn2)
         markup.add(btn3)
+    con.close()
     return markup
 
 
@@ -572,7 +576,7 @@ def callback_query(call):
         cur = con.cursor()
         cur.execute("UPDATE groups SET design_flag = True WHERE admin_id == ? AND group_name == ?", (chat_id, group_name))
         con.commit()
-        cur.close()
+        con.close()
         bot.delete_message(call.message.chat.id, call.message.message_id)
 
     elif call.data == "create_group":
@@ -605,6 +609,8 @@ def choose_table_context(call):
 
 
 def add_context(message, table_name=None):
+    con = sq.connect("user_data.sql")
+    cur = con.cursor()
     chat_id = message.chat.id
     try:
         table_name = table_name
@@ -612,12 +618,11 @@ def add_context(message, table_name=None):
         if message.content_type == "text":
             context = str(message.text)
 
-            con = sq.connect("user_data.sql")
-            cur = con.cursor()
+
             if group_name is not None:
                 cur.execute("""UPDATE group_tables SET context = ? WHERE table_name == ? and admin_id == ? and group_name == ? """, (context, table_name, chat_id, group_name))
                 con.commit()
-                con.close()
+
                 bot.send_message(message.from_user.id, 'Контекст сохранен')
                 group_main(message)
 
@@ -643,22 +648,18 @@ def add_context(message, table_name=None):
             else:
                 context = downloaded_file.decode('utf-8')
             if group_name is not None:
-                con = sq.connect("user_data.sql")
-                cur = con.cursor()
                 cur.execute("""UPDATE group_tables SET context = ? WHERE table_name == ? and admin_id == ? and group_name == ? """, (context, table_name, chat_id, group_name))
                 con.commit()
-                con.close()
+
                 bot.send_message(chat_id, 'Контекст сохранен')
                 group_main(message)
             else:
-                con = sq.connect("user_data.sql")
-                cur = con.cursor()
                 cur.execute("""UPDATE tables SET context = ? WHERE table_name = ? and user_id == ? """, (context, table_name, chat_id))
                 con.commit()
-                con.close()
+
                 bot.send_message(chat_id, 'Контекст сохранен')
                 main(message)
-
+        con.close()
     except Exception as e:
         print(e)
         bot.send_message(message.chat.id, "Что-то пошло не так, попробуйте другой файл")
@@ -776,6 +777,8 @@ def add_table(message, call=None):
                     bot.send_message(chat_id, "Данная таблица уже была добавлена, попробуйте другую")
                     bot.register_next_step_handler(message, add_table, call)
 
+                con.close()
+
         except telebot.apihelper.ApiTelegramException:
             bot.register_next_step_handler(message, add_table, call)
 
@@ -801,7 +804,7 @@ def plots_handler(message, settings=None):
             cur.execute("UPDATE groups SET group_plot = 0 WHERE admin_id == ?", (chat_id,))
             bot.register_next_step_handler(message, group_main)
         else:
-            cur.execute("UPDATE users SET build_plots = ?", (settings["build_plots"]))
+            cur.execute("UPDATE users SET build_plots = 0 where user_id == ?", (chat_id,))
             bot.register_next_step_handler(message, main)
         con.commit()
         bot.send_message(message.chat.id, "Режим визуализации отключён", reply_markup=markup)
@@ -812,10 +815,11 @@ def plots_handler(message, settings=None):
             cur.execute("UPDATE groups SET group_plot = 1 WHERE admin_id == ?", (chat_id,))
             bot.register_next_step_handler(message, group_main)
         else:
-            cur.execute("UPDATE users SET build_plots = '%s'" % (settings["build_plots"]))
+            cur.execute("UPDATE users SET build_plots = 1 where user_id == ?", (chat_id,))
             bot.register_next_step_handler(message, main)
         con.commit()
         bot.send_message(message.chat.id, "Режим визуализации включён", reply_markup=markup)
+    con.close()
 
 
 def table_description(call):
@@ -828,14 +832,14 @@ def table_description(call):
 
 def choose_description(message, table_name=None):
     table_name = table_name
-
+    con = sq.connect("user_data.sql")
+    cur = con.cursor()
     chat_id = message.from_user.id
     group_name = check_group_design(chat_id)
     if message.content_type == "text":
         description = str(message.text)
         if group_name is not None:
-            con = sq.connect("user_data.sql")
-            cur = con.cursor()
+
             cur.execute("select table_name from group_tables where admin_id == ? and group_name == ?", (chat_id, group_name))
 
             existing_record = cur.fetchall()
@@ -849,8 +853,7 @@ def choose_description(message, table_name=None):
             bot.send_message(message.from_user.id, 'Описание сохранено')
             group_main(message)
         else:
-            con = sq.connect("user_data.sql")
-            cur = con.cursor()
+
             cur.execute("select table_name from tables where user_id == ?", (chat_id,))
 
             existing_record = cur.fetchall()
@@ -871,9 +874,6 @@ def choose_description(message, table_name=None):
             src = "data/" + message.document.file_name
 
             description = downloaded_file.decode('utf-8')
-
-            con = sq.connect("user_data.sql")
-            cur = con.cursor()
 
             if group_name is not None:
                 cur.execute("select table_name from group_tables where admin_id == ? and group_name == ?", (chat_id, group_name))

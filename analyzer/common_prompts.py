@@ -20,6 +20,7 @@ class TableDescriptionPrompt:
                             ALWAYS MAKESURE THAT THERE ARE ENOUGH PLACE FOR NAMES OF VALUES IN PLOT
                             Аlways try to choose the most appropriate type of schedule depending on the task and data
                             YOU MUST SAVE YOUR PLOT TO .PNG FILE, DO NOT PLOT IT IN THE TERMINAL, JUST SAVE IT TO FILE OR THE WORLD WILL BE DESTROYED, File should be in the folder called 'Plots'
+                            YOU SHOULD ALWAYS INCLUDE THE NAME OF THE PLOT FILES IN YOUR ANSWER
                             If there are already file with the same name, just rename current file"""
         else:
             plots_part = "You are not allowed to use plots. "

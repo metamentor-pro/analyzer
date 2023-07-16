@@ -2,6 +2,8 @@ import sqlite3 as sq
 
 
 def check_for_group(message):
+    con = sq.connect("user_data.sql")
+    cur = con.cursor()
 
     try:
         text = message.text
@@ -11,15 +13,13 @@ def check_for_group(message):
     except Exception as e:
         text = message.text
         if text == "/start":
-            con = sq.connect("user_data.sql")
-            cur = con.cursor()
+
             cur.execute("UPDATE callback_manager SET group_flag = ? WHERE user_id == ? ", (0, message.chat.id))
             con.commit()
         return False
 
     if start == "/start":
-        con = sq.connect("user_data.sql")
-        cur = con.cursor()
+
         cur.execute("SELECT * FROM groups where group_name == ?",(group_name,))
         existing_record = cur.fetchone()
         if existing_record is not None:
@@ -31,17 +31,12 @@ def check_for_group(message):
             cur.execute("UPDATE callback_manager SET admin_id = ? WHERE user_id == ?", (admin_id, message.chat.id))
             con.commit()
 
-            con.close()
-
             return True
         else:
             cur.execute("UPDATE callback_manager SET group_flag = ? WHERE user_id == ?", (0, message.chat.id))
             con.commit()
             return False
     else:
-
-        con = sq.connect("user_data.sql")
-        cur = con.cursor()
         cur.execute("SELECT group_flag FROM callback_manager WHERE user_id == ? ", (message.chat_id,))
         is_group = cur.fetchone()[0]
         if is_group:
