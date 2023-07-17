@@ -783,7 +783,14 @@ def add_table(message, call=None):
                     bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                       text="Вы можете выбрать таблицу или добавить новую",
                                       reply_markup=markup2)
-                    main(message=message)
+
+                    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+                    btn1 = types.KeyboardButton("Нет")
+                    btn2 = types.KeyboardButton("Да")
+                    markup.row(btn2, btn1)
+                    bot.send_message(chat_id, "Хотите ли вы получить предварительную информацию по таблице?",
+                                     reply_markup=markup)
+                    bot.register_next_step_handler(message, call_to_model)
 
                 else:
                     bot.send_message(chat_id, "Данная таблица уже была добавлена, попробуйте другую")
@@ -973,7 +980,6 @@ def call_to_model(message):
         cur.execute("UPDATE callback_manager SET req_count = ? WHERE user_id == ?", (req_count, message.chat.id))
         con.commit()
 
-
     if message.text == "🚫 exit":
         con = sq.connect("user_data.sql")
         cur = con.cursor()
@@ -981,7 +987,16 @@ def call_to_model(message):
         con.commit()
         con.close()
         main(message)
+
+    elif message.text == "Нет":
+        main(message)
+
     else:
+        if message.text == "Да":
+            user_question = "Проведи исследовательский анализ данных по таблице"
+        else:
+            user_question = message.text
+
         chat_id = message.chat.id
 
         def callback(sum_on_step):
@@ -990,7 +1005,7 @@ def call_to_model(message):
             edited_message = bot.edit_message_text(chat_id=chat_id, message_id=message_id,
                                                    text=send_message.text + f"\n{sum_on_step}")
         settings = get_settings(chat_id)
-        user_question = message.text
+
         try:
             if settings["table_name"] is None or settings["table_name"] == "":
                 bot.send_message(message.from_user.id, "Таблицы не найдены, вы можете выбрать другие")
