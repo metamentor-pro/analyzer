@@ -181,6 +181,7 @@ class BaseMinion:
                 last_summary = get_answer(f"Your task is to translate the thought process of the model into Russian language,"
                                             f"there should not be any  code or formulas, just brief explanation of the actions."
                                             f"YOU SHOULD ALWAYS DESCRIBE ONLY LAST ACTIONS"
+                                            f"IF THERE IS A NAME OF FILE IN .png FORMAT, YOU SHOULD NOT CHANGE IT"
                                             f"Here is a summary of what has happened:\n {summary};\n"
                                             f"Here is the last actions happened: \n{thought}", self.summarize_model)
 

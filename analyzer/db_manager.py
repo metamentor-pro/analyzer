@@ -16,6 +16,7 @@ def check_for_group(message):
 
             cur.execute("UPDATE callback_manager SET group_flag = ? WHERE user_id == ? ", (0, message.chat.id))
             con.commit()
+        con.close()
         return False
 
     if start == "/start":
@@ -30,7 +31,7 @@ def check_for_group(message):
             con.commit()
             cur.execute("UPDATE callback_manager SET admin_id = ? WHERE user_id == ?", (admin_id, message.chat.id))
             con.commit()
-
+            con.close()
             return True
         else:
             cur.execute("UPDATE callback_manager SET group_flag = ? WHERE user_id == ?", (0, message.chat.id))
@@ -40,8 +41,10 @@ def check_for_group(message):
         cur.execute("SELECT group_flag FROM callback_manager WHERE user_id == ? ", (message.chat_id,))
         is_group = cur.fetchone()[0]
         if is_group:
+            con.close()
             return True
         else:
+            con.close()
             return False
 
 
