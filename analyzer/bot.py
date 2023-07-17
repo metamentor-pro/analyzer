@@ -983,6 +983,7 @@ def call_to_model(message):
 
                 table_description: list[str] = get_description(chat_id)
                 context_list = get_context(chat_id)
+
                 con = sq.connect("user_data.sql")
                 cur = con.cursor()
                 cur.execute("SELECT group_flag FROM callback_manager WHERE user_id == ?", (chat_id,))

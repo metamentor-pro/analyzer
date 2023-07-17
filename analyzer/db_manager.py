@@ -205,7 +205,7 @@ def get_description(chat_id=None):
             cur = con.cursor()
             cur.execute("SELECT * FROM tables WHERE user_id == ? AND table_name == ?", (chat_id, table))
             existing_record = cur.fetchone()
-            con.close()
+
             if existing_record is not None:
 
                 cur.execute(
