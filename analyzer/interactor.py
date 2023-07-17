@@ -80,6 +80,8 @@ def preparation(path_list: List[str], build_plots: Union[bool, None], current_su
         df_info += df_info_description(i, item[0])
         df_work.append(item[0])
 
+    print('tables processed!')
+
     llm = ChatOpenAI(temperature=0.7, model='gpt-4',
                      openai_api_key="")
     python_tool = CustomPythonAstREPLTool(locals={"df": df_work, "python": None, "python_repl_ast": None},

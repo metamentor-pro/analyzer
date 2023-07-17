@@ -42,8 +42,6 @@ def unmerge_cells(file_path, save_path):
     wb = openpyxl.load_workbook(file_path, data_only=True)
     sheet = wb.active
 
-    name = os.path.basename(file_path)
-
     range = get_data_range(sheet)
 
     if range is not None:
@@ -72,35 +70,45 @@ def unmerge_cells(file_path, save_path):
         if is_merged:
             sheet.delete_rows(range[1])
     wb.save(save_path)
-    return name
 
 
 def process(path):
     save_path = path[:-5] + '_prepared.xlsx'
-    name = unmerge_cells(path, save_path)
-    move(save_path, save_path)
+    name = os.path.basename(path)
+    if not os.path.exists(save_path):
+        unmerge_cells(path, save_path)
+        move(save_path, save_path)
     return save_path, name
 
 
 def unmerge_sheets(file_path):
-    wb = openpyxl.load_workbook(file_path)
-    if len(wb.sheetnames) > 1:
-        new_pathes = list()
-        for sheet_name in wb.sheetnames:
-            new_workbook = openpyxl.Workbook()
-            new_sheet = new_workbook.active
-            sheet = wb[sheet_name]
-            for row in sheet.iter_rows(values_only=True):
-                new_sheet.append(row)
-            new_path = ""
-            index = file_path.rfind("/")
-            if index != -1:
-                new_path = file_path[:index] + "/unmerged_{}/".format(os.path.basename(file_path))
+    new_path = ""
+    index = file_path.rfind("/")
+    if index != -1:
+        new_path = file_path[:index] + "/unmerged_{}/".format(os.path.basename(file_path))
 
-            if not os.path.exists(new_path):
+    if not os.path.exists(new_path):
+        check_path = file_path[:-5] + '_prepared.xlsx'
+        if not os.path.exists(check_path):
+            wb = openpyxl.load_workbook(file_path)
+            if len(wb.sheetnames) > 1:
                 os.makedirs(new_path)
-
-            new_workbook.save(new_path + sheet_name + '.xlsx')
-            new_pathes.append(new_path + sheet_name + '.xlsx')
-        return new_pathes
-    return [file_path]
+                new_paths = list()
+                for sheet_name in wb.sheetnames:
+                    new_workbook = openpyxl.Workbook()
+                    new_sheet = new_workbook.active
+                    sheet = wb[sheet_name]
+                    for row in sheet.iter_rows(values_only=True):
+                        new_sheet.append(row)
+                    new_workbook.save(new_path + sheet_name + '.xlsx')
+                    new_paths.append(new_path + sheet_name + '.xlsx')
+                return new_paths
+            return [file_path]
+        return [file_path]
+    else:
+        paths = list()
+        for root, dirs, files in os.walk(new_path):
+            for file in files:
+                if not file.endswith('_prepared.xlsx'):
+                    paths.append(os.path.join(root, file))
+        return paths
