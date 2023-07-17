@@ -52,6 +52,7 @@ def check_group_design(chat_id=None):
     cur = con.cursor()
     cur.execute("SELECT group_name FROM groups where admin_id = ? AND design_flag == 1 ", (admin_id,))
     group_name = cur.fetchone()
+    con.close()
     if group_name is not None:
         return group_name[0]
     else:
@@ -154,6 +155,7 @@ def get_context(chat_id=None):
             else:
                 context_line = table + ":" + context[0]
             context_list.append(context_line)
+    con.close()
     return context_list
 
 
@@ -175,10 +177,10 @@ def get_description(chat_id=None):
         group_name = cur.fetchone()[0]
         cur.execute("SELECT admin_id FROM callback_manager WHERE user_id == ?", (chat_id,))
         admin_id = cur.fetchone()[0]
-
+        con.close()
         for table in table_name:
             con = sq.connect("user_data.sql")
-            cur = con.cursor()
+
             cur = con.cursor()
             cur.execute("SELECT * FROM group_tables WHERE admin_id == ? AND table_name == ? AND group_name == ?", (admin_id, table, group_name))
             existing_record = cur.fetchone()
@@ -201,10 +203,9 @@ def get_description(chat_id=None):
         for table in table_name:
             con = sq.connect("user_data.sql")
             cur = con.cursor()
-            cur = con.cursor()
             cur.execute("SELECT * FROM tables WHERE user_id == ? AND table_name == ?", (chat_id, table))
             existing_record = cur.fetchone()
-
+            con.close()
             if existing_record is not None:
 
                 cur.execute(

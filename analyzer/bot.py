@@ -219,7 +219,6 @@ def create_inline_keyboard(chat_id=None, page_type=None, page=1, status_flag=Tru
                 bot.send_message(chat_id, f"Сейчас доступны для анализа: {settings['table_name']}")
             markup.add(btn2)
 
-
     page = get_page(chat_id=chat_id, page_type=page_type)
     amount = get_pages_amount(chat_id=chat_id)
     markup.add(types.InlineKeyboardButton(text=f'{page}/{amount}', callback_data=f' '))
