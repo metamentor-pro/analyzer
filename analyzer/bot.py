@@ -130,7 +130,6 @@ def main(message=None):
     existing_record = cur.fetchone()
 
     if not existing_record:
-        print("DATATYPE MISMATCH HERE", chat_id, type(chat_id))
         cur.execute("INSERT  INTO callback_manager(user_id) VALUES(?)", (chat_id,))
     con.commit()
 
@@ -171,8 +170,6 @@ def main(message=None):
         btn4 = types.KeyboardButton("❓ Режим отправки запроса")
         markup.row(btn4)
         bot.send_message(chat_id, "Вы можете  выбрать одну из опций", reply_markup=markup)
-
-    bot.register_next_step_handler(message, on_click)
 
 
 def create_inline_keyboard(chat_id=None, keyboard_type=None, page=1, status_flag=True):
@@ -290,7 +287,6 @@ def group_main(message=None):
         markup.row(btn5, btn4, btn6)
         bot.send_message(chat_id, "Вы можете  выбрать одну из опций", reply_markup=markup)
         con.close()
-        bot.register_next_step_handler(message, on_click)
 
 
 def create_group_keyboard(chat_id=None, show_groups=False):
@@ -301,8 +297,6 @@ def create_group_keyboard(chat_id=None, show_groups=False):
         cur.execute("select group_name from groups where admin_id == ? ", (chat_id,))
         rows = cur.fetchall()
         con.commit()
-
-
         for row in rows:
 
             if row[0] is not None:
@@ -325,98 +319,115 @@ def create_group_keyboard(chat_id=None, show_groups=False):
     return markup
 
 
-def on_click(message):
+@bot.message_handler(func=lambda message: message.text == "❓ Режим отправки запроса")
+def request_mode(message):
+    chat_id = message.chat.id
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    btn1 = types.KeyboardButton("🚫 exit")
+    markup.add(btn1)
+    bot.send_message(chat_id, "Отправьте запроc. Пожалуйста, вводите запросы последовательно", reply_markup=markup)
+
+    bot.register_next_step_handler(message, call_to_model)
+
+
+@bot.message_handler(func=lambda message: message.text == "🖹 Выбрать таблицу")
+def table_click(message):
+    chat_id = message.chat.id
+    group_name = check_group_design(chat_id)
+    keyboard_type = "tables"
+    markup = create_inline_keyboard(chat_id=chat_id, keyboard_type=keyboard_type)
+
+    bot.send_message(message.from_user.id, "Можете выбрать нужную таблицу или добавить новую", reply_markup=markup)
+
+    if group_name is not None:
+        group_main(message)
+    else:
+        main(message)
+
+
+@bot.message_handler(func=lambda message: message.text == "🖻 Режим визуализации")
+def plot_on_click(message):
     chat_id = message.chat.id
     settings = get_settings(chat_id)
+    if settings["build_plots"] == 0:
+        build_plots = "выключен"
+    else:
+        build_plots = "включен"
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    btn1 = types.KeyboardButton("Выключить")
+    btn2 = types.KeyboardButton("Включить")
+    markup.row(btn1, btn2)
+    bot.send_message(chat_id, f"Можете выбрать режим визуализации данных, он  {build_plots}  в данный момент",
+                     reply_markup=markup)
+    bot.register_next_step_handler(message, plots_handler)
+
+
+@bot.message_handler(func=lambda message: message.text == "➕ Добавить описание таблицы")
+def desc_on_click(message):
+    chat_id = message.chat.id
     group_name = check_group_design(chat_id)
-    if message.text == "/help":
-        help_info(message)
+    keyboard_type = "description"
+    markup = create_inline_keyboard(chat_id=chat_id, keyboard_type=keyboard_type)
 
-    elif message.text == "❓ Режим отправки запроса":
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        btn1 = types.KeyboardButton("🚫 exit")
-        markup.add(btn1)
-        bot.send_message(chat_id, "Отправьте запроc. Пожалуйста, вводите запросы последовательно", reply_markup=markup)
+    bot.send_message(chat_id, "Выберите, к какой таблице вы хотите добавить описание", reply_markup=markup)
 
-        bot.register_next_step_handler(message, call_to_model)
-
-    elif message.text == "🖹 Выбрать таблицу":
-
-        keyboard_type = "tables"
-        markup = create_inline_keyboard(chat_id=chat_id, keyboard_type=keyboard_type)
-
-        bot.send_message(message.from_user.id, "Можете выбрать нужную таблицу или добавить новую", reply_markup=markup)
-
-        if group_name is not None:
-            group_main(message)
-        else:
-            main(message)
-
-    elif message.text == "🖻 Режим визуализации":
-        if settings["build_plots"] == 0:
-            build_plots = "выключен"
-        else:
-            build_plots = "включен"
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        btn1 = types.KeyboardButton("Выключить")
-        btn2 = types.KeyboardButton("Включить")
-        markup.row(btn1, btn2)
-        bot.send_message(chat_id, f"Можете выбрать режим визуализации данных, он  {build_plots}  в данный момент",
-                         reply_markup=markup)
-        bot.register_next_step_handler(message, plots_handler)
-
-    elif message.text == "➕ Добавить описание таблицы":
-        keyboard_type = "description"
-        markup = create_inline_keyboard(chat_id=chat_id, keyboard_type=keyboard_type)
-
-        bot.send_message(chat_id, "Выберите, к какой таблице вы хотите добавить описание", reply_markup=markup)
-
-        if group_name is not None:
-            group_main(message)
-        else:
-            main(message)
-
-    elif message.text == "Добавить контекст":
-        keyboard_type = "context"
-        markup = create_inline_keyboard(chat_id=chat_id, keyboard_type=keyboard_type)
-        bot.send_message(chat_id, "Выберите, к какой таблице вы хотите добавить контекст", reply_markup=markup)
-        if group_name is not None:
-            group_main(message)
-        else:
-            main(message)
-
-    elif message.text == "Группы таблиц":
-        markup = create_group_keyboard(chat_id)
-        bot.send_message(chat_id, "Вы можете выбрать одну из опций", reply_markup=markup)
+    if group_name is not None:
+        group_main(message)
+    else:
         main(message)
 
-    elif message.text == "exit":
-        con = sq.connect("user_data.sql")
-        cur = con.cursor()
-        cur.execute("UPDATE groups SET design_flag = 0 WHERE admin_id == ? ", (message.chat.id,))
-        con.commit()
-        con.close()
+
+@bot.message_handler(func=lambda message: message.text == "Добавить контекст")
+def context_on_click(message):
+    chat_id = message.chat.id
+    group_name = check_group_design(chat_id)
+    keyboard_type = "context"
+    markup = create_inline_keyboard(chat_id=chat_id, keyboard_type=keyboard_type)
+    bot.send_message(chat_id, "Выберите, к какой таблице вы хотите добавить контекст", reply_markup=markup)
+    if group_name is not None:
+        group_main(message)
+    else:
         main(message)
-        bot.send_message(message.chat.id, "Редактирование группы завершено")
 
-    elif message.text == "Сохранить настройки группы":
-        group_name = check_group_design(message.chat.id)
-        con = sq.connect("user_data.sql")
-        cur = con.cursor()
-        cur.execute("SELECT group_link FROM groups where admin_id == ? AND group_name == ?", (message.chat.id, group_name))
-        con.commit()
 
-        group_link = cur.fetchone()
+@bot.message_handler(func=lambda message: message.text == "Группы таблиц")
+def groups_on_click(message):
+    chat_id = message.chat.id
+    markup = create_group_keyboard(chat_id)
+    bot.send_message(chat_id, "Вы можете выбрать одну из опций", reply_markup=markup)
+    main(message)
 
-        cur.execute("UPDATE groups SET design_flag = 0 WHERE admin_id == ?", (message.chat.id,))
-        con.commit()
 
-        if group_link is not None:
-            group_link = group_link[0]
-        con.close()
-        bot.send_message(message.chat.id, "Изменения группы сохранены, ссылка для взаимодействия с группой: ")
-        bot.send_message(message.chat.id, f'{group_link}')
-        main(message)
+@bot.message_handler(func=lambda message: message.text == "exit")
+def exit_from_group(message):
+    con = sq.connect("user_data.sql")
+    cur = con.cursor()
+    cur.execute("UPDATE groups SET design_flag = 0 WHERE admin_id == ? ", (message.chat.id,))
+    con.commit()
+    con.close()
+    main(message)
+    bot.send_message(message.chat.id, "Редактирование группы завершено")
+
+
+@bot.message_handler(func=lambda message: message.text == "Сохранить настройки группы")
+def save_group_settings(message):
+    group_name = check_group_design(message.chat.id)
+    con = sq.connect("user_data.sql")
+    cur = con.cursor()
+    cur.execute("SELECT group_link FROM groups where admin_id == ? AND group_name == ?", (message.chat.id, group_name))
+    con.commit()
+
+    group_link = cur.fetchone()
+
+    cur.execute("UPDATE groups SET design_flag = 0 WHERE admin_id == ?", (message.chat.id,))
+    con.commit()
+
+    if group_link is not None:
+        group_link = group_link[0]
+    con.close()
+    bot.send_message(message.chat.id, "Изменения группы сохранены, ссылка для взаимодействия с группой: ")
+    bot.send_message(message.chat.id, f'{group_link}')
+    main(message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("t|"))
@@ -773,6 +784,7 @@ def add_table(message, call=None):
                                       text="Вы можете выбрать таблицу или добавить новую",
                                       reply_markup=markup2)
                     main(message=message)
+
                 else:
                     bot.send_message(chat_id, "Данная таблица уже была добавлена, попробуйте другую")
                     bot.register_next_step_handler(message, add_table, call)
