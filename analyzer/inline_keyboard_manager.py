@@ -1,4 +1,5 @@
 import sqlite3 as sq
+from telebot import types
 
 from db_manager import *
 
@@ -54,4 +55,33 @@ def get_pages_amount(chat_id):
     con.close()
     return amount
 
+
+def create_group_keyboard(chat_id=None, show_groups=False):
+    markup = types.InlineKeyboardMarkup()
+    con = sq.connect("user_data.sql")
+    cur = con.cursor()
+    if show_groups:
+        cur.execute("select group_name from groups where admin_id == ? ", (chat_id,))
+        rows = cur.fetchall()
+        con.commit()
+        for row in rows:
+
+            if row[0] is not None:
+                btn = types.InlineKeyboardButton(text=row[0], callback_data=f"g|{row[0]}")
+
+                markup.add(btn)
+
+        btn3 = types.InlineKeyboardButton(text="Назад", callback_data="g|back")
+        markup.add(btn3)
+
+    else:
+
+        btn1 = types.InlineKeyboardButton(text="Выбрать группу", callback_data="g|choose_group")
+        btn2 = types.InlineKeyboardButton(text="Создать группу", callback_data="g|create_group")
+        btn3 = types.InlineKeyboardButton(text="🚫 exit", callback_data="g|exit")
+        markup.add(btn1)
+        markup.add(btn2)
+        markup.add(btn3)
+    con.close()
+    return markup
 
