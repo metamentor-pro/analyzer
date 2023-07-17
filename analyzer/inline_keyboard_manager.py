@@ -1,11 +1,15 @@
 import sqlite3 as sq
 from telebot import types
-
+import yaml
 from db_manager import *
+
+with open("config.yaml") as f:
+    cfg = yaml.load(f, Loader=yaml.FullLoader)
+db_name = cfg["db_name"]
 
 
 def get_page(chat_id, page_type):
-    con = sq.connect("user_data.sql")
+    con = sq.connect(db_name)
     cur = con.cursor()
     page = None
     group_name = check_group_design(chat_id)
@@ -26,7 +30,7 @@ def get_page(chat_id, page_type):
 
 
 def change_page(chat_id, page_type, new_page):
-    con = sq.connect("user_data.sql")
+    con = sq.connect(db_name)
     cur = con.cursor()
     group_name = check_group_design(chat_id)
     if group_name is not None:
@@ -42,7 +46,7 @@ def change_page(chat_id, page_type, new_page):
 
 
 def get_pages_amount(chat_id):
-    con = sq.connect("user_data.sql")
+    con = sq.connect(db_name)
     cur = con.cursor()
     group_name = check_group_design(chat_id)
     if group_name is not None:
@@ -58,7 +62,7 @@ def get_pages_amount(chat_id):
 
 def create_group_keyboard(chat_id=None, show_groups=False):
     markup = types.InlineKeyboardMarkup()
-    con = sq.connect("user_data.sql")
+    con = sq.connect(db_name)
     cur = con.cursor()
     if show_groups:
         cur.execute("select group_name from groups where admin_id == ? ", (chat_id,))

@@ -30,6 +30,7 @@ bot_api = cfg["bot_api"]
 demo = cfg["demo"][0]
 max_requests = cfg["demo"][1]
 reset = cfg["demo"][2]
+db_name = cfg["db_name"]
 
 
 class Bot(telebot.TeleBot):
@@ -40,7 +41,7 @@ class Bot(telebot.TeleBot):
 
 bot = Bot()
 
-connection = sq.connect("user_data.sql")
+connection = sq.connect(db_name)
 cursor = connection.cursor()
 
 cursor.execute("""CREATE TABLE IF NOT EXISTS users
@@ -124,7 +125,7 @@ def main(message=None):
         print(message)
         print(e)
 
-    con = sq.connect("user_data.sql")
+    con = sq.connect(db_name)
     cur = con.cursor()
     cur.execute("SELECT * FROM callback_manager WHERE user_id = ?", (chat_id,))
     existing_record = cur.fetchone()
@@ -190,7 +191,7 @@ def create_inline_keyboard(chat_id=None, page_type=None, page=1, status_flag=Tru
     markup = types.InlineKeyboardMarkup(row_width=3)
     prefix = page_type[0]+"|"
     settings = get_settings(chat_id)
-    con = sq.connect("user_data.sql")
+    con = sq.connect(db_name)
     cur = con.cursor()
     if group_name is not None:
         cur.execute(query, (chat_id, group_name, offset))
@@ -240,7 +241,7 @@ def group_main(message=None):
 
     chat_id = message.chat.id
     group_name = check_group_design(chat_id)
-    con = sq.connect("user_data.sql")
+    con = sq.connect(db_name)
     cur = con.cursor()
     cur.execute("select * from groups")
     print(cur.fetchall())
@@ -356,7 +357,7 @@ def groups_on_click(message):
 
 @bot.message_handler(func=lambda message: message.text == "exit")
 def exit_from_group(message):
-    con = sq.connect("user_data.sql")
+    con = sq.connect(db_name)
     cur = con.cursor()
     cur.execute("UPDATE groups SET design_flag = 0 WHERE admin_id == ? ", (message.chat.id,))
     con.commit()
@@ -368,7 +369,7 @@ def exit_from_group(message):
 @bot.message_handler(func=lambda message: message.text == "Сохранить настройки группы")
 def save_group_settings(message):
     group_name = check_group_design(message.chat.id)
-    con = sq.connect("user_data.sql")
+    con = sq.connect(db_name)
     cur = con.cursor()
     cur.execute("SELECT group_link FROM groups where admin_id == ? AND group_name == ?", (message.chat.id, group_name))
     con.commit()
@@ -419,7 +420,7 @@ def callback_query(call):
                 settings["table_name"] += table_name[i] + ","
             settings["table_name"] += table_name[-1]
 
-        con = sq.connect("user_data.sql")
+        con = sq.connect(db_name)
         cur = con.cursor()
         if group_name is not None:
             cur.execute("UPDATE groups SET current_tables = ? WHERE admin_id == ? AND group_name == ?", (settings["table_name"], chat_id, group_name))
@@ -539,7 +540,7 @@ def callback_query(call):
     chat_id = call.message.chat.id
     group_name = check_group_design(chat_id)
     if call.data == "exit":
-        con = sq.connect("user_data.sql")
+        con = sq.connect(db_name)
         cur = con.cursor()
         cur.execute("UPDATE groups SET design_flag = True WHERE admin_id == ? AND group_name == ?", (chat_id, group_name))
         con.commit()
@@ -576,7 +577,7 @@ def choose_table_context(call):
 
 
 def add_context(message, table_name=None):
-    con = sq.connect("user_data.sql")
+    con = sq.connect(db_name)
     cur = con.cursor()
     chat_id = message.chat.id
     try:
@@ -660,7 +661,7 @@ def choose_table(call, choose_flag=False):
 
             settings["table_name"] = text
             bot.send_message(chat_id, "Таблица выбрана.")
-        con = sq.connect("user_data.sql")
+        con = sq.connect(db_name)
         cur = con.cursor()
         if group_name is not None:
             cur.execute("UPDATE groups SET current_tables = ? WHERE admin_id == ? and group_name == ?", (settings["table_name"], chat_id, group_name))
@@ -693,7 +694,7 @@ def add_table(message, call=None):
             with open(src, 'wb') as f:
                 f.write(downloaded_file)
 
-            con = sq.connect("user_data.sql")
+            con = sq.connect(db_name)
             cur = con.cursor()
             if group_name is not None:
                 cur.execute("SELECT * FROM group_tables WHERE admin_id == ? AND table_name == ?", (chat_id, message.document.file_name))
@@ -770,7 +771,7 @@ def plots_handler(message, settings=None):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn1 = types.KeyboardButton("Вернуться в главное меню")
     markup.add(btn1)
-    con = sq.connect("user_data.sql")
+    con = sq.connect(db_name)
     cur = con.cursor()
     group_name = check_group_design(chat_id)
     if message.text == "Выключить":
@@ -807,7 +808,7 @@ def table_description(call):
 
 def choose_description(message, table_name=None):
     table_name = table_name
-    con = sq.connect("user_data.sql")
+    con = sq.connect(db_name)
     cur = con.cursor()
     chat_id = message.from_user.id
     group_name = check_group_design(chat_id)
@@ -883,7 +884,7 @@ def create_group(message):
     admin_id = message.chat.id
     group_name = message.text.replace(" ", "-")
     group_name_for_link = "group_" + str(admin_id) + "_" + message.text.replace(" ", "-")
-    con = sq.connect("user_data.sql")
+    con = sq.connect(db_name)
     cur = con.cursor()
     cur.execute("SELECT * FROM groups WHERE admin_id == ? AND group_name == ?", (admin_id, group_name))
     existing_record = cur.fetchone()
@@ -903,7 +904,7 @@ def create_group(message):
 
 
 def choose_group(group_name=None, admin_id=None, message=None):
-    con = sq.connect("user_data.sql")
+    con = sq.connect(db_name)
     cur = con.cursor()
     cur.execute("UPDATE groups SET design_flag = True WHERE admin_id == ? AND group_name == ?", (admin_id, group_name))
     con.commit()
@@ -919,7 +920,7 @@ def choose_group(group_name=None, admin_id=None, message=None):
 def call_to_model(message):
 
     if demo:
-        con = sq.connect("user_data.sql")
+        con = sq.connect(db_name)
         cur = con.cursor()
         cur.execute("SELECT req_count FROM callback_manager WHERE user_id == ?", (message.chat.id,))
         req_count = cur.fetchone()[0]
@@ -928,6 +929,7 @@ def call_to_model(message):
             cur.execute("UPDATE callback_manager SET req_count = 0")
             con.commit()
 
+
         if req_count > max_requests:
             bot.send_message(message.chat.id, "К сожалению, лимит запросов исчерпан, попробуйте позднее")
             bot.register_next_step_handler(message, main)
@@ -935,9 +937,10 @@ def call_to_model(message):
 
         cur.execute("UPDATE callback_manager SET req_count = ? WHERE user_id == ?", (req_count, message.chat.id))
         con.commit()
+        con.close()
 
     if message.text == "🚫 exit":
-        con = sq.connect("user_data.sql")
+        con = sq.connect(db_name)
         cur = con.cursor()
         cur.execute("UPDATE callback_manager SET group_flag = 0 WHERE user_id == ?", (message.chat.id,))
         con.commit()
@@ -984,7 +987,7 @@ def call_to_model(message):
                 table_description: list[str] = get_description(chat_id)
                 context_list = get_context(chat_id)
 
-                con = sq.connect("user_data.sql")
+                con = sq.connect(db_name)
                 cur = con.cursor()
                 cur.execute("SELECT group_flag FROM callback_manager WHERE user_id == ?", (chat_id,))
 

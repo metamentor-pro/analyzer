@@ -1,8 +1,13 @@
 import sqlite3 as sq
+import yaml
 
+
+with open("config.yaml") as f:
+    cfg = yaml.load(f, Loader=yaml.FullLoader)
+db_name = cfg["db_name"]
 
 def check_for_group(message):
-    con = sq.connect("user_data.sql")
+    con = sq.connect(db_name)
     cur = con.cursor()
 
     try:
@@ -51,7 +56,7 @@ def check_for_group(message):
 def check_group_design(chat_id=None):
 
     admin_id = chat_id
-    con = sq.connect("user_data.sql")
+    con = sq.connect(db_name)
     cur = con.cursor()
     cur.execute("SELECT group_name FROM groups where admin_id = ? AND design_flag == 1 ", (admin_id,))
     group_name = cur.fetchone()
@@ -66,7 +71,7 @@ def get_settings(chat_id):
 
     group_name = check_group_design(chat_id)
 
-    con = sq.connect("user_data.sql")
+    con = sq.connect(db_name)
     cur = con.cursor()
     cur.execute("SELECT group_flag FROM callback_manager WHERE user_id == ?",(chat_id,))
 
@@ -82,7 +87,7 @@ def get_settings(chat_id):
         cur.execute("SELECT admin_id FROM callback_manager WHERE user_id == ?", (chat_id,))
         chat_id = cur.fetchone()[0]
 
-        con = sq.connect("user_data.sql")
+        con = sq.connect(db_name)
         cur = con.cursor()
         cur.execute(
             "SELECT current_tables FROM groups WHERE admin_id = ? and group_name == ?", (chat_id, group_name))
@@ -93,7 +98,7 @@ def get_settings(chat_id):
 
     elif group_name is not None:
 
-        con = sq.connect("user_data.sql")
+        con = sq.connect(db_name)
         cur = con.cursor()
         cur.execute("SELECT current_tables FROM groups WHERE admin_id = ? and group_name == ?", (chat_id, group_name))
         table_names = cur.fetchone()
@@ -101,9 +106,8 @@ def get_settings(chat_id):
         build_plots = cur.fetchone()
         con.close()
 
-
     else:
-        con = sq.connect("user_data.sql")
+        con = sq.connect(db_name)
         cur = con.cursor()
         cur.execute("SELECT current_tables FROM users WHERE user_id = ?", (chat_id,))
         table_names = cur.fetchone()
@@ -127,7 +131,7 @@ def get_settings(chat_id):
 
 def get_context(chat_id=None):
     settings = get_settings(chat_id)
-    con = sq.connect("user_data.sql")
+    con = sq.connect(db_name)
     cur = con.cursor()
     cur.execute("SELECT group_flag FROM callback_manager WHERE user_id == ?", (chat_id,))
     table_name = list(map(str, settings["table_name"].split(",")))
@@ -170,7 +174,7 @@ def get_description(chat_id=None):
 
     for table in range(len(table_name_path)):
         table_name_path[table] = "data/" + table_name_path[table]
-    con = sq.connect("user_data.sql")
+    con = sq.connect(db_name)
     cur = con.cursor()
     cur.execute("SELECT group_flag FROM callback_manager WHERE user_id == ?", (chat_id,))
 
@@ -182,7 +186,7 @@ def get_description(chat_id=None):
         admin_id = cur.fetchone()[0]
         con.close()
         for table in table_name:
-            con = sq.connect("user_data.sql")
+            con = sq.connect(db_name)
 
             cur = con.cursor()
             cur.execute("SELECT * FROM group_tables WHERE admin_id == ? AND table_name == ? AND group_name == ?", (admin_id, table, group_name))
@@ -204,7 +208,7 @@ def get_description(chat_id=None):
 
     else:
         for table in table_name:
-            con = sq.connect("user_data.sql")
+            con = sq.connect(db_name)
             cur = con.cursor()
             cur.execute("SELECT * FROM tables WHERE user_id == ? AND table_name == ?", (chat_id, table))
             existing_record = cur.fetchone()
