@@ -411,9 +411,8 @@ def callback_query(call):
         bot.send_message(chat_id, f"Таблица {table_name[-1]} удалена из текущего списка")
 
         table_name = table_name[:-1]
-        if len(settings["table_name"]) == 0:
+        if len(table_name) == 0:
             settings["table_name"] = ''
-
         else:
             settings["table_name"] = ''
             for i in range(len(table_name)-1):
@@ -651,7 +650,8 @@ def choose_table(call, choose_flag=False):
     else:
         group_name = check_group_design(chat_id)
         settings = get_settings(chat_id)
-        if settings["table_name"] is not None:
+
+        if settings["table_name"] is not None and len(settings["table_name"]) != 0:
             if text not in settings["table_name"]:
                 settings["table_name"] += ", " + text
                 bot.send_message(chat_id, "Таблица добавлена")
