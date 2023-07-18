@@ -207,7 +207,9 @@ def create_inline_keyboard(chat_id=None, page_type=None, page=1, status_flag=Tru
     for row in rows:
 
         if row[0] is not None:
-            btn = types.InlineKeyboardButton(text=row[0], callback_data=f"{prefix}{row[0]}")
+            prep_arr = list(row[0].split("_"))
+            prepared_row = "_".join(prep_arr[1:])
+            btn = types.InlineKeyboardButton(text=prepared_row, callback_data=f"{prefix}{row[0]}")
 
             markup.add(btn)
     if page_type == "table_page":
@@ -689,8 +691,9 @@ def add_table(message, call=None):
             file_path = file_info.file_path
 
             downloaded_file = bot.download_file(file_path)
-            src = "data/" + message.document.file_name
-
+            src = "data/" + str(chat_id) + "_" + message.document.file_name
+            src.replace("|", "_")
+            message.document.file_name = str(chat_id) + "_" + message.document.file_name
             with open(src, 'wb') as f:
                 f.write(downloaded_file)
 
