@@ -1028,7 +1028,13 @@ def call_to_model(message):
                 answer_from_model = interactor.run_loop_bot(table_name_path, build_plots, user_question, current_summary,
                                                             table_description, context_list, callback=callback)
                 if answer_from_model[0] == "F":
-                    bot.send_message(message.chat.id, "Что-то пошло не так, пожалуйста, повторите запрос")
+                    bot.send_message(message.chat.id, "Что-то пошло не так, пожалуйста, повторяю запрос")
+                    answer_from_model = interactor.run_loop_bot(table_name_path, build_plots, user_question,
+                                                                current_summary,
+                                                                table_description, context_list, callback=callback)
+                    if answer_from_model[0] == "F":
+                        bot.send_message(message.chat.id, "Что-то пошло не так")
+
                 summary = answer_from_model[1]
                 new_summary = current_summary + summary
                 print(summary)
