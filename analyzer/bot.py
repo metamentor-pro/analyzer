@@ -1074,7 +1074,6 @@ def call_to_model(message):
             bot.send_message(message.from_user.id, "Что-то пошло не так")
             main(user_question)
 
-
 while True:
     try:
         bot.polling()
@@ -1083,4 +1082,4 @@ while True:
     except Exception as e:
         print(traceback.format_exc())
         print("error is:", e)
-        time.sleep(2)
+
