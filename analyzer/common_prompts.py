@@ -61,7 +61,8 @@ Thought: the thought you have about what to do next or in general.
 Action: the action you take. It's one of {tool_names}. You have to write "Action: <tool name>".
 Action Input: the input to the action.
 AResult: the result of the action.
-Final Result: the final result of the task. Write what you did, be reasonably detailed.
+Final Result: the final result of the task. Write what you did, be reasonably detailed and include names of plot files.
+It is very important to write down name of every file separately
 
 "AResult:" ALWAYS comes after "Action Input:" - it's the result of any taken action. Do not use to describe the result of your thought.
 "AResult:" comes after "Action Input:" even if there's a Final Result after that.

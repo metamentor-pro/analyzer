@@ -189,7 +189,6 @@ class BaseMinion:
 
             def add_question_answer(self, question: str, answer: str):
                 self.summary += f"Previous question: {question}\nPrevious answer: {answer}\n\n"
-                self.summary = self.summary[-400:]
 
                 return self.summary
 

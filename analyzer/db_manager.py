@@ -230,3 +230,51 @@ def get_description(chat_id=None):
             con.commit()
     con.close()
     return table_description
+
+
+def get_summary(chat_id):
+    con = sq.connect(db_name)
+    cur = con.cursor()
+    cur.execute("SELECT group_flag FROM callback_manager WHERE user_id == ?", (chat_id,))
+
+    group_flag = cur.fetchone()[0]
+    con.commit()
+    if group_flag == True:
+        cur.execute("SELECT group_name FROM callback_manager WHERE user_id == ?", (chat_id,))
+        group_name = cur.fetchone()[0]
+        cur.execute("SELECT admin_id FROM callback_manager WHERE user_id == ?", (chat_id,))
+        admin_id = cur.fetchone()[0]
+        cur.execute("SELECT group_conv FROM groups WHERE admin_id == ? AND group_name == ?", (admin_id, group_name))
+        current_summary = cur.fetchone()
+    else:
+
+        cur.execute("SELECT conv_sum FROM users WHERE user_id = ?", (chat_id,))
+        current_summary = cur.fetchone()
+
+    if not current_summary or current_summary[0] is None:
+        current_summary = ""
+    else:
+        current_summary = current_summary[0][:250] + current_summary[0][:-250]
+    return current_summary
+
+
+def update_summary(chat_id, new_summary):
+    con = sq.connect(db_name)
+    cur = con.cursor()
+    cur.execute("SELECT group_flag FROM callback_manager WHERE user_id == ?", (chat_id,))
+
+    group_flag = cur.fetchone()[0]
+    con.commit()
+
+    if group_flag == True:
+        cur.execute("SELECT group_name FROM callback_manager WHERE user_id == ?", (chat_id,))
+        group_name = cur.fetchone()[0]
+        cur.execute("SELECT admin_id FROM callback_manager WHERE user_id == ?", (chat_id,))
+        admin_id = cur.fetchone()[0]
+        cur.execute("UPDATE groups SET group_conv = ? WHERE admin_id == ? AND group_name == ?",
+                    (new_summary, admin_id, group_name))
+        con.commit()
+    else:
+        cur.execute("UPDATE users SET conv_sum = ? WHERE user_id == ?", (new_summary, chat_id))
+        con.commit()
+    con.close()

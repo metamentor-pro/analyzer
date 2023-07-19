@@ -5,6 +5,7 @@ import interactor
 import time
 import traceback
 import requests
+import logging
 
 
 import re
@@ -21,6 +22,8 @@ user_question = None
 
 plot_files = ""
 
+logging.basicConfig(level=logging.INFO, filename="py_log.log",filemode="w",
+                    format="%(asctime)s %(levelname)s %(message)s")
 
 with open("config.yaml") as f:
     cfg = yaml.load(f, Loader=yaml.FullLoader)
@@ -131,7 +134,7 @@ def main(message=None):
     existing_record = cur.fetchone()
 
     if not existing_record:
-        cur.execute("INSERT  INTO callback_manager(user_id) VALUES(?)", (chat_id,))
+        cur.execute("INSERT  INTO callback_manager(user_id) VALUES(?)", (int(chat_id),))
     con.commit()
 
     cur.execute("SELECT * FROM users WHERE user_id = ?", (chat_id,))
@@ -932,7 +935,6 @@ def call_to_model(message):
             cur.execute("UPDATE callback_manager SET req_count = 0")
             con.commit()
 
-
         if req_count > max_requests:
             bot.send_message(message.chat.id, "К сожалению, лимит запросов исчерпан, попробуйте позднее")
             bot.register_next_step_handler(message, main)
@@ -989,29 +991,7 @@ def call_to_model(message):
 
                 table_description: list[str] = get_description(chat_id)
                 context_list = get_context(chat_id)
-
-                con = sq.connect(db_name)
-                cur = con.cursor()
-                cur.execute("SELECT group_flag FROM callback_manager WHERE user_id == ?", (chat_id,))
-
-                group_flag = cur.fetchone()[0]
-                con.commit()
-                if group_flag == True:
-                    cur.execute("SELECT group_name FROM callback_manager WHERE user_id == ?", (chat_id,))
-                    group_name = cur.fetchone()[0]
-                    cur.execute("SELECT admin_id FROM callback_manager WHERE user_id == ?", (chat_id,))
-                    admin_id = cur.fetchone()[0]
-                    cur.execute("SELECT group_conv FROM groups WHERE admin_id == ? AND group_name == ?", (admin_id, group_name))
-                    current_summary = cur.fetchone()
-                else:
-
-                    cur.execute("SELECT conv_sum FROM users WHERE user_id = ?", (chat_id,))
-                    current_summary = cur.fetchone()
-
-                if not current_summary or current_summary[0] is None:
-                    current_summary = ""
-                else:
-                    current_summary = current_summary[0]
+                current_summary = get_summary(chat_id)
 
                 markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
                 btn1 = types.KeyboardButton("🚫 exit")
@@ -1038,21 +1018,10 @@ def call_to_model(message):
                 summary = answer_from_model[1]
                 new_summary = current_summary + summary
                 print(summary)
-
-                if group_flag:
-                    cur.execute("UPDATE groups SET group_conv = ? WHERE admin_id == ? AND group_name == ?", (new_summary, admin_id, group_name))
-
-                else:
-                    cur.execute("UPDATE users SET conv_sum = ? WHERE user_id == ?", (new_summary, chat_id))
-
-                con.commit()
-                con.close()
-
+                update_summary(chat_id, new_summary)
                 time.sleep(10)
                 pattern = r"\b\w+\.png\b"
                 if ".png" in answer_from_model[1]:
-                    print("PLOT TRY IS HERE")
-
                     plot_files = re.findall(pattern, answer_from_model[1])
                     print("plot_files",  plot_files)
                     for plot_file in plot_files:
@@ -1071,7 +1040,7 @@ def call_to_model(message):
                     bot.send_message(message.from_user.id, f"Answer: {answer_from_model[0]}")
                 bot.register_next_step_handler(message, call_to_model)
         except requests.exceptions.ConnectionError:
-            bot.send_message(message.from_user.id, "Что-то пошло не так")
+            bot.send_message(message.from_user.id, "Что-то пошло не так, используйте команду /start")
             main(user_question)
 
 while True:
@@ -1082,4 +1051,6 @@ while True:
     except Exception as e:
         print(traceback.format_exc())
         print("error is:", e)
+        logging.error(traceback.format_exc())
+
 
