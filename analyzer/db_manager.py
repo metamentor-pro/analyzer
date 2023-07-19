@@ -1,7 +1,7 @@
 import sqlite3 as sq
 import yaml
 
-
+from typing import Union, Callable, List
 from msg_parser import msg_to_string
 
 
@@ -10,7 +10,7 @@ with open("config.yaml") as f:
 db_name = cfg["db_name"]
 
 
-def check_for_group(message):
+def check_for_group(message) -> bool:
     con = sq.connect(db_name)
     cur = con.cursor()
 
@@ -30,7 +30,7 @@ def check_for_group(message):
 
     if start == "/start":
 
-        cur.execute("SELECT * FROM groups where group_name == ?",(group_name,))
+        cur.execute("SELECT * FROM groups where group_name == ?", (group_name,))
         existing_record = cur.fetchone()
         if existing_record is not None:
 
@@ -57,7 +57,7 @@ def check_for_group(message):
             return False
 
 
-def check_group_design(chat_id=None):
+def check_group_design(chat_id: int =None) -> Union[int, None]:
 
     admin_id = chat_id
     con = sq.connect(db_name)
@@ -71,13 +71,13 @@ def check_group_design(chat_id=None):
         return None
 
 
-def get_settings(chat_id):
+def get_settings(chat_id: int) -> dict:
 
     group_name = check_group_design(chat_id)
 
     con = sq.connect(db_name)
     cur = con.cursor()
-    cur.execute("SELECT group_flag FROM callback_manager WHERE user_id == ?",(chat_id,))
+    cur.execute("SELECT group_flag FROM callback_manager WHERE user_id == ?", (chat_id,))
 
     group_flag = cur.fetchone()[0]
     cur.execute("SELECT * FROM callback_manager WHERE user_id = ?", (chat_id,))
@@ -133,7 +133,7 @@ def get_settings(chat_id):
     return settings
 
 
-def get_context(chat_id=None):
+def get_context(chat_id: int =None) -> List:
     settings = get_settings(chat_id)
     con = sq.connect(db_name)
     cur = con.cursor()
@@ -170,7 +170,7 @@ def get_context(chat_id=None):
     return context_list
 
 
-def get_description(chat_id=None):
+def get_description(chat_id: int = None) -> List:
     settings = get_settings(chat_id)
     table_name = list(map(str, settings["table_name"].split(",")))
     table_name_path = table_name.copy()
@@ -236,7 +236,7 @@ def get_description(chat_id=None):
     return table_description
 
 
-def get_summary(chat_id):
+def get_summary(chat_id: int) -> str:
     con = sq.connect(db_name)
     cur = con.cursor()
     cur.execute("SELECT group_flag FROM callback_manager WHERE user_id == ?", (chat_id,))
@@ -262,7 +262,7 @@ def get_summary(chat_id):
     return current_summary
 
 
-def update_summary(chat_id, new_summary):
+def update_summary(chat_id: int, new_summary:str) -> None:
     con = sq.connect(db_name)
     cur = con.cursor()
     cur.execute("SELECT group_flag FROM callback_manager WHERE user_id == ?", (chat_id,))
@@ -284,7 +284,7 @@ def update_summary(chat_id, new_summary):
     con.close()
 
 
-def group_create(admin_id, group_name, group_name_for_link):
+def group_create(admin_id: int, group_name: str, group_name_for_link: str) -> str:
     con = sq.connect(db_name)
     cur = con.cursor()
     cur.execute("SELECT * FROM groups WHERE admin_id == ? AND group_name == ?", (admin_id, group_name))
@@ -305,7 +305,7 @@ def group_create(admin_id, group_name, group_name_for_link):
     return message
 
 
-def set_plots(message):
+def set_plots(message) -> str:
     chat_id = message.chat.id
     con = sq.connect(db_name)
     cur = con.cursor()
@@ -327,7 +327,8 @@ def set_plots(message):
     con.close()
     return text
 
-def settings_prep(chat_id):
+
+def settings_prep(chat_id: int):
     settings = get_settings(chat_id)
     if settings["table_name"] is None:
         return False

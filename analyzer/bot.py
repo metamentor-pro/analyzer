@@ -1,3 +1,6 @@
+from inline_keyboard_manager import *
+
+
 import os
 import telebot
 import sqlite3 as sq
@@ -9,14 +12,10 @@ import logging
 
 
 import re
-import yaml
+
 import matplotlib
 matplotlib.use('Agg')
 
-from telebot import types
-from msg_parser import msg_to_string
-from db_manager import *
-from inline_keyboard_manager import *
 
 user_question = None
 
@@ -119,7 +118,7 @@ def help_info(message):
 
 
 @bot.message_handler(commands=["start", "exit"], content_types=["text", "document"])
-def main(message=None):
+def main(message=None) -> None:
     try:
         chat_id = message.chat.id
 
@@ -132,23 +131,17 @@ def main(message=None):
     cur = con.cursor()
     cur.execute("SELECT * FROM callback_manager WHERE user_id = ?", (chat_id,))
     existing_record = cur.fetchone()
-
     if not existing_record:
         cur.execute("INSERT  INTO callback_manager(user_id) VALUES(?)", (int(chat_id),))
     con.commit()
 
     cur.execute("SELECT * FROM users WHERE user_id = ?", (chat_id,))
     existing_record = cur.fetchone()
-
     if not existing_record:
         cur.execute("""INSERT INTO users(user_id) values(?)""", (chat_id,))
-
-    cur.execute("SELECT * FROM users")
-
     con.commit()
     con.close()
 
-    # to do: fix this
     if message.text is not None:
         if "/start" in message.text:
             is_group = check_for_group(message)
@@ -244,7 +237,7 @@ def create_inline_keyboard(chat_id=None, page_type=None, page=1, status_flag=Tru
 # to do: better foreign keys
 
 
-def group_main(message=None):
+def group_main(message=None) -> None:
 
     chat_id = message.chat.id
     group_name = check_group_design(chat_id)
@@ -284,19 +277,17 @@ def group_main(message=None):
 
 
 @bot.message_handler(func=lambda message: message.text == "❓ Режим отправки запроса")
-def request_mode(message):
+def request_mode(message) -> None:
     chat_id = message.chat.id
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn1 = types.KeyboardButton("🚫 exit")
     markup.add(btn1)
     bot.send_message(chat_id, "Отправьте запроc. Пожалуйста, вводите запросы последовательно", reply_markup=markup)
-
-
     bot.register_next_step_handler(message, call_to_model)
 
 
 @bot.message_handler(func=lambda message: message.text == "🖹 Выбрать таблицу")
-def table_click(message):
+def table_click(message) -> None:
     chat_id = message.chat.id
     group_name = check_group_design(chat_id)
     page_type = "table_page"
@@ -311,7 +302,7 @@ def table_click(message):
 
 
 @bot.message_handler(func=lambda message: message.text == "🖻 Режим визуализации")
-def plot_on_click(message):
+def plot_on_click(message) -> None:
     chat_id = message.chat.id
     settings = get_settings(chat_id)
     if settings["build_plots"] == 0:
@@ -328,7 +319,7 @@ def plot_on_click(message):
 
 
 @bot.message_handler(func=lambda message: message.text == "➕ Добавить описание таблицы")
-def desc_on_click(message):
+def desc_on_click(message) -> None:
     chat_id = message.chat.id
     group_name = check_group_design(chat_id)
     page_type = "description_page"
@@ -343,7 +334,7 @@ def desc_on_click(message):
 
 
 @bot.message_handler(func=lambda message: message.text == "Добавить контекст")
-def context_on_click(message):
+def context_on_click(message) -> None:
     chat_id = message.chat.id
     group_name = check_group_design(chat_id)
     page_type = "context_page"
@@ -356,7 +347,7 @@ def context_on_click(message):
 
 
 @bot.message_handler(func=lambda message: message.text == "Группы таблиц")
-def groups_on_click(message):
+def groups_on_click(message) -> None:
     chat_id = message.chat.id
     markup = create_group_keyboard(chat_id)
     bot.send_message(chat_id, "Вы можете выбрать одну из опций", reply_markup=markup)
@@ -364,7 +355,7 @@ def groups_on_click(message):
 
 
 @bot.message_handler(func=lambda message: message.text == "exit")
-def exit_from_group(message):
+def exit_from_group(message) -> None:
     con = sq.connect(db_name)
     cur = con.cursor()
     cur.execute("UPDATE groups SET design_flag = 0 WHERE admin_id == ? ", (message.chat.id,))
@@ -375,7 +366,7 @@ def exit_from_group(message):
 
 
 @bot.message_handler(func=lambda message: message.text == "Сохранить настройки группы")
-def save_group_settings(message):
+def save_group_settings(message) -> None:
     group_name = check_group_design(message.chat.id)
     con = sq.connect(db_name)
     cur = con.cursor()
@@ -396,7 +387,7 @@ def save_group_settings(message):
 
 
 @bot.message_handler(func=lambda message: message.text == "Доступные таблицы")
-def group_table_list(message):
+def group_table_list(message) -> None:
     chat_id = message.chat.id
     prepared_settings = settings_prep(chat_id)
     if prepared_settings == False:
@@ -406,22 +397,18 @@ def group_table_list(message):
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("t|"))
-def callback_query(call):
-
+def callback_query(call) -> None:
     callback_type, action = map(str, call.data.split("|"))
-
     call.data = action
     chat_id = call.message.chat.id
-
     group_name = check_group_design(chat_id=chat_id)
     page_type = "table_page"
     page = get_page(chat_id=chat_id, page_type=page_type)
-    if call.data == "exit":
 
+    if call.data == "exit":
         bot.delete_message(call.message.chat.id, call.message.message_id)
     elif call.data == "new_table":
         bot.send_message(call.message.chat.id, "Чтобы добавить таблицу, отправьте файл в формате csv, XLSX или json")
-
         choose_table(call)
     elif call.data == "delete_tables":
         settings = get_settings(chat_id)
@@ -458,7 +445,6 @@ def callback_query(call):
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                   text="Вы можете выбрать таблицу или добавить новую",
                                   reply_markup=markup2)
-
     elif call.data == "left":
         if page > 1:
             new_page = page - 1
@@ -469,18 +455,16 @@ def callback_query(call):
                                   text="Вы можете выбрать таблицу или добавить новую",
                                   reply_markup=markup2)
     else:
-
         choose_flag = True
         choose_table(call, choose_flag)
     bot.answer_callback_query(call.id)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("c|"))
-def callback_query(call):
+def callback_query(call) -> None:
     callback_type, action = map(str, call.data.split("|"))
     call.data = action
     chat_id = call.message.chat.id
-
     page_type = "context_page"
     page = get_page(chat_id=chat_id, page_type=page_type)
     if call.data == "exit":
@@ -496,7 +480,6 @@ def callback_query(call):
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                   text="Вы можете выбрать таблицу или добавить новую",
                                   reply_markup=markup2)
-
     elif call.data == "left":
         if page > 1:
             new_page = page - 1
@@ -507,19 +490,15 @@ def callback_query(call):
                                   text="Вы можете выбрать таблицу или добавить новую",
                                   reply_markup=markup2)
     else:
-
         choose_table_context(call)
     bot.answer_callback_query(call.id)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("d|"))
-def callback_query(call):
-
+def callback_query(call) -> None:
     callback_type, action = map(str, call.data.split("|"))
     call.data = action
-
     chat_id = call.message.chat.id
-    group_name = check_group_design(chat_id)
     page_type = "description_page"
     page = get_page(chat_id=chat_id, page_type=page_type)
     if call.data == "exit":
@@ -550,7 +529,7 @@ def callback_query(call):
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("g|"))
-def callback_query(call):
+def callback_query(call) -> None:
     callback_type, action = map(str, call.data.split("|"))
     call.data = action
 
@@ -583,7 +562,7 @@ def callback_query(call):
     bot.answer_callback_query(call.id)
 
 
-def choose_table_context(call):
+def choose_table_context(call) -> None:
     chat_id = call.message.chat.id
     message = call.message
 
@@ -593,7 +572,7 @@ def choose_table_context(call):
     bot.register_next_step_handler(message, add_context, call.data)
 
 
-def add_context(message, table_name=None):
+def add_context(message, table_name: str = None) -> None:
     con = sq.connect(db_name)
     cur = con.cursor()
     chat_id = message.chat.id
@@ -605,23 +584,18 @@ def add_context(message, table_name=None):
             if group_name is not None:
                 cur.execute("""UPDATE group_tables SET context = ? WHERE table_name == ? and admin_id == ? and group_name == ? """, (context, table_name, chat_id, group_name))
                 con.commit()
-
                 bot.send_message(message.from_user.id, 'Контекст сохранен')
                 group_main(message)
-
             else:
                 cur.execute("""UPDATE tables SET context = ? WHERE table_name == ? and user_id == ? """, (context, table_name, chat_id))
                 con.commit()
-
                 con.close()
                 bot.send_message(message.from_user.id, 'Контекст сохранен')
-
                 main(message)
         elif message.content_type == "document":
             file_id = message.document.file_id
             file_info = bot.get_file(file_id)
             file_path = file_info.file_path
-
             downloaded_file = bot.download_file(file_path)
             src = "data/" + message.document.file_name
             if ".msg" in src:
@@ -633,13 +607,11 @@ def add_context(message, table_name=None):
             if group_name is not None:
                 cur.execute("""UPDATE group_tables SET context = ? WHERE table_name == ? and admin_id == ? and group_name == ? """, (context, table_name, chat_id, group_name))
                 con.commit()
-
                 bot.send_message(chat_id, 'Контекст сохранен')
                 group_main(message)
             else:
                 cur.execute("""UPDATE tables SET context = ? WHERE table_name = ? and user_id == ? """, (context, table_name, chat_id))
                 con.commit()
-
                 bot.send_message(chat_id, 'Контекст сохранен')
                 main(message)
         con.close()
@@ -647,10 +619,10 @@ def add_context(message, table_name=None):
         print(e)
         bot.send_message(message.chat.id, "Что-то пошло не так, попробуйте другой файл")
         error_message_flag = True
-        add_context(message, error_message_flag)
+        bot.register_next_step_handler(message, add_context, table_name)
 
 
-def choose_table(call, choose_flag=False):
+def choose_table(call, choose_flag: bool = False) -> None:
     try:
         chat_id = call.message.chat.id
         text = call.data
@@ -690,27 +662,23 @@ def choose_table(call, choose_flag=False):
         con.close()
 
 
-def add_table(message, call=None):
-
+def add_table(message, call=None) -> None:
     chat_id = message.chat.id
     message = message
     group_name = check_group_design(chat_id)
     if message.text == "🚫 exit":
         main(message)
-
     else:
         try:
             file_id = message.document.file_id
             file_info = bot.get_file(file_id)
             file_path = file_info.file_path
-
             downloaded_file = bot.download_file(file_path)
             src = "data/" + str(chat_id) + "_" + message.document.file_name
             src.replace("|", "_")
             message.document.file_name = str(chat_id) + "_" + message.document.file_name
             with open(src, 'wb') as f:
                 f.write(downloaded_file)
-
             con = sq.connect(db_name)
             cur = con.cursor()
 
@@ -788,7 +756,7 @@ def add_table(message, call=None):
             bot.register_next_step_handler(message, add_table, call)
 
 
-def plots_handler(message, settings=None):
+def plots_handler(message, settings=None) -> None:
     chat_id = message.chat.id
     settings = get_settings(chat_id)
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -803,7 +771,7 @@ def plots_handler(message, settings=None):
     bot.send_message(message.chat.id, text, reply_markup=markup)
 
 
-def table_description(call):
+def table_description(call) -> None:
     table_name = call.data
     message = call.message
     bot.send_message(message.chat.id, """Таблица выбрана. Чтобы добавить описание таблицы, отправьте файл с описанием столбцов в формате txt или качестве сообщения.""")
@@ -811,7 +779,7 @@ def table_description(call):
     bot.register_next_step_handler(message, choose_description, table_name)
 
 
-def choose_description(message, table_name=None):
+def choose_description(message, table_name: str = None) -> None:
     table_name = table_name
     con = sq.connect(db_name)
     cur = con.cursor()
@@ -822,7 +790,6 @@ def choose_description(message, table_name=None):
         if group_name is not None:
 
             cur.execute("select table_name from group_tables where admin_id == ? and group_name == ?", (chat_id, group_name))
-
             existing_record = cur.fetchall()
             if existing_record:
                 cur.execute(
@@ -834,9 +801,7 @@ def choose_description(message, table_name=None):
             bot.send_message(message.from_user.id, 'Описание сохранено')
             group_main(message)
         else:
-
             cur.execute("select table_name from tables where user_id == ?", (chat_id,))
-
             existing_record = cur.fetchall()
             if existing_record:
                 cur.execute("""UPDATE tables SET table_description = ? WHERE table_name == ? and user_id = ? """, (description, table_name, chat_id))
@@ -850,10 +815,8 @@ def choose_description(message, table_name=None):
             file_id = message.document.file_id
             file_info = bot.get_file(file_id)
             file_path = file_info.file_path
-
             downloaded_file = bot.download_file(file_path)
             src = "data/" + message.document.file_name
-
             description = downloaded_file.decode('utf-8')
 
             if group_name is not None:
@@ -869,7 +832,6 @@ def choose_description(message, table_name=None):
 
             else:
                 cur.execute("select table_name from tables where user_id == ?", (chat_id,))
-
                 existing_record = cur.fetchall()
                 if existing_record:
                     cur.execute("""UPDATE tables SET table_description = ? WHERE table_name == ? """, (description, table_name))
@@ -885,7 +847,7 @@ def choose_description(message, table_name=None):
             bot.register_next_step_handler(message, table_description)
 
 
-def create_group(message):
+def create_group(message) -> None:
     admin_id = message.chat.id
     group_name = message.text.replace(" ", "")
     group_name_for_link = "group_" + str(admin_id) + "_" + message.text.replace(" ", "")
@@ -894,7 +856,7 @@ def create_group(message):
     main(message)
 
 
-def choose_group(group_name=None, admin_id=None, message=None):
+def choose_group(group_name=None, admin_id=None, message=None) -> None:
     con = sq.connect(db_name)
     cur = con.cursor()
     cur.execute("UPDATE groups SET design_flag = True WHERE admin_id == ? AND group_name == ?", (admin_id, group_name))
@@ -908,7 +870,7 @@ def choose_group(group_name=None, admin_id=None, message=None):
     bot.register_next_step_handler(message, group_main)
 
 
-def call_to_model(message):
+def call_to_model(message) -> None:
 
     if demo:
         con = sq.connect(db_name)
@@ -940,7 +902,6 @@ def call_to_model(message):
     elif message.text == "Нет":
         main(message)
 
-
     else:
         if message.text == "Да":
             user_question = "Проведи исследовательский анализ данных по таблице"
@@ -951,7 +912,6 @@ def call_to_model(message):
 
         def callback(sum_on_step):
             message_id = send_message.message_id
-
             edited_message = bot.edit_message_text(chat_id=chat_id, message_id=message_id,
                                                    text=send_message.text + f"\n{sum_on_step}")
         settings = get_settings(chat_id)
@@ -981,7 +941,6 @@ def call_to_model(message):
 
                 markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
                 btn1 = types.KeyboardButton("🚫 exit")
-
                 markup.add(btn1)
 
                 bot.send_message(chat_id,
@@ -1030,6 +989,7 @@ def call_to_model(message):
         except requests.exceptions.ConnectionError:
             bot.send_message(message.from_user.id, "Что-то пошло не так, используйте команду /start")
             main(message)
+
 
 while True:
     try:

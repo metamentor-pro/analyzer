@@ -11,16 +11,17 @@ class TableDescriptionPrompt:
     def __str__(self):
         if self.build_plots:
             plots_part = """You can use plots if you need them.
-                            Use PlotSubagent to build them.
                             BUILD GRAPHS IF AND INLY IF YOU ARE ASKED TO DO SO.
                             If you have to much data to plot, try to group it by quantity.
                             If you are working with temporary data and there are too many of them for normal display, then combine several dates into one.
                             Always use seaborn and plotly instead of matplotlib if you can.
                             Pay attention to categorical variables, if they are too long, then reduce the size of the graph so that the names of variables are placed on the screen.
                             ALWAYS MAKESURE THAT THERE ARE ENOUGH PLACE FOR NAMES OF VALUES IN PLOT
+                            REMEMBER, THAT IT BETTER TO PLOT LESS VALUES THAN OVERFLOW CHARTS
                             Аlways try to choose the most appropriate type of schedule depending on the task and data
                             YOU MUST SAVE YOUR PLOT TO .PNG FILE, DO NOT PLOT IT IN THE TERMINAL, JUST SAVE IT TO FILE OR THE WORLD WILL BE DESTROYED, File should be in the folder called 'Plots'
-                            YOU SHOULD ALWAYS INCLUDE THE NAME OF THE PLOT FILES IN YOUR ANSWER
+                            YOU SHOULD ALWAYS INCLUDE THE NAME OF THE PLOT FILES IN YOUR ANSWER including .png
+                            FILE NAMES SHOULD NOT CONTAINS SPACES AND MUST BE IN ENGLISH
                             If there are already file with the same name, just rename current file"""
         else:
             plots_part = "You are not allowed to use plots. "
@@ -62,7 +63,7 @@ Action: the action you take. It's one of {tool_names}. You have to write "Action
 Action Input: the input to the action.
 AResult: the result of the action.
 Final Result: the final result of the task. Write what you did, be reasonably detailed and include names of plot files.
-It is very important to write down name of every file separately
+It is very important to write down name of every plot file that you made.
 
 "AResult:" ALWAYS comes after "Action Input:" - it's the result of any taken action. Do not use to describe the result of your thought.
 "AResult:" comes after "Action Input:" even if there's a Final Result after that.

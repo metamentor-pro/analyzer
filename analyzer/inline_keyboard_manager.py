@@ -8,7 +8,7 @@ with open("config.yaml") as f:
 db_name = cfg["db_name"]
 
 
-def get_page(chat_id, page_type):
+def get_page(chat_id: int, page_type: str) -> int:
     con = sq.connect(db_name)
     cur = con.cursor()
     page = None
@@ -29,7 +29,7 @@ def get_page(chat_id, page_type):
     return page
 
 
-def change_page(chat_id, page_type, new_page):
+def change_page(chat_id: int, page_type: str, new_page: int) -> None:
     con = sq.connect(db_name)
     cur = con.cursor()
     group_name = check_group_design(chat_id)
@@ -45,7 +45,7 @@ def change_page(chat_id, page_type, new_page):
     con.close()
 
 
-def get_pages_amount(chat_id):
+def get_pages_amount(chat_id: int) -> int:
     con = sq.connect(db_name)
     cur = con.cursor()
     group_name = check_group_design(chat_id)
@@ -60,7 +60,7 @@ def get_pages_amount(chat_id):
     return amount
 
 
-def create_group_keyboard(chat_id=None, show_groups=False):
+def create_group_keyboard(chat_id: int = None, show_groups: bool = False):
     markup = types.InlineKeyboardMarkup()
     con = sq.connect(db_name)
     cur = con.cursor()
