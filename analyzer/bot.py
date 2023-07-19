@@ -929,9 +929,7 @@ def call_to_model(message) -> None:
             else:
                 table_name = list(map(str, settings["table_name"].split(",")))
                 print("available tables for model:", table_name)
-
                 table_name_path = table_name.copy()
-
                 for table in range(len(table_name_path)):
                     table_name_path[table] = "data/" + table_name_path[table].strip()
 

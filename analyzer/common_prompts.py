@@ -16,12 +16,13 @@ class TableDescriptionPrompt:
                             If you are working with temporary data and there are too many of them for normal display, then combine several dates into one.
                             Always use seaborn and plotly instead of matplotlib if you can.
                             Pay attention to categorical variables, if they are too long, then reduce the size of the graph so that the names of variables are placed on the screen.
-                            ALWAYS MAKESURE THAT THERE ARE ENOUGH PLACE FOR NAMES OF VALUES IN PLOT
                             REMEMBER, THAT IT BETTER TO PLOT LESS VALUES THAN OVERFLOW CHARTS
+                            ALWAYS MAKESURE THAT THERE ARE ENOUGH PLACE FOR NAMES OF VALUES IN PLOT. For this try to make
+                            figsize of the plot bigger or rotate variable names so they wont overlap 
                             Аlways try to choose the most appropriate type of schedule depending on the task and data
                             YOU MUST SAVE YOUR PLOT TO .PNG FILE, DO NOT PLOT IT IN THE TERMINAL, JUST SAVE IT TO FILE OR THE WORLD WILL BE DESTROYED, File should be in the folder called 'Plots'
                             YOU SHOULD ALWAYS INCLUDE THE NAME OF THE PLOT FILES IN YOUR ANSWER including .png
-                            FILE NAMES SHOULD NOT CONTAINS SPACES AND MUST BE IN ENGLISH
+                            FILE NAMES SHOULD NOT CONTAINS SPACES AND MUST BE IN ENGLISH OR THE EARTH WILL EXPLODE 
                             If there are already file with the same name, just rename current file"""
         else:
             plots_part = "You are not allowed to use plots. "
