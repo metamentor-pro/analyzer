@@ -171,8 +171,9 @@ def main(message=None):
 
     else:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        btn4 = types.KeyboardButton("❓ Режим отправки запроса")
-        markup.row(btn4)
+        btn1 = types.KeyboardButton("❓ Режим отправки запроса")
+        btn2 = types.KeyboardButton("Доступные таблицы")
+        markup.row(btn1, btn2)
         bot.send_message(chat_id, "Вы можете  выбрать одну из опций", reply_markup=markup)
 
 
@@ -212,7 +213,7 @@ def create_inline_keyboard(chat_id=None, page_type=None, page=1, status_flag=Tru
         if row[0] is not None:
             prep_arr = list(row[0].split("_"))
             prepared_row = "_".join(prep_arr[1:])
-            btn = types.InlineKeyboardButton(text=prepared_row, callback_data=f"{prefix}{row[0]}")
+            btn = types.InlineKeyboardButton(text=str(prepared_row), callback_data=f"{prefix}{row[0]}")
 
             markup.add(btn)
     if page_type == "table_page":
@@ -222,6 +223,7 @@ def create_inline_keyboard(chat_id=None, page_type=None, page=1, status_flag=Tru
 
         if settings["table_name"] is not None and len(settings["table_name"]) > 0:
             if status_flag:
+                settings["table_name"] = settings_prep(chat_id)
                 bot.send_message(chat_id, f"Сейчас доступны для анализа: {settings['table_name']}")
             markup.add(btn2)
 
@@ -288,6 +290,7 @@ def request_mode(message):
     btn1 = types.KeyboardButton("🚫 exit")
     markup.add(btn1)
     bot.send_message(chat_id, "Отправьте запроc. Пожалуйста, вводите запросы последовательно", reply_markup=markup)
+
 
     bot.register_next_step_handler(message, call_to_model)
 
@@ -390,6 +393,16 @@ def save_group_settings(message):
     bot.send_message(message.chat.id, "Изменения группы сохранены, ссылка для взаимодействия с группой: ")
     bot.send_message(message.chat.id, f'{group_link}')
     main(message)
+
+
+@bot.message_handler(func=lambda message: message.text == "Доступные таблицы")
+def group_table_list(message):
+    chat_id = message.chat.id
+    prepared_settings = settings_prep(chat_id)
+    if prepared_settings == False:
+        bot.send_message(chat_id, "В данной группе пока нет доступных таблиц")
+    else:
+        bot.send_message(chat_id, f"Доступные таблицы:{prepared_settings}")
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("t|"))
@@ -589,8 +602,6 @@ def add_context(message, table_name=None):
         group_name = check_group_design(chat_id)
         if message.content_type == "text":
             context = str(message.text)
-
-
             if group_name is not None:
                 cur.execute("""UPDATE group_tables SET context = ? WHERE table_name == ? and admin_id == ? and group_name == ? """, (context, table_name, chat_id, group_name))
                 con.commit()
@@ -702,6 +713,7 @@ def add_table(message, call=None):
 
             con = sq.connect(db_name)
             cur = con.cursor()
+
             if group_name is not None:
                 cur.execute("SELECT * FROM group_tables WHERE admin_id == ? AND table_name == ?", (chat_id, message.document.file_name))
                 existing_record = cur.fetchone()
@@ -742,10 +754,12 @@ def add_table(message, call=None):
                     con.close()
                     bot.reply_to(message, 'Файл сохранен')
                     page_type = "table_page"
+                    print(chat_id, call.data, call.message.message_id)
                     markup2 = create_inline_keyboard(chat_id=call.message.chat.id, page_type=page_type)
                     bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                       text="Вы можете выбрать таблицу или добавить новую",
                                       reply_markup=markup2)
+
 
                     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
                     btn1 = types.KeyboardButton("Нет")
@@ -762,6 +776,9 @@ def add_table(message, call=None):
                 con.close()
 
         except telebot.apihelper.ApiTelegramException:
+            print(traceback.format_exc())
+            logging.error(traceback.format_exc())
+            bot.send_message(chat_id, "Что-то пошло не так, попробуйте другой файл")
             bot.register_next_step_handler(message, add_table, call)
 
         except Exception as e:
@@ -777,31 +794,13 @@ def plots_handler(message, settings=None):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn1 = types.KeyboardButton("Вернуться в главное меню")
     markup.add(btn1)
-    con = sq.connect(db_name)
-    cur = con.cursor()
     group_name = check_group_design(chat_id)
-    if message.text == "Выключить":
-
-        if group_name is not None:
-            cur.execute("UPDATE groups SET group_plot = 0 WHERE admin_id == ?", (chat_id,))
-            bot.register_next_step_handler(message, group_main)
-        else:
-            cur.execute("UPDATE users SET build_plots = 0 where user_id == ?", (chat_id,))
-            bot.register_next_step_handler(message, main)
-        con.commit()
-        bot.send_message(message.chat.id, "Режим визуализации отключён", reply_markup=markup)
-
-    elif message.text == "Включить":
-
-        if group_name is not None:
-            cur.execute("UPDATE groups SET group_plot = 1 WHERE admin_id == ?", (chat_id,))
-            bot.register_next_step_handler(message, group_main)
-        else:
-            cur.execute("UPDATE users SET build_plots = 1 where user_id == ?", (chat_id,))
-            bot.register_next_step_handler(message, main)
-        con.commit()
-        bot.send_message(message.chat.id, "Режим визуализации включён", reply_markup=markup)
-    con.close()
+    if group_name is not None:
+        bot.register_next_step_handler(message, group_main)
+    else:
+        bot.register_next_step_handler(message, main)
+    text = set_plots(message)
+    bot.send_message(message.chat.id, text, reply_markup=markup)
 
 
 def table_description(call):
@@ -888,24 +887,10 @@ def choose_description(message, table_name=None):
 
 def create_group(message):
     admin_id = message.chat.id
-    group_name = message.text.replace(" ", "-")
-    group_name_for_link = "group_" + str(admin_id) + "_" + message.text.replace(" ", "-")
-    con = sq.connect(db_name)
-    cur = con.cursor()
-    cur.execute("SELECT * FROM groups WHERE admin_id == ? AND group_name == ?", (admin_id, group_name))
-    existing_record = cur.fetchone()
-    if existing_record is None:
-        cur.execute("INSERT INTO groups(admin_id, group_name) VALUES(?,?)", (admin_id, group_name))
-        con.commit()
-        group_link = "https://t.me/auto_analyzer_bot?start=" + group_name_for_link
-        cur.execute("UPDATE groups SET group_link = ? WHERE admin_id == ? and group_name == ? ", (group_link, admin_id, group_name))
-        con.commit()
-        cur.execute("INSERT INTO group_manager(admin_id, group_name) VALUES(?,?)", (admin_id, group_name))
-        con.commit()
-        con.close()
-        bot.send_message(admin_id, "Группа создана")
-    else:
-        bot.send_message(admin_id, "Данная группа уже создавалась")
+    group_name = message.text.replace(" ", "")
+    group_name_for_link = "group_" + str(admin_id) + "_" + message.text.replace(" ", "")
+    text = group_create(admin_id=admin_id, group_name=group_name, group_name_for_link=group_name_for_link)
+    bot.send_message(admin_id, text)
     main(message)
 
 
@@ -955,6 +940,7 @@ def call_to_model(message):
     elif message.text == "Нет":
         main(message)
 
+
     else:
         if message.text == "Да":
             user_question = "Проведи исследовательский анализ данных по таблице"
@@ -998,9 +984,11 @@ def call_to_model(message):
 
                 markup.add(btn1)
 
-                bot.send_message(message.from_user.id,
+                bot.send_message(chat_id,
                                  "Обрабатываю запрос, вы можете выйти из режима работы с моделью с помощью 'exit'",
                                  reply_markup=markup)
+                bot.send_message(chat_id,
+                                 "Учтите, что первичная обработка больших таблиц может занять несколько минут, спасибо")
                 send_message = bot.send_message(message.from_user.id, "Здесь будет описан процесс моих рассуждений:")
 
                 build_plots = settings["build_plots"]
@@ -1008,7 +996,7 @@ def call_to_model(message):
                 answer_from_model = interactor.run_loop_bot(table_name_path, build_plots, user_question, current_summary,
                                                             table_description, context_list, callback=callback)
                 if answer_from_model[0] == "F":
-                    bot.send_message(message.chat.id, "Что-то пошло не так, пожалуйста, повторяю запрос")
+                    bot.send_message(message.chat.id, "Что-то пошло не так, повторяю запрос")
                     answer_from_model = interactor.run_loop_bot(table_name_path, build_plots, user_question,
                                                                 current_summary,
                                                                 table_description, context_list, callback=callback)
@@ -1041,7 +1029,7 @@ def call_to_model(message):
                 bot.register_next_step_handler(message, call_to_model)
         except requests.exceptions.ConnectionError:
             bot.send_message(message.from_user.id, "Что-то пошло не так, используйте команду /start")
-            main(user_question)
+            main(message)
 
 while True:
     try:

@@ -61,7 +61,7 @@ def preparation(path_list: List[str], build_plots: Union[bool, None], current_su
         build_plots = cfg["build_plots"]
 
     prepared_path_list = list()
-
+    callback("Идёт процесс обработки таблиц...")
     for path in path_list:
         file_extension = pathlib.Path(path).suffix.lower()
         if file_extension == ".xlsx":
@@ -80,7 +80,7 @@ def preparation(path_list: List[str], build_plots: Union[bool, None], current_su
         df_info += df_info_description(i, item[0])
         df_work.append(item[0])
 
-    print('tables processed!')
+    callback("Таблицы обработаны")
 
     llm = ChatOpenAI(temperature=0.7, model='gpt-4',
                      openai_api_key="")

@@ -2,9 +2,13 @@ import sqlite3 as sq
 import yaml
 
 
+from msg_parser import msg_to_string
+
+
 with open("config.yaml") as f:
     cfg = yaml.load(f, Loader=yaml.FullLoader)
 db_name = cfg["db_name"]
+
 
 def check_for_group(message):
     con = sq.connect(db_name)
@@ -278,3 +282,57 @@ def update_summary(chat_id, new_summary):
         cur.execute("UPDATE users SET conv_sum = ? WHERE user_id == ?", (new_summary, chat_id))
         con.commit()
     con.close()
+
+
+def group_create(admin_id, group_name, group_name_for_link):
+    con = sq.connect(db_name)
+    cur = con.cursor()
+    cur.execute("SELECT * FROM groups WHERE admin_id == ? AND group_name == ?", (admin_id, group_name))
+    existing_record = cur.fetchone()
+    if existing_record is None:
+        cur.execute("INSERT INTO groups(admin_id, group_name) VALUES(?,?)", (admin_id, group_name))
+        con.commit()
+        group_link = "https://t.me/auto_analyzer_bot?start=" + group_name_for_link
+        cur.execute("UPDATE groups SET group_link = ? WHERE admin_id == ? and group_name == ? ",
+                    (group_link, admin_id, group_name))
+        con.commit()
+        cur.execute("INSERT INTO group_manager(admin_id, group_name) VALUES(?,?)", (admin_id, group_name))
+        con.commit()
+        con.close()
+        message = "Группа создана"
+    else:
+        message = "Данная группа уже создавалась"
+    return message
+
+
+def set_plots(message):
+    chat_id = message.chat.id
+    con = sq.connect(db_name)
+    cur = con.cursor()
+    group_name = check_group_design(chat_id)
+    if message.text == "Выключить":
+        text = "Режим визуализации отключён"
+        if group_name is not None:
+            cur.execute("UPDATE groups SET group_plot = 0 WHERE admin_id == ?", (chat_id,))
+        else:
+            cur.execute("UPDATE users SET build_plots = 0 where user_id == ?", (chat_id,))
+        con.commit()
+    elif message.text == "Включить":
+        text = "Режим визуализации включён"
+        if group_name is not None:
+            cur.execute("UPDATE groups SET group_plot = 1 WHERE admin_id == ?", (chat_id,))
+        else:
+            cur.execute("UPDATE users SET build_plots = 1 where user_id == ?", (chat_id,))
+        con.commit()
+    con.close()
+    return text
+
+def settings_prep(chat_id):
+    settings = get_settings(chat_id)
+    if settings["table_name"] is None:
+        return False
+    table_name = list(map(str, settings["table_name"].split(",")))
+    for i in range(len(table_name)):
+        prep_name = list(table_name[i].split("_"))
+        table_name[i] = "_".join(prep_name[1:])
+    return ",".join(table_name)
