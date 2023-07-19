@@ -4,6 +4,23 @@ from openpyxl.utils.cell import range_boundaries
 from openpyxl.styles import PatternFill
 
 
+def check_cells_content(wb):
+    sheet = wb.active
+
+    cell_a1 = sheet['A1']
+    cell_a2 = sheet['A2']
+    cell_b1 = sheet['B1']
+
+    if cell_a1.value is not None and cell_a1.value != "":
+        return True
+    if cell_a2.value is not None and cell_a2.value != "":
+        return True
+    if cell_b1.value is not None and cell_b1.value != "":
+        return True
+
+    return False
+
+
 def get_data_range(sheet):
     start_row, start_col, end_row, end_col = None, None, None, None
     for row in sheet.iter_rows():
@@ -29,26 +46,18 @@ def get_data_range(sheet):
         return None
 
 
-def move(file_path, save_path):
-    wb = openpyxl.load_workbook(file_path, data_only=True)
+def move(wb):
     sheet = wb.active
     range = get_data_range(sheet)
     if range:
         sheet.move_range(range[0], rows=-range[1] + 1, cols=-range[2] + 1, translate=True)
-        wb.save(save_path)
 
 
-def unmerge_cells(file_path, save_path):
-    wb = openpyxl.load_workbook(file_path, data_only=True)
+def unmerge_cells(wb):
     sheet = wb.active
-
     range = get_data_range(sheet)
 
     if range is not None:
-        for row in sheet[range[0]]:
-            for cell in row:
-                cell.fill = PatternFill(start_color=None, end_color=None, fill_type=None)
-
         check_range = f'{range[3]}{range[1]}:{range[4]}{range[1]}'
         is_merged = False
         for merged_range in sheet.merged_cells.ranges:
@@ -69,15 +78,18 @@ def unmerge_cells(file_path, save_path):
                         cell.value = top_left_cell_value
         if is_merged:
             sheet.delete_rows(range[1])
-    wb.save(save_path)
 
 
 def process(path):
     save_path = path[:-5] + '_prepared.xlsx'
     name = os.path.basename(path)
+
     if not os.path.exists(save_path):
-        unmerge_cells(path, save_path)
-        move(save_path, save_path)
+        wb = openpyxl.load_workbook(path, data_only=True)
+        unmerge_cells(wb)
+        if not check_cells_content(wb):
+            move(wb)
+        wb.save(save_path)
     return save_path, name
 
 
