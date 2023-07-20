@@ -343,7 +343,7 @@ def add_table_db(message=None, call=None, downloaded_file=None) -> None:
     chat_id = message.chat.id
     message = message
     group_name = check_group_design(chat_id)
-    src = "data/" + str(chat_id) + "_" + message.document.file_name
+    src = "data/" + message.document.file_name
     src.replace("|", "_")
 
     with open(src, 'wb') as f:
