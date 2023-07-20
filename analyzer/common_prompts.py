@@ -66,7 +66,8 @@ Action Input: the input to the action.
 AResult: the result of the action.
 Final Result: the final result of the task. Write what you did, be reasonably detailed and include names of plot files.
 It is very important to write down name of every plot file that you made. FILE NAMES SHOULD NOT CONTAINS SPACES AND MUST BE IN ENGLISH OR THE EARTH WILL EXPLODE 
-USE CHECKER SUBAGENT TO CHECK IF YOUR FILE NAMES ARE VALID
+USE CHECKER SUBAGENT TO CHECK IF YOUR FILE NAMES ARE VALID and if final answer is written in Russian.
+Use text command for that like : 'check if this file name in english and without spaces"
 
 "AResult:" ALWAYS comes after "Action Input:" - it's the result of any taken action. Do not use to describe the result of your thought.
 "AResult:" comes after "Action Input:" even if there's a Final Result after that.

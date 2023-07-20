@@ -25,7 +25,8 @@ def read_df(path: str) -> (pd.DataFrame, str):
 
     if file_extension == '.xlsx':
         prepared = process(path)
-        return pd.read_excel(prepared[0]), prepared[1]
+
+        return pd.read_excel(prepared[0]), prepared[0]
     elif file_extension == ".json":
         return pd.read_json(path), file_name
     elif file_extension == ".csv":
@@ -70,6 +71,7 @@ def preparation(path_list: List[str], build_plots: Union[bool, None], current_su
             prepared_path_list.append(path)
 
     df_list = [read_df(path) for path in prepared_path_list]
+
     df_head = ""
     for i, item in enumerate(df_list):
         df_head += df_head_description(i, item[0], item[1])

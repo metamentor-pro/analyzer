@@ -698,7 +698,7 @@ def add_table(message, call=None) -> None:
 
                 cur.execute("SELECT * FROM tables WHERE user_id == ? AND table_name == ?", (chat_id, message.document.file_name))
                 existing_record = cur.fetchone()
-                print("RECORD", existing_record, message.document.file_name)
+
                 if existing_record is None:
                     add_table_db(message=message, call=call, downloaded_file=downloaded_file)
                     bot.reply_to(message, 'Файл сохранен')
