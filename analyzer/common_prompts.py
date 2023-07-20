@@ -16,7 +16,8 @@ class TableDescriptionPrompt:
                             If you are working with temporary data and there are too many of them for normal display, then combine several dates into one.
                             Always use seaborn and plotly instead of matplotlib if you can.
                             Pay attention to categorical variables, if they are too long, then reduce the size of the graph so that the names of variables are placed on the screen.
-                            REMEMBER, THAT IT BETTER TO PLOT LESS VALUES THAN OVERFLOW CHARTS
+                            REMEMBER, THAT IT BETTER TO PLOT LESS VALUES THAN OVERFLOW CHARTS, if there are more than 10 values to plot, plot only top 10 of them
+                            YOU SHOULD ALSO MAKE NAMES OF VALUES SMALLER USING tick_params(labelsize=2) 
                             ALWAYS MAKESURE THAT THERE ARE ENOUGH PLACE FOR NAMES OF VALUES IN PLOT. For this try to make
                             figsize of the plot bigger or rotate variable names so they wont overlap 
                             Аlways try to choose the most appropriate type of schedule depending on the task and data
@@ -64,7 +65,8 @@ Action: the action you take. It's one of {tool_names}. You have to write "Action
 Action Input: the input to the action.
 AResult: the result of the action.
 Final Result: the final result of the task. Write what you did, be reasonably detailed and include names of plot files.
-It is very important to write down name of every plot file that you made.
+It is very important to write down name of every plot file that you made. FILE NAMES SHOULD NOT CONTAINS SPACES AND MUST BE IN ENGLISH OR THE EARTH WILL EXPLODE 
+USE CHECKER SUBAGENT TO CHECK IF YOUR FILE NAMES ARE VALID
 
 "AResult:" ALWAYS comes after "Action Input:" - it's the result of any taken action. Do not use to describe the result of your thought.
 "AResult:" comes after "Action Input:" even if there's a Final Result after that.

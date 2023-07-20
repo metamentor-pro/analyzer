@@ -297,7 +297,6 @@ class SubagentTool(BaseMinion):
         )
         return ans
 
-
     name: str
     description: str
     func: typing.Callable[[str], str]

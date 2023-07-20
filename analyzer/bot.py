@@ -898,15 +898,28 @@ def call_to_model(message) -> None:
                 update_summary(chat_id, new_summary)
                 time.sleep(10)
                 pattern = r"\b\w+\.png\b"
+                pattern2 = r"[\w.-]+\.png"
                 if ".png" in answer_from_model[1]:
                     plot_files = re.findall(pattern, answer_from_model[1])
-                    print("plot_files",  plot_files)
+                    plot_files_2 = re.findall(pattern2, answer_from_model[1])
+                    print("plot_files",  plot_files, plot_files_2)
                     for plot_file in plot_files:
                         path_to_file = "Plots/" + plot_file
 
                         if os.path.exists(path_to_file):
                             bot.send_photo(message.from_user.id, open(path_to_file, "rb"))
                     for plot_file in plot_files:
+
+                        path_to_file = "Plots/" + plot_file
+                        if os.path.exists(path_to_file):
+                            os.remove(path_to_file)
+                    matplotlib.pyplot.close("all")
+                    for plot_file in plot_files_2:
+                        path_to_file = "Plots/" + plot_file
+
+                        if os.path.exists(path_to_file):
+                            bot.send_photo(message.from_user.id, open(path_to_file, "rb"))
+                    for plot_file in plot_files_2:
 
                         path_to_file = "Plots/" + plot_file
                         if os.path.exists(path_to_file):
