@@ -91,7 +91,7 @@ def create_group_keyboard(chat_id: int = None, show_groups: bool = False):
 
 
 
-def inline_keyboard(chat_id=None, page_type=None, page=1, status_flag=True):
+def inline_keyboard(chat_id: int = None, page_type: str = None, page: int = 1, status_flag: bool = True):
     group_name = check_group_design(chat_id)
 
     if group_name is not None:

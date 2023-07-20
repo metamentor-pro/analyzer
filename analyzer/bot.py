@@ -755,7 +755,7 @@ def create_group(message) -> None:
     main(message)
 
 
-def choose_group(group_name=None, admin_id=None, message=None) -> None:
+def choose_group(group_name: str = None, admin_id: int = None, message=None) -> None:
     con = sq.connect(db_name)
     cur = con.cursor()
     cur.execute("UPDATE groups SET design_flag = True WHERE admin_id == ? AND group_name == ?", (admin_id, group_name))
@@ -894,8 +894,10 @@ def call_to_model(message) -> None:
                     bot.send_message(message.from_user.id, f"Answer: {answer_from_model[0]}")
                 bot.register_next_step_handler(message, call_to_model)
         except requests.exceptions.ConnectionError:
-            bot.send_message(message.from_user.id, "Что-то пошло не так, используйте команду /start")
-            main(message)
+            call_to_model(message)
+            bot.send_message(message.from_user.id, "Что-то пошло не так, пожалуйста, повторите вопрос или используйте команду start")
+            bot.register_next_step_handler(message, call_to_model)
+
 
 
 while True:
