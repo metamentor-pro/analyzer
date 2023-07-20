@@ -186,65 +186,14 @@ def main(message=None) -> None:
 def create_inline_keyboard(chat_id=None, page_type=None, page=1, status_flag=True):
     group_name = check_group_design(chat_id)
 
-    if group_name is not None:
-        query = "select table_name from group_tables where admin_id == ? and group_name == ? LIMIT 3 OFFSET ?"
-        if page == 1:
-            offset = 0
-        else:
-            offset = ((page - 1) * 3)
-    else:
-        query = "select table_name from tables where user_id == ? LIMIT 3 OFFSET ?"
-        if page == 1:
-            offset = 0
-        else:
-            offset = ((page-1)*3)
-    markup = types.InlineKeyboardMarkup(row_width=3)
-    prefix = page_type[0]+"|"
-    settings = get_settings(chat_id)
-    con = sq.connect(db_name)
-    cur = con.cursor()
-    if group_name is not None:
-        cur.execute(query, (chat_id, group_name, offset))
-    else:
-        cur.execute(query, (chat_id, offset))
-
-    rows = cur.fetchall()
-
-    con.commit()
-    con.close()
-    btn = None
-
-    for row in rows:
-
-        if row[0] is not None:
-            prep_arr = list(row[0].split("_"))
-            prepared_row = "_".join(prep_arr[1:])
-            btn = types.InlineKeyboardButton(text=str(prepared_row), callback_data=f"{prefix}{row[0]}")
-
-            markup.add(btn)
+    settings = get_settings(chat_id=chat_id)
+    markup = inline_keyboard(chat_id=chat_id, page_type=page_type, page=page, status_flag=status_flag)
+    prefix = page_type[0] + "|"
     if page_type == "table_page":
-        btn1 = types.InlineKeyboardButton(text="Добавить новую таблицу", callback_data=f"t|new_table")
-        btn2 = types.InlineKeyboardButton(text="Убрать последнюю таблицу из набора", callback_data=f"t|delete_tables")
-        markup.row(btn1)
-
         if settings["table_name"] is not None and len(settings["table_name"]) > 0:
             if status_flag:
                 settings["table_name"] = settings_prep(chat_id)
                 bot.send_message(chat_id, f"Сейчас доступны для анализа: {settings['table_name']}")
-            markup.add(btn2)
-
-    page = get_page(chat_id=chat_id, page_type=page_type)
-    amount = get_pages_amount(chat_id=chat_id)
-    markup.add(types.InlineKeyboardButton(text=f'{page}/{amount}', callback_data=f' '))
-    right = types.InlineKeyboardButton(text="-->", callback_data=f"{prefix}right")
-    left = types.InlineKeyboardButton(text="<--", callback_data=f"{prefix}left")
-    if page > 1:
-        markup.row(left, right)
-    else:
-        markup.row(right)
-
-    btn3 = types.InlineKeyboardButton(text="🚫 exit", callback_data=f"{prefix}exit")
-    markup.add(btn3)
     return markup
 
 # to do: better foreign keys
@@ -670,57 +619,62 @@ def add_table(message, call=None) -> None:
             file_info = bot.get_file(file_id)
             file_path = file_info.file_path
             downloaded_file = bot.download_file(file_path)
-            message.document.file_name = str(chat_id) + "_" + message.document.file_name
-            if group_name is not None:
+            if len(message.document.file_name) > 40:
+                bot.send_message(chat_id, "К сожалению, название таблицы слишком длинное, придётся его сократить")
+                bot.register_next_step_handler(message, add_table, call)
+            else:
 
-                con = sq.connect(db_name)
-                cur = con.cursor()
-                cur.execute("SELECT * FROM group_tables WHERE admin_id == ? AND table_name == ?", (chat_id, message.document.file_name))
-                existing_record = cur.fetchone()
+                message.document.file_name = str(chat_id) + "_" + message.document.file_name
+                if group_name is not None:
 
-                if existing_record is None:
-                    add_table_db(message=message, call=call, downloaded_file=downloaded_file)
-                    bot.reply_to(message, 'Файл сохранен')
-                    page_type = "table_page"
-                    markup2 = create_inline_keyboard(chat_id=call.message.chat.id, page_type=page_type)
-                    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                    con = sq.connect(db_name)
+                    cur = con.cursor()
+                    cur.execute("SELECT * FROM group_tables WHERE admin_id == ? AND table_name == ?", (chat_id, message.document.file_name))
+                    existing_record = cur.fetchone()
+
+                    if existing_record is None:
+                        add_table_db(message=message, call=call, downloaded_file=downloaded_file)
+                        bot.reply_to(message, 'Файл сохранен')
+                        page_type = "table_page"
+                        markup2 = create_inline_keyboard(chat_id=call.message.chat.id, page_type=page_type)
+                        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                           text="Вы можете выбрать таблицу или добавить новую",
                                           reply_markup=markup2)
 
-                    group_main(message)
+                        group_main(message)
+                    else:
+                        bot.send_message(chat_id, "Данная таблица уже была добавлена, попробуйте другую")
+                        bot.register_next_step_handler(message, add_table, call)
+                    con.close()
                 else:
-                    bot.send_message(chat_id, "Данная таблица уже была добавлена, попробуйте другую")
-                    bot.register_next_step_handler(message, add_table, call)
-                con.close()
-            else:
-                con = sq.connect(db_name)
-                cur = con.cursor()
+                    con = sq.connect(db_name)
+                    cur = con.cursor()
 
-                cur.execute("SELECT * FROM tables WHERE user_id == ? AND table_name == ?", (chat_id, message.document.file_name))
-                existing_record = cur.fetchone()
+                    cur.execute("SELECT * FROM tables WHERE user_id == ? AND table_name == ?", (chat_id, message.document.file_name))
+                    existing_record = cur.fetchone()
 
-                if existing_record is None:
-                    add_table_db(message=message, call=call, downloaded_file=downloaded_file)
-                    bot.reply_to(message, 'Файл сохранен')
-                    page_type = "table_page"
+                    if existing_record is None:
+                        add_table_db(message=message, call=call, downloaded_file=downloaded_file)
+                        bot.reply_to(message, 'Файл сохранен')
+                        page_type = "table_page"
 
-                    markup2 = create_inline_keyboard(chat_id=call.message.chat.id, page_type=page_type)
-                    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                        markup2 = create_inline_keyboard(chat_id=call.message.chat.id, page_type=page_type)
+                        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                       text="Вы можете выбрать таблицу или добавить новую",
                                       reply_markup=markup2)
-                    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-                    btn1 = types.KeyboardButton("Нет")
-                    btn2 = types.KeyboardButton("Да")
-                    markup.row(btn2, btn1)
-                    bot.send_message(chat_id, "Хотите ли вы получить предварительную информацию по таблице?",
+                        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+                        btn1 = types.KeyboardButton("Нет")
+                        btn2 = types.KeyboardButton("Да")
+                        markup.row(btn2, btn1)
+                        bot.send_message(chat_id, "Хотите ли вы получить предварительную информацию по таблице?",
                                      reply_markup=markup)
-                    bot.register_next_step_handler(message, call_to_model)
+                        bot.register_next_step_handler(message, call_to_model)
 
-                else:
-                    bot.send_message(chat_id, "Данная таблица уже была добавлена, попробуйте другую")
-                    bot.register_next_step_handler(message, add_table, call)
+                    else:
+                        bot.send_message(chat_id, "Данная таблица уже была добавлена, попробуйте другую")
+                        bot.register_next_step_handler(message, add_table, call)
 
-                con.close()
+                    con.close()
 
         except telebot.apihelper.ApiTelegramException:
             print(traceback.format_exc())

@@ -89,3 +89,70 @@ def create_group_keyboard(chat_id: int = None, show_groups: bool = False):
     con.close()
     return markup
 
+
+
+def inline_keyboard(chat_id=None, page_type=None, page=1, status_flag=True):
+    group_name = check_group_design(chat_id)
+
+    if group_name is not None:
+        query = "select table_name from group_tables where admin_id == ? and group_name == ? LIMIT 3 OFFSET ?"
+        if page == 1:
+            offset = 0
+        else:
+            offset = ((page - 1) * 3)
+    else:
+        query = "select table_name from tables where user_id == ? LIMIT 3 OFFSET ?"
+        if page == 1:
+            offset = 0
+        else:
+            offset = ((page - 1) * 3)
+    markup = types.InlineKeyboardMarkup(row_width=3)
+    prefix = page_type[0] + "|"
+    settings = get_settings(chat_id)
+    con = sq.connect(db_name)
+    cur = con.cursor()
+    if group_name is not None:
+        cur.execute(query, (chat_id, group_name, offset))
+    else:
+        cur.execute(query, (chat_id, offset))
+
+    rows = cur.fetchall()
+
+    con.commit()
+    con.close()
+    btn = None
+
+    for row in rows:
+
+        if row[0] is not None:
+            prep_arr = list(row[0].split("_"))
+
+            prepared_row = "_".join(prep_arr[1:])
+
+            print("here", f"{prefix}{row[0]}")
+            btn = types.InlineKeyboardButton(text=prepared_row, callback_data=f"{prefix}{row[0]}")
+
+            markup.add(btn)
+    if page_type == "table_page":
+        btn1 = types.InlineKeyboardButton(text="Добавить новую таблицу", callback_data=f"t|new_table")
+        btn2 = types.InlineKeyboardButton(text="Убрать последнюю таблицу из набора", callback_data=f"t|delete_tables")
+        markup.row(btn1)
+
+        if settings["table_name"] is not None and len(settings["table_name"]) > 0:
+
+            markup.add(btn2)
+
+    page = get_page(chat_id=chat_id, page_type=page_type)
+    amount = get_pages_amount(chat_id=chat_id)
+    markup.add(types.InlineKeyboardButton(text=f'{page}/{amount}', callback_data=f' '))
+    right = types.InlineKeyboardButton(text="-->", callback_data=f"{prefix}right")
+    left = types.InlineKeyboardButton(text="<--", callback_data=f"{prefix}left")
+    if page > 1:
+        markup.row(left, right)
+    else:
+        markup.row(right)
+
+    btn3 = types.InlineKeyboardButton(text="🚫 exit", callback_data=f"{prefix}exit")
+    markup.add(btn3)
+    return markup
+
