@@ -573,48 +573,31 @@ def choose_table_context(call) -> None:
 
 
 def add_context(message, table_name: str = None) -> None:
-    con = sq.connect(db_name)
-    cur = con.cursor()
+
     chat_id = message.chat.id
     try:
         table_name = table_name
         group_name = check_group_design(chat_id)
         if message.content_type == "text":
             context = str(message.text)
+            add_context_db(message=message,table_name=table_name)
             if group_name is not None:
-                cur.execute("""UPDATE group_tables SET context = ? WHERE table_name == ? and admin_id == ? and group_name == ? """, (context, table_name, chat_id, group_name))
-                con.commit()
-                bot.send_message(message.from_user.id, 'Контекст сохранен')
                 group_main(message)
             else:
-                cur.execute("""UPDATE tables SET context = ? WHERE table_name == ? and user_id == ? """, (context, table_name, chat_id))
-                con.commit()
-                con.close()
-                bot.send_message(message.from_user.id, 'Контекст сохранен')
                 main(message)
+            bot.send_message(message.chat.id, 'Контекст сохранен')
         elif message.content_type == "document":
             file_id = message.document.file_id
             file_info = bot.get_file(file_id)
             file_path = file_info.file_path
             downloaded_file = bot.download_file(file_path)
-            src = "data/" + message.document.file_name
-            if ".msg" in src:
-                with open(src, 'wb') as f:
-                    f.write(downloaded_file)
-                context = msg_to_string(src)
-            else:
-                context = downloaded_file.decode('utf-8')
+            add_context_db(message=message, table_name=table_name, downloaded_file=downloaded_file)
             if group_name is not None:
-                cur.execute("""UPDATE group_tables SET context = ? WHERE table_name == ? and admin_id == ? and group_name == ? """, (context, table_name, chat_id, group_name))
-                con.commit()
-                bot.send_message(chat_id, 'Контекст сохранен')
                 group_main(message)
             else:
-                cur.execute("""UPDATE tables SET context = ? WHERE table_name = ? and user_id == ? """, (context, table_name, chat_id))
-                con.commit()
-                bot.send_message(chat_id, 'Контекст сохранен')
                 main(message)
-        con.close()
+            bot.send_message(chat_id, 'Контекст сохранен')
+
     except Exception as e:
         print(e)
         bot.send_message(message.chat.id, "Что-то пошло не так, попробуйте другой файл")
@@ -674,28 +657,16 @@ def add_table(message, call=None) -> None:
             file_info = bot.get_file(file_id)
             file_path = file_info.file_path
             downloaded_file = bot.download_file(file_path)
-            src = "data/" + str(chat_id) + "_" + message.document.file_name
-            src.replace("|", "_")
             message.document.file_name = str(chat_id) + "_" + message.document.file_name
-            with open(src, 'wb') as f:
-                f.write(downloaded_file)
-            con = sq.connect(db_name)
-            cur = con.cursor()
-
             if group_name is not None:
+
+                con = sq.connect(db_name)
+                cur = con.cursor()
                 cur.execute("SELECT * FROM group_tables WHERE admin_id == ? AND table_name == ?", (chat_id, message.document.file_name))
                 existing_record = cur.fetchone()
 
                 if existing_record is None:
-                    cur.execute("""INSERT INTO group_tables(admin_id, group_name, table_name) VALUES(?,?,?)""",
-                                (chat_id, group_name, message.document.file_name))
-                    con.commit()
-                    cur.execute("select * from group_tables")
-                    # print("group_tables", cur.fetchall())
-                    cur.execute("UPDATE groups SET current_tables = ? WHERE admin_id == ? AND group_name == ?", (message.document.file_name, chat_id, group_name))
-                    con.commit()
-
-                    con.close()
+                    add_table_db(message=message, call=call, downloaded_file=downloaded_file)
                     bot.reply_to(message, 'Файл сохранен')
                     page_type = "table_page"
                     markup2 = create_inline_keyboard(chat_id=call.message.chat.id, page_type=page_type)
@@ -707,28 +678,23 @@ def add_table(message, call=None) -> None:
                 else:
                     bot.send_message(chat_id, "Данная таблица уже была добавлена, попробуйте другую")
                     bot.register_next_step_handler(message, add_table, call)
-
+                con.close()
             else:
+                con = sq.connect(db_name)
+                cur = con.cursor()
 
                 cur.execute("SELECT * FROM tables WHERE user_id == ? AND table_name == ?", (chat_id, message.document.file_name))
                 existing_record = cur.fetchone()
-
+                print("RECORD", existing_record, message.document.file_name)
                 if existing_record is None:
-                    cur.execute("""INSERT INTO tables(user_id, table_name) VALUES(?,?)""", (chat_id, message.document.file_name))
-                    con.commit()
-                    cur.execute("UPDATE users SET current_tables = ? WHERE user_id == ?", (message.document.file_name, chat_id))
-                    con.commit()
-
-                    con.close()
+                    add_table_db(message=message, call=call, downloaded_file=downloaded_file)
                     bot.reply_to(message, 'Файл сохранен')
                     page_type = "table_page"
-                    print(chat_id, call.data, call.message.message_id)
+
                     markup2 = create_inline_keyboard(chat_id=call.message.chat.id, page_type=page_type)
                     bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                       text="Вы можете выбрать таблицу или добавить новую",
                                       reply_markup=markup2)
-
-
                     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
                     btn1 = types.KeyboardButton("Нет")
                     btn2 = types.KeyboardButton("Да")
@@ -786,64 +752,30 @@ def choose_description(message, table_name: str = None) -> None:
     chat_id = message.from_user.id
     group_name = check_group_design(chat_id)
     if message.content_type == "text":
-        description = str(message.text)
+        choose_description_db(message=message, table_name=table_name)
         if group_name is not None:
-
-            cur.execute("select table_name from group_tables where admin_id == ? and group_name == ?", (chat_id, group_name))
-            existing_record = cur.fetchall()
-            if existing_record:
-                cur.execute(
-                    """UPDATE group_tables SET table_description = ? WHERE table_name == ? and admin_id == ? and group_name == ?""", (
-                    description, table_name, chat_id, group_name))
-
-            con.commit()
-            con.close()
-            bot.send_message(message.from_user.id, 'Описание сохранено')
             group_main(message)
         else:
-            cur.execute("select table_name from tables where user_id == ?", (chat_id,))
-            existing_record = cur.fetchall()
-            if existing_record:
-                cur.execute("""UPDATE tables SET table_description = ? WHERE table_name == ? and user_id = ? """, (description, table_name, chat_id))
-
-            con.commit()
-            con.close()
-            bot.send_message(message.from_user.id, 'Описание сохранено')
             main(message)
+        bot.send_message(message.chat.id, 'Описание сохранено')
     elif message.content_type == "document":
         try:
             file_id = message.document.file_id
             file_info = bot.get_file(file_id)
             file_path = file_info.file_path
             downloaded_file = bot.download_file(file_path)
-            src = "data/" + message.document.file_name
-            description = downloaded_file.decode('utf-8')
+            choose_description_db(message=message, table_name=table_name, downloaded_file=downloaded_file)
 
             if group_name is not None:
-                cur.execute("select table_name from group_tables where admin_id == ? and group_name == ?", (chat_id, group_name))
-
-                existing_record = cur.fetchall()
-                if existing_record:
-                    cur.execute("""UPDATE group_tables SET table_description = ? WHERE table_name == ? and admin_id == ? and group_name == ? """, (description, table_name, chat_id, group_name))
-                con.commit()
-                con.close()
-                bot.send_message(message.from_user.id, 'Описание сохранено')
                 group_main(message)
 
             else:
-                cur.execute("select table_name from tables where user_id == ?", (chat_id,))
-                existing_record = cur.fetchall()
-                if existing_record:
-                    cur.execute("""UPDATE tables SET table_description = ? WHERE table_name == ? """, (description, table_name))
-                con.commit()
-                con.close()
-                bot.send_message(message.from_user.id, 'Описание сохранено')
                 main(message)
-
+            bot.send_message(message.chat.id, 'Описание сохранено')
         except Exception as e:
             print(e)
             bot.send_message(message.from_user.id, "Что-то пошло не так, попробуйте другой файл")
-            error_message_flag = True
+
             bot.register_next_step_handler(message, table_description)
 
 
@@ -851,7 +783,7 @@ def create_group(message) -> None:
     admin_id = message.chat.id
     group_name = message.text.replace(" ", "")
     group_name_for_link = "group_" + str(admin_id) + "_" + message.text.replace(" ", "")
-    text = group_create(admin_id=admin_id, group_name=group_name, group_name_for_link=group_name_for_link)
+    text = create_group_db(admin_id=admin_id, group_name=group_name, group_name_for_link=group_name_for_link)
     bot.send_message(admin_id, text)
     main(message)
 
