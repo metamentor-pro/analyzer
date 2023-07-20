@@ -921,18 +921,15 @@ def call_to_model(message) -> None:
 
                         if os.path.exists(path_to_file):
                             bot.send_photo(message.from_user.id, open(path_to_file, "rb"))
-                    for plot_file in plot_files:
-
                         path_to_file = "Plots/" + plot_file
                         if os.path.exists(path_to_file):
                             os.remove(path_to_file)
-                    matplotlib.pyplot.close("all")
+
                     for plot_file in plot_files_2:
                         path_to_file = "Plots/" + plot_file
 
-                        if os.path.exists(path_to_file):
+                        if os.path.exists(path_to_file) and path_to_file not in plot_files:
                             bot.send_photo(message.from_user.id, open(path_to_file, "rb"))
-                    for plot_file in plot_files_2:
 
                         path_to_file = "Plots/" + plot_file
                         if os.path.exists(path_to_file):
