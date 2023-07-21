@@ -117,7 +117,7 @@ class CustomPromptTemplate(StringPromptTemplate):
         else:
             kwargs["agent_scratchpad"] = ""
         tokens_integer = encoding.encode(self.thought_log(intermediate_steps))
-        if len(tokens_integer) > 5000:
+        if len(tokens_integer) > 3500:
             kwargs["agent_scratchpad"] = "Here go your thoughts and actions:\n" + self.thought_log(intermediate_steps[1000:])
             print("deleted")
 
