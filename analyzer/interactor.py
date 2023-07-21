@@ -2,7 +2,7 @@ import io
 import logging
 import traceback
 import pathlib
-
+import datetime
 from typing import Union, Callable, List
 import numpy as np
 import pandas as pd
@@ -63,6 +63,7 @@ def preparation(path_list: List[str], build_plots: Union[bool, None], current_su
         build_plots = cfg["build_plots"]
 
     prepared_path_list = list()
+    start_time = datetime.datetime.now()
     callback("Идёт процесс обработки таблиц...")
     for path in path_list:
         file_extension = pathlib.Path(path).suffix.lower()
@@ -83,7 +84,7 @@ def preparation(path_list: List[str], build_plots: Union[bool, None], current_su
         df_info += df_info_description(i, item[0])
         df_work.append(item[0])
 
-    callback("Таблицы обработаны")
+    callback(f"Таблицы обработаны, затрачено времени: {datetime.datetime.now()- start_time}")
 
     llm = ChatOpenAI(temperature=0.7, model='gpt-4',
                      openai_api_key="")

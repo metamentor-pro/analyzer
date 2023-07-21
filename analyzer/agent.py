@@ -3,6 +3,7 @@ import openai
 import logging
 import re
 import typing
+import tiktoken
 from dataclasses import dataclass
 from typing import Any, List, Callable, Union
 from langchain import LLMChain
@@ -16,6 +17,7 @@ from warning_tool import WarningTool
 df_head_sub = None
 df_info_sub = None
 
+encoding = tiktoken.encoding_for_model("gpt-4")
 
 def find_thought(text):
     pattern = r"Thought:(.*)"
@@ -77,6 +79,7 @@ class CustomPromptTemplate(StringPromptTemplate):
                 result += action.log + f"\nSystem note: {AResult[1:]}\n"
             else:
                 result += action.log + f"\nAResult: {AResult}\n"
+
         return result
 
     def format(self, **kwargs) -> str:
@@ -113,12 +116,13 @@ class CustomPromptTemplate(StringPromptTemplate):
             kwargs["agent_scratchpad"] += "\nEND OF SUMMARY\n"
         else:
             kwargs["agent_scratchpad"] = ""
-        kwargs["agent_scratchpad"] += "Here go your thoughts and actions:\n"
-        kwargs["agent_scratchpad"] += self.thought_log(
-            intermediate_steps[
-             -self.steps_since_last_summarize + self.keep_n_last_thoughts:
-            ]
-        )
+        tokens_integer = encoding.encode(self.thought_log(intermediate_steps))
+        if len(tokens_integer) > 5000:
+            kwargs["agent_scratchpad"] = "Here go your thoughts and actions:\n" + self.thought_log(intermediate_steps[500:])
+            print("deleted")
+
+        else:
+            kwargs["agent_scratchpad"] = "Here go your thoughts and actions:\n" + self.thought_log(intermediate_steps)
         self.steps_since_last_summarize += 1
         kwargs["tools"] = "\n".join(
             [
