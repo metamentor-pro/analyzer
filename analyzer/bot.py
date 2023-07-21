@@ -874,7 +874,7 @@ def call_to_model(message) -> None:
                         path_to_file = "Plots/" + plot_file
 
                         if os.path.exists(path_to_file):
-                            bot.send_photo(message.from_user.id, open(path_to_file, "rb"))
+                            bot.send_photo(message.chat.id, open(path_to_file, "rb"))
                         path_to_file = "Plots/" + plot_file
                         if os.path.exists(path_to_file):
                             os.remove(path_to_file)
@@ -883,21 +883,19 @@ def call_to_model(message) -> None:
                         path_to_file = "Plots/" + plot_file
 
                         if os.path.exists(path_to_file) and path_to_file not in plot_files:
-                            bot.send_photo(message.from_user.id, open(path_to_file, "rb"))
+                            bot.send_photo(message.chat.id, open(path_to_file, "rb"))
 
                         path_to_file = "Plots/" + plot_file
                         if os.path.exists(path_to_file):
                             os.remove(path_to_file)
                     matplotlib.pyplot.close("all")
-                    bot.send_message(message.from_user.id, f"Answer: {answer_from_model[0]}")
+                    bot.send_message(message.chat.id, f"Answer: {answer_from_model[0]}")
                 else:
-                    bot.send_message(message.from_user.id, f"Answer: {answer_from_model[0]}")
+                    bot.send_message(message.chat.id, f"Answer: {answer_from_model[0]}")
                 bot.register_next_step_handler(message, call_to_model)
         except requests.exceptions.ConnectionError:
             call_to_model(message)
-            bot.send_message(message.from_user.id, "Что-то пошло не так, пожалуйста, повторите вопрос или используйте команду start")
-            bot.register_next_step_handler(message, call_to_model)
-
+            bot.send_message(message.chat.id, "Что-то пошло не так, пожалуйста, повторите вопрос или используйте команду start")
 
 
 while True:
