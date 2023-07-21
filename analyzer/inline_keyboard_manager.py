@@ -90,7 +90,6 @@ def create_group_keyboard(chat_id: int = None, show_groups: bool = False):
     return markup
 
 
-
 def inline_keyboard(chat_id: int = None, page_type: str = None, page: int = 1, status_flag: bool = True):
     group_name = check_group_design(chat_id)
 
@@ -145,8 +144,8 @@ def inline_keyboard(chat_id: int = None, page_type: str = None, page: int = 1, s
     page = get_page(chat_id=chat_id, page_type=page_type)
     amount = get_pages_amount(chat_id=chat_id)
     markup.add(types.InlineKeyboardButton(text=f'{page}/{amount}', callback_data=f' '))
-    right = types.InlineKeyboardButton(text="-->", callback_data=f"{prefix}right")
-    left = types.InlineKeyboardButton(text="<--", callback_data=f"{prefix}left")
+    right = types.InlineKeyboardButton(text="→", callback_data=f"{prefix}right")
+    left = types.InlineKeyboardButton(text="←", callback_data=f"{prefix}left")
     if page > 1:
         markup.row(left, right)
     else:
