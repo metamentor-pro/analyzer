@@ -740,10 +740,10 @@ def choose_description(message, table_name: str = None) -> None:
                 main(message)
             bot.send_message(message.chat.id, 'Описание сохранено')
         except Exception as e:
-            print(e)
+            print(traceback.format_exc())
             bot.send_message(message.from_user.id, "Что-то пошло не так, попробуйте другой файл")
 
-            bot.register_next_step_handler(message, table_description)
+            bot.register_next_step_handler(message, choose_description, table_name)
 
 
 def create_group(message) -> None:

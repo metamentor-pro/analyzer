@@ -65,10 +65,15 @@ Action: the action you take. It's one of {tool_names}. You have to write "Action
 Action Input: the input to the action.
 AResult: the result of the action.
 Final Result: the final result of the task. Write what you did, be reasonably detailed and include names of plot files.
+FIRSTLY, IF YOU ARE ASKED ABOUT SOME VARIABLE, TRY TO FIND IT FIRST, IF YOU DONT, TRY SIMILAR ONES
+(different grammar form etc)
+For example, if you are asked about variable 'преобразователь' and you didnt find it in the table, try to find
+'Преобразователи', "Преобразователь термоэлектрический' etc,  also look for this variables in other columns (
+for example, not only in 'Материал Имя', but also in 'Материал Имя(полное)'
+
 It is very important to write down name of every plot file that you made. FILE NAMES SHOULD NOT CONTAINS SPACES AND MUST BE IN ENGLISH OR THE EARTH WILL EXPLODE 
 USE CHECKER SUBAGENT TO CHECK IF YOUR FILE NAMES ARE VALID and if final answer is written in Russian.
 Use text command for that like : 'check if this file name in english and without spaces"
-
 "AResult:" ALWAYS comes after "Action Input:" - it's the result of any taken action. Do not use to describe the result of your thought.
 "AResult:" comes after "Action Input:" even if there's a Final Result after that.
 "AResult:" never comes just after "Thought:".
@@ -83,6 +88,7 @@ When counting value, report about its units of measure using comments.
 IT IS FORBIDDEN TO HALLUCINATE NUMBERS. YOU CAN ONLY USE DATA PROVIDED IN THE TABLE AND MAKE CONCLUSIONS BASED ON IT, GAINED BY python_repl_ast tool.
 Answer should be in the form of analysis, not just data. Don't use names of columns in answer. Instead of that, describe them.
 There is a lot of missing values in table. Handle them properly, take them into account while analyzing.
+Do not put variables in your answer, only numbers
 
 If you do not know the answer, just report it. 
 If question consists of two parts, you should provide answers on each of them separately.

@@ -1,6 +1,6 @@
 import sqlite3 as sq
 import yaml
-
+import chardet
 from typing import Union, Callable, List
 from msg_parser import msg_to_string
 
@@ -258,7 +258,7 @@ def get_summary(chat_id: int) -> str:
     if not current_summary or current_summary[0] is None:
         current_summary = ""
     else:
-        current_summary = current_summary[0][:250] + current_summary[0][:-250]
+        current_summary = current_summary[0][:250] + current_summary[0][-500:]
     return current_summary
 
 
@@ -416,7 +416,20 @@ def choose_description_db(message, table_name: str = None, downloaded_file = Non
     elif message.content_type == "document":
         downloaded_file = downloaded_file
         src = "data/" + message.document.file_name
-        description = downloaded_file.decode('utf-8')
+
+        encoding_info = chardet.detect(downloaded_file)
+        file_encoding = encoding_info['encoding']
+
+        # Проверяем кодировку и отправляем сообщение пользователю
+        if file_encoding:
+            print(file_encoding)
+        else:
+            print("ni")
+
+        try:
+            description = downloaded_file.decode('utf-8')
+        except UnicodeDecodeError as e:
+            description = downloaded_file.decode("cp1251", "ignore")
 
         if group_name is not None:
             cur.execute("select table_name from group_tables where admin_id == ? and group_name == ?",(chat_id, group_name))
