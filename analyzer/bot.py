@@ -1,6 +1,3 @@
-from inline_keyboard_manager import *
-
-
 import os
 import telebot
 import sqlite3 as sq
@@ -9,7 +6,8 @@ import time
 import traceback
 import requests
 import logging
-
+import sys
+import shutil
 
 import re
 
@@ -23,6 +21,35 @@ plot_files = ""
 
 logging.basicConfig(level=logging.INFO, filename="py_log.log",filemode="w",
                     format="%(asctime)s %(levelname)s %(message)s")
+
+def replace_file(new_path, old_path) -> None:
+    try:
+        shutil.copyfile(new_path, old_path)
+        print(f"File {old_path} was successfully replaced with {new_path}.")
+    except FileNotFoundError as e:
+        print(e)
+
+        print("One or both files not found.")
+    except Exception as e:
+        print(f"An error occurred while replacing the files: {e}")
+
+
+def change_config(config_path) -> None:
+    if config_path == "default":
+        pass
+    else:
+        replace_file(config_path, "config.yaml")
+
+
+if __name__ == "__main__":
+    print(sys.argv)
+    if len(sys.argv) > 1:
+        config_path = sys.argv[1]
+    else:
+        config_path = "default"
+
+    config_data = change_config(config_path)
+from inline_keyboard_manager import *
 
 with open("config.yaml") as f:
     cfg = yaml.load(f, Loader=yaml.FullLoader)
@@ -907,5 +934,4 @@ while True:
         print(traceback.format_exc())
         print("error is:", e)
         logging.error(traceback.format_exc())
-
 

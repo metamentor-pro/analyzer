@@ -9,7 +9,6 @@ import pandas as pd
 import seaborn as sns
 import plotly as plotly
 import sys
-import shutil
 from langchain.agents import Tool
 from langchain.chat_models import ChatOpenAI
 from agent import BaseMinion
@@ -57,6 +56,8 @@ def preparation(path_list: List[str] = [], build_plots: Union[bool, None] = None
     with open("config.yaml") as f:
         cfg = yaml.load(f, Loader=yaml.FullLoader)
 
+    #assert path_list is None
+    #print(cfg["data"])
     if len(path_list) == 0:
         path_list = [data_item["path"] for data_item in cfg["data"]]
         print(path_list)
@@ -132,7 +133,7 @@ app = typer.Typer()
 
 
 @app.command()
-def run_loop(config_path: str = None, path_list: List[str] = None, build_plots: Union[bool, None] = False):
+def run_loop(path_list: List[str] = None, build_plots: Union[bool, None] = False):
     def callback(thought):
         print(thought)
     ag, df_head, df_info = preparation(path_list=path_list, build_plots=build_plots, callback=callback)
@@ -151,31 +152,5 @@ def run_loop(config_path: str = None, path_list: List[str] = None, build_plots: 
             print(f"Failed with error: {traceback.format_exc()}")
 
 
-def replace_file(new_path, old_path) -> None:
-    try:
-        shutil.copyfile(new_path, old_path)
-        print(f"File {old_path} was successfully replaced with {new_path}.")
-    except FileNotFoundError as e:
-        print(e)
-
-        print("One or both files not found.")
-    except Exception as e:
-        print(f"An error occurred while replacing the files: {e}")
-
-
-def change_config(config_path) -> None:
-    if config_path == "default":
-        pass
-    else:
-        replace_file(config_path, "config.yaml")
-
-
 if __name__ == "__main__":
-    print(sys.argv)
-    if len(sys.argv) > 1:
-        config_path = sys.argv[2]
-    else:
-        config_path = "default"
-
-    config_data = change_config(config_path)
     app()
