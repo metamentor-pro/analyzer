@@ -4,10 +4,69 @@ import chardet
 from typing import Union, Callable, List
 from msg_parser import msg_to_string
 
-
 with open("config.yaml") as f:
     cfg = yaml.load(f, Loader=yaml.FullLoader)
+
+bot_name = cfg["bot_name"]
+bot_api = cfg["bot_api"]
+demo = cfg["demo"][0]
+max_requests = cfg["demo"][1]
+reset = cfg["demo"][2]
 db_name = cfg["db_name"]
+
+connection = sq.connect(db_name)
+cursor = connection.cursor()
+
+cursor.execute("""CREATE TABLE IF NOT EXISTS users
+              (user_id INTEGER PRIMARY KEY,
+              conv_sum TEXT,
+              current_tables VARCHAR,
+              build_plots boolean DEFAULT 1
+              )""")
+connection.commit()
+
+cursor.execute("""CREATE TABLE IF NOT EXISTS groups
+              (group_id INTEGER PRIMARY KEY AUTOINCREMENT,
+              admin_id INTEGER,
+              group_plot boolean DEFAULT 1,
+              group_name VARCHAR,
+              group_link VARCHAR,
+              group_conv TEXT,
+              current_tables VARCHAR,
+              design_flag boolean DEFAULT 0)""")
+connection.commit()
+
+cursor.execute("""CREATE TABLE IF NOT EXISTS callback_manager
+              (user_id INTEGER PRIMARY KEY,
+              table_page INTEGER DEFAULT 1,
+              context_page INTEGER DEFAULT 1,
+              description_page INTEGER DEFAULT 1,
+              group_flag boolean DEFAULT 0,
+              group_name VARCHAR,
+              admin_id INTEGER,
+              req_count INTEGER DEFAULT 0,
+              FOREIGN KEY(user_id) REFERENCES users (user_id) on DELETE CASCADE)""")
+connection.commit()
+
+cursor.execute("""CREATE TABLE IF NOT EXISTS group_manager
+                                  (admin_id INTEGER,
+                                  group_name,
+                                  table_page INTEGER DEFAULT 1,
+                                  context_page INTEGER DEFAULT 1,
+                                  description_page INTEGER DEFAULT 1)
+                                  """)
+connection.commit()
+
+cursor.execute(""" CREATE TABLE IF NOT EXISTS tables 
+                (table_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER, 
+                table_name VARCHAR,
+                table_description TEXT,
+                context TEXT,
+                FOREIGN KEY(user_id) REFERENCES users (user_id) on DELETE CASCADE)""")
+connection.commit()
+
+connection.close()
 
 
 def check_for_group(message) -> bool:
