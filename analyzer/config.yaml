@@ -1,3 +1,4 @@
+
 data:
   - path: data/data.json
     description: |
@@ -17,10 +18,10 @@ data:
       column_475 – column with planned fluid production from geologists (m³/day).
 
 build_plots: false
-#bot_api: 6004874058:AAHFjEWq6tBg5mGGGt8pF0h-nE_3JfMOuOU
+bot_api: 6004874058:AAHFjEWq6tBg5mGGGt8pF0h-nE_3JfMOuOU
 db_name: "user_data.sql"
  #bot_api: 6004874058:AAHFjEWq6tBg5mGGGt8pF0h-nE_3JfMOuOU
  #bot_api: "6244896218:AAFwtx-NsiIoC24fu5VHahWSB9Du0deMqZg"
-bot_api: "6095869124:AAFhuwDZElDiDPrNXLot7ilYiCNu5np56nA"
+#bot_api: "6095869124:AAFhuwDZElDiDPrNXLot7ilYiCNu5np56nA"
 bot_name: auto_analyzer
 demo: [false, 10, false]
