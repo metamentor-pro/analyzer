@@ -1,6 +1,5 @@
 import os
 import telebot
-import sqlite3 as sq
 import interactor
 import time
 import traceback
@@ -13,15 +12,8 @@ import re
 
 import matplotlib
 matplotlib.use('Agg')
-
-
-user_question = None
-
-plot_files = ""
-
 logging.basicConfig(level=logging.INFO, filename="py_log.log",filemode="w",
                     format="%(asctime)s %(levelname)s %(message)s")
-
 
 if __name__ == "__main__":
     print(sys.argv)
@@ -33,6 +25,7 @@ if __name__ == "__main__":
     config.config = current_config
 
 from inline_keyboard_manager import *
+
 
 class Bot(telebot.TeleBot):
     def __init__(self):
@@ -66,12 +59,12 @@ def help_info(message):
 def main(message=None) -> None:
     try:
         chat_id = message.chat.id
-
     except Exception as e:
         chat_id = message
         print(message)
         print(e)
 
+    print("message", message.text)
     con = sq.connect(db_name)
     cur = con.cursor()
     cur.execute("SELECT * FROM callback_manager WHERE user_id = ?", (chat_id,))
@@ -132,11 +125,8 @@ def main(message=None) -> None:
 
 
 def create_inline_keyboard(chat_id=None, page_type=None, page=1, status_flag=True):
-    group_name = check_group_design(chat_id)
-
     settings = get_settings(chat_id=chat_id)
     markup = inline_keyboard(chat_id=chat_id, page_type=page_type, page=page, status_flag=status_flag)
-    prefix = page_type[0] + "|"
     if page_type == "table_page":
         if settings["table_name"] is not None and len(settings["table_name"]) > 0:
             if status_flag:
@@ -160,17 +150,9 @@ def group_main(message=None) -> None:
 
         cur.execute("UPDATE groups SET design_flag = False WHERE admin_id == ? AND group_name == ?", (chat_id, group_name))
         con.commit()
-
+        con.close()
         main(message)
     else:
-        cur.execute("""CREATE TABLE IF NOT EXISTS group_tables
-                               (group_name VARCHAR,
-                               admin_id INTEGER,
-                               table_name VARCHAR,
-                               table_description TEXT,
-                               context TEXT)
-                               """)
-        con.commit()
 
         chat_id = message.chat.id
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -183,7 +165,7 @@ def group_main(message=None) -> None:
         markup.row(btn1, btn2, btn3)
         markup.row(btn5, btn4, btn6)
         bot.send_message(chat_id, "Вы можете  выбрать одну из опций", reply_markup=markup)
-        con.close()
+    con.close()
 
 
 @bot.message_handler(func=lambda message: message.text == "❓ Режим отправки запроса")
@@ -266,11 +248,7 @@ def groups_on_click(message) -> None:
 
 @bot.message_handler(func=lambda message: message.text == "exit")
 def exit_from_group(message) -> None:
-    con = sq.connect(db_name)
-    cur = con.cursor()
-    cur.execute("UPDATE groups SET design_flag = 0 WHERE admin_id == ? ", (message.chat.id,))
-    con.commit()
-    con.close()
+    exit_from_group_db(chat_id=message.chat.id)
     main(message)
     bot.send_message(message.chat.id, "Редактирование группы завершено")
 
@@ -278,19 +256,7 @@ def exit_from_group(message) -> None:
 @bot.message_handler(func=lambda message: message.text == "Сохранить настройки группы")
 def save_group_settings(message) -> None:
     group_name = check_group_design(message.chat.id)
-    con = sq.connect(db_name)
-    cur = con.cursor()
-    cur.execute("SELECT group_link FROM groups where admin_id == ? AND group_name == ?", (message.chat.id, group_name))
-    con.commit()
-
-    group_link = cur.fetchone()
-
-    cur.execute("UPDATE groups SET design_flag = 0 WHERE admin_id == ?", (message.chat.id,))
-    con.commit()
-
-    if group_link is not None:
-        group_link = group_link[0]
-    con.close()
+    group_link = save_group_settings_db(chat_id=message.chat.id, group_name=group_name)
     bot.send_message(message.chat.id, "Изменения группы сохранены, ссылка для взаимодействия с группой: ")
     bot.send_message(message.chat.id, f'{group_link}')
     main(message)
@@ -311,7 +277,6 @@ def callback_query(call) -> None:
     callback_type, action = map(str, call.data.split("|"))
     call.data = action
     chat_id = call.message.chat.id
-    group_name = check_group_design(chat_id=chat_id)
     page_type = "table_page"
     page = get_page(chat_id=chat_id, page_type=page_type)
 
@@ -321,29 +286,8 @@ def callback_query(call) -> None:
         bot.send_message(call.message.chat.id, "Чтобы добавить таблицу, отправьте файл в формате csv, XLSX или json")
         choose_table(call)
     elif call.data == "delete_tables":
-        settings = get_settings(chat_id)
-        table_name = list(map(str, settings["table_name"].split(",")))
+        table_name = delete_last_table(chat_id=chat_id)
         bot.send_message(chat_id, f"Таблица {table_name[-1]} удалена из текущего списка")
-
-        table_name = table_name[:-1]
-        if len(table_name) == 0:
-            settings["table_name"] = ''
-        else:
-            settings["table_name"] = ''
-            for i in range(len(table_name)-1):
-                settings["table_name"] += table_name[i] + ","
-            settings["table_name"] += table_name[-1]
-
-        con = sq.connect(db_name)
-        cur = con.cursor()
-        if group_name is not None:
-            cur.execute("UPDATE groups SET current_tables = ? WHERE admin_id == ? AND group_name == ?", (settings["table_name"], chat_id, group_name))
-            con.commit()
-        else:
-            cur.execute("UPDATE users SET current_tables = ? WHERE user_id == ?", (settings["table_name"], chat_id))
-            con.commit()
-
-        con.close()
 
     elif call.data == "right":
         amount = get_pages_amount(chat_id)
@@ -428,7 +372,6 @@ def callback_query(call) -> None:
         if page > 1:
             new_page = page - 1
             change_page(chat_id=chat_id, page_type=page_type, new_page=new_page)
-            keyboard_type = "description_page"
             markup2 = create_inline_keyboard(chat_id=call.message.chat.id, page_type=page_type, page=new_page, status_flag=False)
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                   text="Вы можете выбрать таблицу или добавить новую",
@@ -442,15 +385,10 @@ def callback_query(call) -> None:
 def callback_query(call) -> None:
     callback_type, action = map(str, call.data.split("|"))
     call.data = action
-
     chat_id = call.message.chat.id
-    group_name = check_group_design(chat_id)
+
     if call.data == "exit":
-        con = sq.connect(db_name)
-        cur = con.cursor()
-        cur.execute("UPDATE groups SET design_flag = True WHERE admin_id == ? AND group_name == ?", (chat_id, group_name))
-        con.commit()
-        con.close()
+        exit_from_group(chat_id=chat_id)
         bot.delete_message(call.message.chat.id, call.message.message_id)
 
     elif call.data == "create_group":
@@ -475,22 +413,17 @@ def callback_query(call) -> None:
 def choose_table_context(call) -> None:
     chat_id = call.message.chat.id
     message = call.message
-
-    bot.send_message(chat_id,
-                     f"Таблица {call.data} выбрана, для добавления контекста отправьте текст или файл в формате txt или msg",
-                     )
+    bot.send_message(chat_id, f"Таблица {call.data} выбрана, для добавления контекста отправьте текст или файл в формате txt или msg")
     bot.register_next_step_handler(message, add_context, call.data)
 
 
 def add_context(message, table_name: str = None) -> None:
-
     chat_id = message.chat.id
     try:
         table_name = table_name
         group_name = check_group_design(chat_id)
         if message.content_type == "text":
-            context = str(message.text)
-            add_context_db(message=message,table_name=table_name)
+            add_context_db(message=message, table_name=table_name)
             if group_name is not None:
                 group_main(message)
             else:
@@ -511,7 +444,6 @@ def add_context(message, table_name: str = None) -> None:
     except Exception as e:
         print(e)
         bot.send_message(message.chat.id, "Что-то пошло не так, попробуйте другой файл")
-        error_message_flag = True
         bot.register_next_step_handler(message, add_context, table_name)
 
 
@@ -529,7 +461,6 @@ def choose_table(call, choose_flag: bool = False) -> None:
     if choose_flag is False:
         bot.register_next_step_handler(message, add_table, call)
     else:
-        group_name = check_group_design(chat_id)
         settings = get_settings(chat_id)
 
         if settings["table_name"] is not None and len(settings["table_name"]) != 0:
@@ -542,17 +473,7 @@ def choose_table(call, choose_flag: bool = False) -> None:
 
             settings["table_name"] = text
             bot.send_message(chat_id, "Таблица выбрана.")
-        con = sq.connect(db_name)
-        cur = con.cursor()
-        if group_name is not None:
-            cur.execute("UPDATE groups SET current_tables = ? WHERE admin_id == ? and group_name == ?", (settings["table_name"], chat_id, group_name))
-            con.commit()
-        else:
-
-            cur.execute(
-                "UPDATE users SET current_tables = ? WHERE user_id == ?", (settings["table_name"], chat_id))
-            con.commit()
-        con.close()
+        update_table()
 
 
 def add_table(message, call=None) -> None:
@@ -571,15 +492,12 @@ def add_table(message, call=None) -> None:
                 bot.send_message(chat_id, "К сожалению, название таблицы слишком длинное, придётся его сократить")
                 bot.register_next_step_handler(message, add_table, call)
             else:
-
                 message.document.file_name = str(chat_id) + "_" + message.document.file_name
                 if group_name is not None:
-
                     con = sq.connect(db_name)
                     cur = con.cursor()
                     cur.execute("SELECT * FROM group_tables WHERE admin_id == ? AND table_name == ?", (chat_id, message.document.file_name))
                     existing_record = cur.fetchone()
-
                     if existing_record is None:
                         add_table_db(message=message, call=call, downloaded_file=downloaded_file)
                         bot.reply_to(message, 'Файл сохранен')
@@ -597,7 +515,6 @@ def add_table(message, call=None) -> None:
                 else:
                     con = sq.connect(db_name)
                     cur = con.cursor()
-
                     cur.execute("SELECT * FROM tables WHERE user_id == ? AND table_name == ?", (chat_id, message.document.file_name))
                     existing_record = cur.fetchone()
 
@@ -637,9 +554,8 @@ def add_table(message, call=None) -> None:
             bot.register_next_step_handler(message, add_table, call)
 
 
-def plots_handler(message, settings=None) -> None:
+def plots_handler(message) -> None:
     chat_id = message.chat.id
-    settings = get_settings(chat_id)
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn1 = types.KeyboardButton("Вернуться в главное меню")
     markup.add(btn1)
@@ -656,14 +572,11 @@ def table_description(call) -> None:
     table_name = call.data
     message = call.message
     bot.send_message(message.chat.id, """Таблица выбрана. Чтобы добавить описание таблицы, отправьте файл с описанием столбцов в формате txt или качестве сообщения.""")
-
     bot.register_next_step_handler(message, choose_description, table_name)
 
 
 def choose_description(message, table_name: str = None) -> None:
     table_name = table_name
-    con = sq.connect(db_name)
-    cur = con.cursor()
     chat_id = message.from_user.id
     group_name = check_group_design(chat_id)
     if message.content_type == "text":
@@ -697,18 +610,14 @@ def choose_description(message, table_name: str = None) -> None:
 def create_group(message) -> None:
     admin_id = message.chat.id
     group_name = message.text.replace(" ", "")
-    group_name_for_link = "group_" + str(admin_id) + "_" + message.text.replace(" ", "")
+    group_name_for_link = "group_" + str(admin_id)
     text = create_group_db(admin_id=admin_id, group_name=group_name, group_name_for_link=group_name_for_link)
     bot.send_message(admin_id, text)
     main(message)
 
 
 def choose_group(group_name: str = None, admin_id: int = None, message=None) -> None:
-    con = sq.connect(db_name)
-    cur = con.cursor()
-    cur.execute("UPDATE groups SET design_flag = True WHERE admin_id == ? AND group_name == ?", (admin_id, group_name))
-    con.commit()
-    cur.close()
+    choose_group_db(admin_id=admin_id, group_name=group_name)
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn1 = types.KeyboardButton("Да")
     btn2 = types.KeyboardButton("Нет")
@@ -718,32 +627,12 @@ def choose_group(group_name: str = None, admin_id: int = None, message=None) -> 
 
 
 def call_to_model(message) -> None:
-
-    if demo:
-        con = sq.connect(db_name)
-        cur = con.cursor()
-        cur.execute("SELECT req_count FROM callback_manager WHERE user_id == ?", (message.chat.id,))
-        req_count = cur.fetchone()[0]
-        if reset:
-            req_count = 0
-            cur.execute("UPDATE callback_manager SET req_count = 0")
-            con.commit()
-
-        if req_count > max_requests:
-            bot.send_message(message.chat.id, "К сожалению, лимит запросов исчерпан, попробуйте позднее")
-            bot.register_next_step_handler(message, main)
-        req_count += 1
-
-        cur.execute("UPDATE callback_manager SET req_count = ? WHERE user_id == ?", (req_count, message.chat.id))
-        con.commit()
-        con.close()
-
+    demo_status = check_for_demo(chat_id=message.chat.id)
+    if demo_status is not None:
+        bot.send_message(message.chat.id, demo_status)
+        bot.register_next_step_handler(message, main)
     if message.text == "🚫 exit":
-        con = sq.connect(db_name)
-        cur = con.cursor()
-        cur.execute("UPDATE callback_manager SET group_flag = 0 WHERE user_id == ?", (message.chat.id,))
-        con.commit()
-        con.close()
+        exit_from_model(chat_id=message.chat.id)
         main(message)
 
     elif message.text == "Нет":
@@ -759,8 +648,7 @@ def call_to_model(message) -> None:
 
         def callback(sum_on_step):
             message_id = send_message.message_id
-            edited_message = bot.edit_message_text(chat_id=chat_id, message_id=message_id,
-                                                   text=send_message.text + f"\n{sum_on_step}")
+            bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=send_message.text + f"\n{sum_on_step}")
         settings = get_settings(chat_id)
 
         try:
@@ -780,7 +668,7 @@ def call_to_model(message) -> None:
                 for table in range(len(table_name_path)):
                     table_name_path[table] = "data/" + table_name_path[table].strip()
 
-                table_description: list[str] = get_description(chat_id)
+                table_description = get_description(chat_id)
                 context_list = get_context(chat_id)
                 current_summary = get_summary(chat_id)
 
@@ -855,4 +743,3 @@ while True:
         print(traceback.format_exc())
         print("error is:", e)
         logging.error(traceback.format_exc())
-

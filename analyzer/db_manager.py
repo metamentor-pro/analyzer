@@ -4,7 +4,7 @@ import chardet
 from typing import Union, Callable, List
 from msg_parser import msg_to_string
 import config
-print(config.config)
+
 
 bot_name = config.config["bot_name"]
 bot_api = config.config["bot_api"]
@@ -65,6 +65,15 @@ cursor.execute(""" CREATE TABLE IF NOT EXISTS tables
                 FOREIGN KEY(user_id) REFERENCES users (user_id) on DELETE CASCADE)""")
 connection.commit()
 
+cursor.execute("""CREATE TABLE IF NOT EXISTS group_tables
+                               (group_name VARCHAR,
+                               admin_id INTEGER,
+                               table_name VARCHAR,
+                               table_description TEXT,
+                               context TEXT)
+                               """)
+connection.commit()
+
 connection.close()
 
 
@@ -75,7 +84,7 @@ def check_for_group(message) -> bool:
     try:
         text = message.text
         start, group_data = map(str, text.split())
-        group, admin_id, group_name = map(str, text.split("_"))
+        group, admin_id, group_id = map(str, text.split("_"))
 
     except Exception as e:
         text = message.text
@@ -88,10 +97,11 @@ def check_for_group(message) -> bool:
 
     if start == "/start":
 
-        cur.execute("SELECT * FROM groups where group_name == ?", (group_name,))
+        cur.execute("SELECT * FROM groups where group_id == ?", (group_id,))
         existing_record = cur.fetchone()
         if existing_record is not None:
-
+            cur.execute("SELECT group_name FROM groups where group_id == ?", (group_id,))
+            group_name = cur.fetchone()[0]
             cur.execute("UPDATE callback_manager SET group_flag = ? WHERE user_id == ?", (1, message.chat.id))
             con.commit()
             cur.execute("UPDATE callback_manager SET group_name = ? WHERE user_id == ?", (group_name, message.chat.id))
@@ -115,7 +125,7 @@ def check_for_group(message) -> bool:
             return False
 
 
-def check_group_design(chat_id: int =None) -> Union[int, None]:
+def check_group_design(chat_id: int = None) -> Union[int, None]:
 
     admin_id = chat_id
     con = sq.connect(db_name)
@@ -345,12 +355,15 @@ def update_summary(chat_id: int, new_summary:str) -> None:
 def create_group_db(admin_id: int, group_name: str, group_name_for_link: str) -> str:
     con = sq.connect(db_name)
     cur = con.cursor()
+
     cur.execute("SELECT * FROM groups WHERE admin_id == ? AND group_name == ?", (admin_id, group_name))
     existing_record = cur.fetchone()
     if existing_record is None:
         cur.execute("INSERT INTO groups(admin_id, group_name) VALUES(?,?)", (admin_id, group_name))
         con.commit()
-        group_link = "https://t.me/auto_analyzer_bot?start=" + group_name_for_link
+        cur.execute("SELECT group_id FROM groups where admin_id == ? AND group_name == ?", (admin_id, group_name))
+        group_id = cur.fetchone()[0]
+        group_link = "https://t.me/auto_analyzer_bot?start=" + group_name_for_link + "_" + str(group_id)
         cur.execute("UPDATE groups SET group_link = ? WHERE admin_id == ? and group_name == ? ",
                     (group_link, admin_id, group_name))
         con.commit()
@@ -554,6 +567,116 @@ def add_context_db(message=None, table_name=None, downloaded_file=None) -> None:
     con.close()
 
 
+def delete_last_table(chat_id : int = None) -> List[str]:
+    settings = get_settings(chat_id)
+    table_name = list(map(str, settings["table_name"].split(",")))
+    table_name = table_name[:-1]
+    if len(table_name) == 0:
+        settings["table_name"] = ''
+    else:
+        settings["table_name"] = ''
+        for i in range(len(table_name) - 1):
+            settings["table_name"] += table_name[i] + ","
+        settings["table_name"] += table_name[-1]
+
+    con = sq.connect(db_name)
+    cur = con.cursor()
+    group_name = check_group_design(chat_id)
+    if group_name is not None:
+        cur.execute("UPDATE groups SET current_tables = ? WHERE admin_id == ? AND group_name == ?",
+                    (settings["table_name"], chat_id, group_name))
+        con.commit()
+    else:
+        cur.execute("UPDATE users SET current_tables = ? WHERE user_id == ?", (settings["table_name"], chat_id))
+        con.commit()
+
+    con.close()
+    return table_name
 
 
+def exit_from_group(chat_id : int = None) -> None:
+    group_name = check_group_design(chat_id)
+    con = sq.connect(db_name)
+    cur = con.cursor()
+    cur.execute("UPDATE groups SET design_flag = True WHERE admin_id == ? AND group_name == ?", (chat_id, group_name))
+    con.commit()
+    con.close()
 
+
+def check_for_demo(chat_id : int = None) -> Union[None, str]:
+    if demo:
+        con = sq.connect(db_name)
+        cur = con.cursor()
+        cur.execute("SELECT req_count FROM callback_manager WHERE user_id == ?", (chat_id,))
+        req_count = cur.fetchone()[0]
+        if reset:
+            req_count = 0
+            cur.execute("UPDATE callback_manager SET req_count = 0")
+            con.commit()
+
+        if req_count > max_requests:
+            return "К сожалению, лимит запросов исчерпан, попробуйте позднее"
+            bot.register_next_step_handler(message, main)
+        req_count += 1
+
+        cur.execute("UPDATE callback_manager SET req_count = ? WHERE user_id == ?", (req_count, message.chat.id))
+        con.commit()
+        con.close()
+        return None
+
+
+def save_group_settings_db(chat_id : int = None, group_name : str = None) -> str:
+    con = sq.connect(db_name)
+    cur = con.cursor()
+    cur.execute("SELECT group_link FROM groups where admin_id == ? AND group_name == ?", (chat_id, group_name))
+    con.commit()
+
+    group_link = cur.fetchone()
+
+    cur.execute("UPDATE groups SET design_flag = 0 WHERE admin_id == ?", (chat_id,))
+    con.commit()
+
+    if group_link is not None:
+        group_link = group_link[0]
+    con.close()
+    return group_link
+
+
+def exit_from_model(chat_id: int = None) -> None:
+    con = sq.connect(db_name)
+    cur = con.cursor()
+    cur.execute("UPDATE callback_manager SET group_flag = 0 WHERE user_id == ?", (chat_id,))
+    con.commit()
+    con.close()
+
+
+def exit_from_group_db(chat_id: int = None) -> None:
+    con = sq.connect(db_name)
+    cur = con.cursor()
+    cur.execute("UPDATE callback_manager SET group_flag = 0 WHERE user_id == ?", (chat_id,))
+    con.commit()
+    con.close()
+
+
+def choose_group_db(admin_id: int = None, group_name: str = None) -> None:
+    con = sq.connect(db_name)
+    cur = con.cursor()
+    cur.execute("UPDATE groups SET design_flag = True WHERE admin_id == ? AND group_name == ?", (admin_id, group_name))
+    con.commit()
+    cur.close()
+
+
+def update_table(chat_id: int = None) -> None:
+    settings = get_settings(chat_id=chat_id)
+    group_name = check_group_design(chat_id=chat_id)
+    con = sq.connect(db_name)
+    cur = con.cursor()
+    if group_name is not None:
+        cur.execute("UPDATE groups SET current_tables = ? WHERE admin_id == ? and group_name == ?",
+                    (settings["table_name"], chat_id, group_name))
+        con.commit()
+    else:
+        cur.execute(
+            "UPDATE users SET current_tables = ? WHERE user_id == ?", (settings["table_name"], chat_id))
+        con.commit()
+    con.close()
