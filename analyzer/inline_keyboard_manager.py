@@ -3,10 +3,6 @@ from telebot import types
 import yaml
 from db_manager import *
 
-with open("config.yaml") as f:
-    cfg = yaml.load(f, Loader=yaml.FullLoader)
-db_name = cfg["db_name"]
-
 
 def get_page(chat_id: int, page_type: str) -> int:
     con = sq.connect(db_name)

@@ -7,7 +7,7 @@ import traceback
 import requests
 import logging
 import sys
-import shutil
+import config
 
 import re
 
@@ -23,36 +23,16 @@ logging.basicConfig(level=logging.INFO, filename="py_log.log",filemode="w",
                     format="%(asctime)s %(levelname)s %(message)s")
 
 
-def replace_file(new_path, old_path) -> None:
-    try:
-        shutil.copyfile(new_path, old_path)
-        print(f"File {old_path} was successfully replaced with {new_path}.")
-    except FileNotFoundError as e:
-        print(e)
-
-        print("One or both files not found.")
-    except Exception as e:
-        print(f"An error occurred while replacing the files: {e}")
-
-
-def change_config(config_path) -> None:
-    if config_path == "default":
-        pass
-    else:
-        replace_file(config_path, "config.yaml")
-
-
 if __name__ == "__main__":
     print(sys.argv)
     if len(sys.argv) > 1:
         config_path = sys.argv[1]
     else:
-        config_path = "default"
-    config_data = change_config(config_path)
-
+        config_path = "config.yaml"
+    current_config = config.read_config(config_path)
+    config.config = current_config
 
 from inline_keyboard_manager import *
-
 
 class Bot(telebot.TeleBot):
     def __init__(self):
@@ -65,7 +45,7 @@ bot = Bot()
 
 @bot.message_handler(commands=["help"])
 def help_info(message):
-    bot.send_message(message.chat.id, """Здравствуйте, автономный помощник для проведения различной аналитики \n 
+    bot.send_message(message.chat.id, """Здравствуйте, я автономный помощник для проведения различной аналитики \n 
 Я могу отвечать на вопросы по предоставленным данным, строить графики и проводить нужные вычисления""")
     bot.send_message(message.chat.id, """* Используйте кнопку 'Выбрать Таблицу' для выбора и добавления таблиц \n
 * Используйте кнопку 'Добавить описание' для добавления описания к нужным таблицам \n
@@ -112,6 +92,9 @@ def main(message=None) -> None:
     try:
         if not existing_record:
             cur.execute("""INSERT INTO users(user_id) values(?)""", (chat_id,))
+            con.commit()
+            con.close()
+            help_info(message)
         con.commit()
         con.close()
     except Exception as e:
@@ -209,7 +192,7 @@ def request_mode(message) -> None:
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn1 = types.KeyboardButton("🚫 exit")
     markup.add(btn1)
-    bot.send_message(chat_id, "Отправьте запроc. Пожалуйста, вводите запросы последовательно", reply_markup=markup)
+    bot.send_message(chat_id, "Отправьте запроc. Пожалуйста, вводите запросы последовательно. До получения ответа от модели взаимодействие с ботом блокируется, спасибо", reply_markup=markup)
     bot.register_next_step_handler(message, call_to_model)
 
 

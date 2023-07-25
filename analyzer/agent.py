@@ -137,7 +137,7 @@ class CustomPromptTemplate(StringPromptTemplate):
                 kwargs[key] = value
         logging.info("Prompt:\n\n" + self.template.format(**kwargs) + "\n\n\n")
         result = self.template.format(**kwargs)
-
+        #print(result)
         return result
 
 

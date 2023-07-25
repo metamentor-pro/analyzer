@@ -3,16 +3,15 @@ import yaml
 import chardet
 from typing import Union, Callable, List
 from msg_parser import msg_to_string
+import config
+print(config.config)
 
-with open("config.yaml") as f:
-    cfg = yaml.load(f, Loader=yaml.FullLoader)
-
-bot_name = cfg["bot_name"]
-bot_api = cfg["bot_api"]
-demo = cfg["demo"][0]
-max_requests = cfg["demo"][1]
-reset = cfg["demo"][2]
-db_name = cfg["db_name"]
+bot_name = config.config["bot_name"]
+bot_api = config.config["bot_api"]
+demo = config.config["demo"][0]
+max_requests = config.config["demo"][1]
+reset = config.config["demo"][2]
+db_name = config.config["db_name"]
 
 connection = sq.connect(db_name)
 cursor = connection.cursor()
