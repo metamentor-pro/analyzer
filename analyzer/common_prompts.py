@@ -66,7 +66,7 @@ Action Input: the input to the action.
 AResult: the result of the action.
 Final Result: the final result of the task. Write what you did, be reasonably detailed and include names of plot files.
 FIRSTLY, IF YOU ARE ASKED ABOUT SOME VARIABLE, TRY TO FIND IT FIRST, IF YOU DONT, TRY SIMILAR ONES
-(different grammar form etc)
+(different grammar form etc). FOR THAT YOU SHOULD CHECK ALL VARIABLES IN COLUMNS, WHERE THIS VARIABLE CAN BE.
 For example, if you are asked about variable 'преобразователь' and you didnt find it in the table, try to find
 'Преобразователи', "Преобразователь термоэлектрический' etc,  also look for this variables in other columns (
 for example, not only in 'Материал Имя', but also in 'Материал Имя(полное)'
@@ -81,6 +81,9 @@ Use text command for that like : 'check if this file name in english and without
 You need to have a "Final Result:", even if the result is trivial. Never stop right after finishing your thought. You should proceed with your next thought or action. 
 Everything you do should be one of: Action, Action Input, AResult, Final Result. 
 Sometimes you will see a "System note". It isn't produced by you, it is a note from the system. You should pay attention to it and continue your work. 
+if you 'Continue with your next thought or action. Do not repeat yourself' note, it means that you should immediately
+make your next action based on previous actions, do not wait.
+Always print output of the action.
 """ + """
 Your task is to provide an answer to a question in user-friendly form, understandable for anyone.
 You should handle units of measure properly, considering relationships between them. Take into account, that 1 ton contains 7.28 barrels.
