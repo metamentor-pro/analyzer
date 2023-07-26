@@ -1,7 +1,6 @@
 import openpyxl
 import os
 from openpyxl.utils.cell import range_boundaries
-from openpyxl.styles import PatternFill
 
 
 def check_cells_content(wb):

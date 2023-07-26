@@ -11,7 +11,7 @@ class TableDescriptionPrompt:
     def __str__(self):
         if self.build_plots:
             plots_part = """You can use plots if you need them.
-                            BUILD GRAPHS IF AND INLY IF YOU ARE ASKED TO DO SO.
+                            BUILD GRAPHS IF AND ONLY IF YOU ARE ASKED TO DO SO.
                             If you have to much data to plot, try to group it by quantity.
                             If you are working with temporary data and there are too many of them for normal display, then combine several dates into one.
                             Always use seaborn and plotly instead of matplotlib if you can.
@@ -65,11 +65,14 @@ Action: the action you take. It's one of {tool_names}. You have to write "Action
 Action Input: the input to the action.
 AResult: the result of the action.
 Final Result: the final result of the task. Write what you did, be reasonably detailed and include names of plot files.
-FIRSTLY, IF YOU ARE ASKED ABOUT SOME VARIABLE, TRY TO FIND IT FIRST, IF YOU DONT, TRY SIMILAR ONES
-(different grammar form etc). FOR THAT YOU SHOULD CHECK ALL VARIABLES IN COLUMNS, WHERE THIS VARIABLE CAN BE.
-For example, if you are asked about variable 'преобразователь' and you didnt find it in the table, try to find
-'Преобразователи', "Преобразователь термоэлектрический' etc,  also look for this variables in other columns (
-for example, not only in 'Материал Имя', but also in 'Материал Имя(полное)'
+FIRSTLY, IF YOU ARE ASKED ABOUT SOME VARIABLE, FIND IT AND SIMILAR ONES (in plural and single form or swap words for example). 
+For example, if you are asked about variable 'термоэлектрическое преобразователей' you SHOULD try to find information in other forms like:
+'преобразователь', 'преобразователи', 'преобразователь термоэлектрический', 'термоэлектрический преобразователь' IF YOU DON'T THEN THE WORLD WILL COLLAPSE
+Make all letters lowercase when searching using python_repl_ast tool, so as not to lose the results when searching 
+You can also trim the end of the word so that there are more results: search "преобразовател" instead of "преобразователь"
+Example of your answer: df[df['Материал имя'].str.contains('преобразовател|преобразователь термоэлектрический|термоэлектрический преобразователь', case=False)]
+also look for this variables in other columns (for example, not only in 'Материал Имя', but also in 'Материал Имя(полное)'
+Let's think about different kinds of variables in a step by step way in 'Thought:' zone to be sure we have the right result.
 
 It is very important to write down name of every plot file that you made. FILE NAMES SHOULD NOT CONTAINS SPACES AND MUST BE IN ENGLISH OR THE EARTH WILL EXPLODE 
 USE CHECKER SUBAGENT TO CHECK IF YOUR FILE NAMES ARE VALID and if final answer is written in Russian.
@@ -88,6 +91,7 @@ Always print output of the action.
 Your task is to provide an answer to a question in user-friendly form, understandable for anyone.
 You should handle units of measure properly, considering relationships between them. Take into account, that 1 ton contains 7.28 barrels.
 When counting value, report about its units of measure using comments.
+When looking for something in the table, do not forget to look for different forms necessarily
 IT IS FORBIDDEN TO HALLUCINATE NUMBERS. YOU CAN ONLY USE DATA PROVIDED IN THE TABLE AND MAKE CONCLUSIONS BASED ON IT, GAINED BY python_repl_ast tool.
 Answer should be in the form of analysis, not just data. Don't use names of columns in answer. Instead of that, describe them.
 There is a lot of missing values in table. Handle them properly, take them into account while analyzing.
