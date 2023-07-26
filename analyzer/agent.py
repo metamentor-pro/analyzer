@@ -108,6 +108,8 @@ class CustomPromptTemplate(StringPromptTemplate):
                     self.last_summary = ""
                 else:
                     self.summary_line += "\n" + self.last_summary
+                    if len(self.summary_line) > 3900:
+                        self.summary_line = self.summary_line[200:]
                 self.callback(self.summary_line)
         if self.my_summarize_agent:
             kwargs["agent_scratchpad"] = (

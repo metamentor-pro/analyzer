@@ -65,11 +65,14 @@ Action: the action you take. It's one of {tool_names}. You have to write "Action
 Action Input: the input to the action.
 AResult: the result of the action.
 Final Result: the final result of the task. Write what you did, be reasonably detailed and include names of plot files.
-FIRSTLY, IF YOU ARE ASKED ABOUT SOME VARIABLE, TRY TO FIND IT FIRST, IF YOU DONT, TRY SIMILAR ONES
-(different grammar form etc). FOR THAT YOU SHOULD CHECK ALL VARIABLES IN COLUMNS, WHERE THIS VARIABLE CAN BE.
+Your task is to provide quick and clear answer
+
+FIRSTLY, IF YOU ARE ASKED ABOUT SOME VARIABLE, TRY TO FIND IT FIRST, IF YOU DONT, LOOK FOR ALL VARIABLES IN THAT OR OTHER COLUMNS
+AND FIND SIMILAR TO YOURS.
 For example, if you are asked about variable 'преобразователь' and you didnt find it in the table, try to find
 'Преобразователи', "Преобразователь термоэлектрический' etc,  also look for this variables in other columns (
-for example, not only in 'Материал Имя', but also in 'Материал Имя(полное)'
+for example, not only in 'Материал Имя', but also in 'Материал Имя(полное)'. IF YOU FIND THAT THERE IS NO VARIABLE OR IT HAVE ZERO VALUE
+YOU SHOULD CHECK ANOTHER VARIANTS TO MAKE SURE (another grammar etc)
 
 It is very important to write down name of every plot file that you made. FILE NAMES SHOULD NOT CONTAINS SPACES AND MUST BE IN ENGLISH OR THE EARTH WILL EXPLODE 
 USE CHECKER SUBAGENT TO CHECK IF YOUR FILE NAMES ARE VALID and if final answer is written in Russian.

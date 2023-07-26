@@ -1,6 +1,5 @@
 import os
 import telebot
-import interactor
 import time
 import requests
 import sys
@@ -22,6 +21,7 @@ if __name__ == "__main__":
     config.config = current_config
 
 from inline_keyboard_manager import *
+from bot_data_handler import *
 
 
 class Bot(telebot.TeleBot):
@@ -95,6 +95,7 @@ def create_inline_keyboard(chat_id=None, page_type=None, page=1, status_flag=Tru
     markup = inline_keyboard(chat_id=chat_id, page_type=page_type, page=page, status_flag=status_flag)
     if page_type == "table_page":
         if settings["table_name"] is not None and len(settings["table_name"]) > 0:
+            print("status_flag", status_flag)
             if status_flag:
                 settings["table_name"] = settings_prep(chat_id)
                 bot.send_message(chat_id, f"Сейчас доступны для анализа: {settings['table_name']}")
@@ -150,7 +151,6 @@ def table_click(message) -> None:
     group_name = check_group_design(chat_id)
     page_type = "table_page"
     markup = create_inline_keyboard(chat_id=chat_id, page_type=page_type)
-
     bot.send_message(message.from_user.id, "Можете выбрать нужную таблицу или добавить новую", reply_markup=markup)
 
     if group_name is not None:
@@ -439,7 +439,7 @@ def choose_table(call, choose_flag: bool = False) -> None:
 
             settings["table_name"] = text
             bot.send_message(chat_id, "Таблица выбрана.")
-        update_table()
+        update_table(chat_id=chat_id, settings=settings)
 
 
 def add_table(message, call=None) -> None:
@@ -628,16 +628,6 @@ def call_to_model(message) -> None:
                              "Вы можете выйти из режима работы с моделью с помощью 'exit'",
                              reply_markup=markup)
             else:
-                table_name = list(map(str, settings["table_name"].split(",")))
-                print("available tables for model:", table_name)
-                table_name_path = table_name.copy()
-                for table in range(len(table_name_path)):
-                    table_name_path[table] = "data/" + table_name_path[table].strip()
-
-                table_description = get_description(chat_id)
-                context_list = get_context(chat_id)
-                current_summary = get_summary(chat_id)
-
                 markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
                 btn1 = types.KeyboardButton("🚫 exit")
                 markup.add(btn1)
@@ -649,18 +639,14 @@ def call_to_model(message) -> None:
                                  "Учтите, что первичная обработка больших таблиц может занять несколько минут, спасибо")
                 send_message = bot.send_message(message.from_user.id, "Здесь будет описан процесс моих рассуждений:")
 
-                build_plots = settings["build_plots"]
-
-                answer_from_model = interactor.run_loop_bot(table_name_path, build_plots, user_question, current_summary,
-                                                            table_description, context_list, callback=callback)
+                answer_from_model = model_call(chat_id=chat_id, user_question=user_question,callback=callback)
                 if answer_from_model[0] == "F":
                     bot.send_message(message.chat.id, "Что-то пошло не так, повторяю запрос")
-                    answer_from_model = interactor.run_loop_bot(table_name_path, build_plots, user_question,
-                                                                current_summary,
-                                                                table_description, context_list, callback=callback)
+                    answer_from_model = model_call(chat_id=chat_id, user_question=user_question,
+                                                   callback=callback)
                     if answer_from_model[0] == "F":
                         bot.send_message(message.chat.id, "Что-то пошло не так")
-
+                current_summary = get_summary(chat_id)
                 summary = answer_from_model[1]
                 new_summary = current_summary + summary
                 print(summary)
