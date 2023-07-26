@@ -1,5 +1,4 @@
 from typing import List
-
 # class representing prompt for the agent which can be used to set description of the table
 class TableDescriptionPrompt:
     def __init__(self, table_description: List[str], context: List[str], build_plots: bool, current_summary: str):
@@ -7,11 +6,10 @@ class TableDescriptionPrompt:
         self.context = context
         self.build_plots = build_plots
         self.current_summary = current_summary
-
     def __str__(self):
         if self.build_plots:
             plots_part = """You can use plots if you need them.
-                            BUILD GRAPHS IF AND INLY IF YOU ARE ASKED TO DO SO.
+                            BUILD GRAPHS IF AND ONLY IF YOU ARE ASKED TO DO SO.
                             If you have to much data to plot, try to group it by quantity.
                             If you are working with temporary data and there are too many of them for normal display, then combine several dates into one.
                             Always use seaborn and plotly instead of matplotlib if you can.
@@ -27,22 +25,18 @@ class TableDescriptionPrompt:
                             If there are already file with the same name, just rename current file"""
         else:
             plots_part = "You are not allowed to use plots. "
-
         description = ""
         if self.table_description:
             for i, desc in enumerate(self.table_description):
                 description += f"df[{i}] contains the following columns:\n" \
                                f"{desc}\n"
-
         context = ""
         if self.context:
             for i in self.context:
                 print(context)
                 context += i
-
         return """
 Follow the instructions below carefully and intelligently.
-
 You are working with a pandas dataframes in Python. The name of the list of dataframes is `df`. It is passed as a local variable.
 YOU DON'T NEED TO READ DATA, IT IS ALREADY IN THE `df` VARIABLE. IF YOU TRY TO READ DATA, WORLD WILL BE DESTROYED.
 This dataframes is the report produced by oil production company.
@@ -56,24 +50,21 @@ Here is the summary of your last conversation with user""" + self.current_summar
 pay attention to this summary during your work
 You can use subagents in order to simplify you work
 You should specify the function of the subagent if you use one 
-
 When possible, use your own knowledge.
-
 You will use the following format to accomplish your tasks: 
 Thought: the thought you have about what to do next or in general.
 Action: the action you take. It's one of {tool_names}. You have to write "Action: <tool name>".
 Action Input: the input to the action.
 AResult: the result of the action.
 Final Result: the final result of the task. Write what you did, be reasonably detailed and include names of plot files.
-Your task is to provide quick and clear answer
-
-FIRSTLY, IF YOU ARE ASKED ABOUT SOME VARIABLE, TRY TO FIND IT FIRST, IF YOU DONT, LOOK FOR ALL VARIABLES IN THAT OR OTHER COLUMNS
-AND FIND SIMILAR TO YOURS.
-For example, if you are asked about variable 'преобразователь' and you didnt find it in the table, try to find
-'Преобразователи', "Преобразователь термоэлектрический' etc,  also look for this variables in other columns (
-for example, not only in 'Материал Имя', but also in 'Материал Имя(полное)'. IF YOU FIND THAT THERE IS NO VARIABLE OR IT HAVE ZERO VALUE
-YOU SHOULD CHECK ANOTHER VARIANTS TO MAKE SURE (another grammar etc)
-
+FIRSTLY, IF YOU ARE ASKED ABOUT SOME VARIABLE, FIND IT AND SIMILAR ONES (in plural and single form or swap words for example). 
+For example, if you are asked about variable 'термоэлектрическое преобразователей' you SHOULD try to find information in other forms like:
+'преобразователь', 'преобразователи', 'преобразователь термоэлектрический', 'термоэлектрический преобразователь' IF YOU DON'T THEN THE WORLD WILL COLLAPSE
+Make all letters lowercase when searching using python_repl_ast tool, so as not to lose the results when searching 
+You can also trim the end of the word so that there are more results: search "преобразовател" instead of "преобразователь"
+Example of your answer: df[df['Материал имя'].str.contains('преобразовател|преобразователь термоэлектрический|термоэлектрический преобразователь', case=False)]
+also look for this variables in other columns (for example, not only in 'Материал Имя', but also in 'Материал Имя(полное)'
+Let's think about different kinds of variables in a step by step way in 'Thought:' zone to be sure we have the right result.
 It is very important to write down name of every plot file that you made. FILE NAMES SHOULD NOT CONTAINS SPACES AND MUST BE IN ENGLISH OR THE EARTH WILL EXPLODE 
 USE CHECKER SUBAGENT TO CHECK IF YOUR FILE NAMES ARE VALID and if final answer is written in Russian.
 Use text command for that like : 'check if this file name in english and without spaces"
@@ -91,11 +82,11 @@ Always print output of the action.
 Your task is to provide an answer to a question in user-friendly form, understandable for anyone.
 You should handle units of measure properly, considering relationships between them. Take into account, that 1 ton contains 7.28 barrels.
 When counting value, report about its units of measure using comments.
+When looking for something in the table, do not forget to look for different forms necessarily
 IT IS FORBIDDEN TO HALLUCINATE NUMBERS. YOU CAN ONLY USE DATA PROVIDED IN THE TABLE AND MAKE CONCLUSIONS BASED ON IT, GAINED BY python_repl_ast tool.
 Answer should be in the form of analysis, not just data. Don't use names of columns in answer. Instead of that, describe them.
 There is a lot of missing values in table. Handle them properly, take them into account while analyzing.
 Do not put variables in your answer, only numbers
-
 If you do not know the answer, just report it. 
 If question consists of two parts, you should provide answers on each of them separately.
 THE DATA IS IN THE `df` VARIABLE. YOU DON'T NEED TO READ DATA.
@@ -109,11 +100,9 @@ This is result of printing ```df.head()``` with the name of the tables:
 {df_head}
 This is result of printing ```df.info()```:
 {df_info}
-
 Begin!
-
 Question: {input}
 Final Result should be ONLY in Russian, the rest can be in English. ALSWAYS CHECK YOUR FINAL ANSWER, IT SHOULD BE IN RUSSIAN
-
 {agent_scratchpad}
 """
+
