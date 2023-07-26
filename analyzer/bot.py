@@ -2,9 +2,7 @@ import os
 import telebot
 import interactor
 import time
-import traceback
 import requests
-import logging
 import sys
 import config
 
@@ -12,8 +10,7 @@ import re
 
 import matplotlib
 matplotlib.use('Agg')
-logging.basicConfig(level=logging.INFO, filename="py_log.log",filemode="w",
-                    format="%(asctime)s %(levelname)s %(message)s")
+
 
 if __name__ == "__main__":
     print(sys.argv)
@@ -63,39 +60,8 @@ def main(message=None) -> None:
         chat_id = message
         print(message)
         print(e)
-
-    print("message", message.text)
-    con = sq.connect(db_name)
-    cur = con.cursor()
-    cur.execute("SELECT * FROM callback_manager WHERE user_id = ?", (chat_id,))
-    existing_record = cur.fetchone()
-    try:
-        if not existing_record:
-            cur.execute("INSERT  INTO callback_manager(user_id) VALUES(?)", (int(chat_id),))
-        con.commit()
-    except Exception as e:
-        print(traceback.format_exc())
-        print("error is:", e)
-        logging.error(traceback.format_exc())
-        con.close()
-
-    cur.execute("SELECT * FROM users WHERE user_id = ?", (chat_id,))
-    existing_record = cur.fetchone()
-
-    try:
-        if not existing_record:
-            cur.execute("""INSERT INTO users(user_id) values(?)""", (chat_id,))
-            con.commit()
-            con.close()
-            help_info(message)
-        con.commit()
-        con.close()
-    except Exception as e:
-        print(traceback.format_exc())
-        print("error is:", e)
-        logging.error(traceback.format_exc())
-        con.close()
-
+    first_time = make_insertion(chat_id)
+    if first_time == True: help_info(message)
     if message.text is not None:
         if "/start" in message.text:
             is_group = check_for_group(message)

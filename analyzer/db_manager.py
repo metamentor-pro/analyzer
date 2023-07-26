@@ -4,7 +4,10 @@ import chardet
 from typing import Union, Callable, List
 from msg_parser import msg_to_string
 import config
-
+import traceback
+import logging
+logging.basicConfig(level=logging.INFO, filename="py_log.log", filemode="w",
+                    format="%(asctime)s %(levelname)s %(message)s")
 
 bot_name = config.config["bot_name"]
 bot_api = config.config["bot_api"]
@@ -680,3 +683,35 @@ def update_table(chat_id: int = None) -> None:
             "UPDATE users SET current_tables = ? WHERE user_id == ?", (settings["table_name"], chat_id))
         con.commit()
     con.close()
+
+def make_insertion(chat_id: int = None) -> bool:
+    con = sq.connect(db_name)
+    cur = con.cursor()
+    cur.execute("SELECT * FROM callback_manager WHERE user_id = ?", (chat_id,))
+    existing_record = cur.fetchone()
+    try:
+        if not existing_record:
+            cur.execute("INSERT  INTO callback_manager(user_id) VALUES(?)", (int(chat_id),))
+        con.commit()
+    except Exception as e:
+        print(traceback.format_exc())
+        print("error is:", e)
+        logging.error(traceback.format_exc())
+        con.close()
+
+    cur.execute("SELECT * FROM users WHERE user_id = ?", (chat_id,))
+    existing_record = cur.fetchone()
+
+    try:
+        if not existing_record:
+            cur.execute("""INSERT INTO users(user_id) values(?)""", (chat_id,))
+            con.commit()
+            con.close()
+            return True
+        con.commit()
+        con.close()
+    except Exception as e:
+        print(traceback.format_exc())
+        print("error is:", e)
+        logging.error(traceback.format_exc())
+        con.close()
