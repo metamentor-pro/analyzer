@@ -1,12 +1,29 @@
+"""
+This module provides functionality for loading data from a JSON file, transforming the data, and then writing the transformed data back to a new JSON file.
+
+The transformation involves converting certain fields from lists to strings and handling missing values.
+"""
+
 import json
 import traceback
+
 
 d = json.load(open("data/sample_column.txt"))
 
 reformatted = []
 
 
-def transform_list_to_join(l):
+def transform_list_to_join(l: list) -> list:
+    """
+    Transforms a list into a new list where each element is a string.
+    If an element in the input list is None, it is replaced with the string "None" in the output list.
+    
+    Args:
+        l: The list to transform.
+    
+    Returns:
+        The transformed list.
+    """
     ans = []
     for i in l:
         if i is None:

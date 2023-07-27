@@ -21,6 +21,8 @@ seaborn = "^0.12.2"
 plotly = "^5.15.0"
 pytelegrambotapi = "^4.12.0"
 pymongo = "^4.4.0"
+aiogram = "^2.25.1"
+tiktoken = "^0.4.0"
 
 [build-system]
 requires = ["poetry-core"]

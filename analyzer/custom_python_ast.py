@@ -1,3 +1,5 @@
+from typing import Dict, Optional
+
 import ast
 import sys
 import traceback
@@ -5,27 +7,26 @@ from io import StringIO
 
 from langchain.callbacks.manager import CallbackManagerForToolRun, AsyncCallbackManagerForToolRun
 from pydantic import Field, root_validator
-from typing import Optional, Dict
 
 from langchain.tools import BaseTool
 
 
 class CustomPythonAstREPLTool(BaseTool):
-    """A tool for running python code in a REPL."""
 
-    name = "python_repl_ast"
-    description = (
+    name: str = "python_repl_ast"
+    description: str = (
         "A Python shell. Use this to execute python commands. "
         "Input should be a valid python command. "
         "When using this tool, sometimes output is abbreviated - "
         "make sure it does not look abbreviated before using it in your answer."
     )
-    globals: Optional[Dict] = Field(default_factory=dict)
-    locals: Optional[Dict] = Field(default_factory=dict)
+
+    globals: Optional[Dict[str, object]] = Field(default_factory=dict)
+    locals: Optional[Dict[str, object]] = Field(default_factory=dict)
     sanitize_input: bool = True
 
     @root_validator(pre=True)
-    def validate_python_version(cls, values: Dict) -> Dict:
+    def validate_python_version(cls, values: Dict[str, object]) -> Dict[str, object]:
         """Validate valid python version."""
         if sys.version_info < (3, 9):
             raise ValueError(
@@ -76,3 +77,4 @@ class CustomPythonAstREPLTool(BaseTool):
     ) -> str:
         """Use the tool asynchronously."""
         raise NotImplementedError("PythonReplTool does not support async")
+        
