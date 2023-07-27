@@ -494,3 +494,72 @@ def update_table(chat_id: int = None, settings : dict = None) -> None:
     con.close()
 
 
+import aiosqlite
+
+async def create_tables():
+    async with aiosqlite.connect(db_name) as db:
+        await db.execute("""CREATE TABLE IF NOT EXISTS users  
+                          (user_id INTEGER PRIMARY KEY,
+                           conv_sum TEXT,
+                           current_tables VARCHAR,  
+                           build_plots INTEGER DEFAULT 1)""")
+                           
+        await db.execute("""CREATE TABLE IF NOT EXISTS callback_manager
+                           (user_id INTEGER PRIMARY KEY, 
+                            table_page INTEGER DEFAULT 1,
+                            context_page INTEGER DEFAULT 1,
+                            description_page INTEGER DEFAULT 1,
+                            group_flag INTEGER DEFAULT 0,
+                            group_name VARCHAR)""")
+                            
+        await db.execute("""CREATE TABLE IF NOT EXISTS groups  
+                           (group_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            group_name VARCHAR,
+                            admin_id INTEGER)""")
+                            
+        await db.execute("""CREATE TABLE IF NOT EXISTS group_tables
+                          (table_id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                           group_id INTEGER,
+                           table_name VARCHAR, 
+                           context TEXT,
+                           description TEXT)""")
+                           
+        await db.execute("""CREATE TABLE IF NOT EXISTS messages
+                          (message_id INTEGER PRIMARY KEY,
+                           chat_id INTEGER,
+                           text TEXT)""")
+                           
+        # Additional indexes                 
+        await db.execute("CREATE INDEX idx_group_id ON group_tables(group_id)")
+        await db.execute("CREATE INDEX idx_chat_id ON messages(chat_id)")
+        
+
+async def get_settings(chat_id):
+    async with aiosqlite.connect(db_name) as db:
+        row = await db.execute("SELECT current_tables, build_plots FROM users WHERE user_id=?", (chat_id,))
+        tables, plots = await row.fetchone()
+        return {"tables": tables, "build_plots": plots}
+        
+
+async def update_summary(chat_id, summary):
+    async with aiosqlite.connect(db_name) as db:
+        await db.execute("UPDATE users SET conv_sum=? WHERE user_id=?", (summary, chat_id))
+        await db.commit()
+        
+            
+async def choose_group(group_name, chat_id):
+    async with aiosqlite.connect(db_name) as db:
+        await db.execute("UPDATE callback_manager SET group_name=? WHERE user_id=?", (group_name, chat_id))
+        await db.commit()
+
+
+async def get_context(chat_id):
+    async with aiosqlite.connect(db_name) as db:
+        row = await db.execute("SELECT context FROM tables WHERE user_id=?", (chat_id,))
+        return await row.fetchone()
+        
+        
+async def get_descriptions(chat_id):  
+    async with aiosqlite.connect(db_name) as db:
+        row = await db.execute("SELECT table_description FROM tables WHERE user_id=?", (chat_id,))
+        return await row.fetchone()       
