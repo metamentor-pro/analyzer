@@ -4,24 +4,23 @@ from db_manager import *
 import interactor
 
 
-def get_context(chat_id: int =None) -> List:
-    settings = get_settings(chat_id)
-    con = sq.connect(db_name)
-    cur = con.cursor()
-    cur.execute("SELECT group_flag FROM callback_manager WHERE user_id == ?", (chat_id,))
+async def get_context(chat_id: int =None) -> List:
+    settings = await get_settings(chat_id)
+    con = aiosqlite.connect(db_name)
+    group_flag = await con.execute("SELECT group_flag FROM callback_manager WHERE user_id == ?", (chat_id,))
     table_name = list(map(str, settings["table_name"].split(",")))
 
-    group_flag = cur.fetchone()[0]
+    group_flag = group_flag.fetchone()[0]
     context_list = []
 
     if group_flag == True:
-        cur.execute("SELECT group_name FROM callback_manager WHERE user_id == ?", (chat_id,))
-        group_name = cur.fetchone()[0]
-        cur.execute("SELECT admin_id FROM callback_manager WHERE user_id == ?", (chat_id,))
-        chat_id = cur.fetchone()[0]
+        group_name = await con.execute("SELECT group_name FROM callback_manager WHERE user_id == ?", (chat_id,))
+        group_name = group_name.fetchone()[0]
+        chat_id = await con.execute("SELECT admin_id FROM callback_manager WHERE user_id == ?", (chat_id,))
+        chat_id = chat_id.fetchone()[0]
         for table in table_name:
-            cur.execute("SELECT context from group_tables WHERE admin_id == ? AND  group_name == ?", (chat_id, group_name))
-            context = cur.fetchone()
+            context = await  con.execute("SELECT context from group_tables WHERE admin_id == ? AND  group_name == ?", (chat_id, group_name))
+            context = context.fetchone()
             if not context or context[0] is None:
                 context_line = table + ":"
             else:
@@ -30,47 +29,41 @@ def get_context(chat_id: int =None) -> List:
 
     else:
         for table in table_name:
-            cur.execute("SELECT context FROM tables WHERE user_id == ? AND table_name == ?", (chat_id, table))
-            context = cur.fetchone()
+            context = await con.execute("SELECT context FROM tables WHERE user_id == ? AND table_name == ?", (chat_id, table))
+            context = context.fetchone()
             if not context or context[0] is None:
                 context_line = table + ":"
             else:
                 context_line = table + ":" + context[0]
             context_list.append(context_line)
-    con.close()
     return context_list
 
 
-def get_description(chat_id: int = None) -> List:
-    settings = get_settings(chat_id)
+async def get_description(chat_id: int = None) -> List:
+    settings = await get_settings(chat_id)
     table_name = list(map(str, settings["table_name"].split(",")))
     table_name_path = table_name.copy()
     table_description = []
 
     for table in range(len(table_name_path)):
         table_name_path[table] = "data/" + table_name_path[table]
-    con = sq.connect(db_name)
-    cur = con.cursor()
-    cur.execute("SELECT group_flag FROM callback_manager WHERE user_id == ?", (chat_id,))
-
-    group_flag = cur.fetchone()[0]
+    con = aiosqlite.connect(db_name)
+    group_flag = await con.execute("SELECT group_flag FROM callback_manager WHERE user_id == ?", (chat_id,))
+    group_flag = group_flag.fetchone()[0]
     if group_flag == True:
-        cur.execute("SELECT group_name FROM callback_manager WHERE user_id == ?", (chat_id,))
-        group_name = cur.fetchone()[0]
-        cur.execute("SELECT admin_id FROM callback_manager WHERE user_id == ?", (chat_id,))
-        admin_id = cur.fetchone()[0]
-        con.close()
+        group_name = await con.execute("SELECT group_name FROM callback_manager WHERE user_id == ?", (chat_id,))
+        group_name = group_name.fetchone()[0]
+        admin_id = await con.execute("SELECT admin_id FROM callback_manager WHERE user_id == ?", (chat_id,))
+        admin_id = admin_id.fetchone()[0]
         for table in table_name:
-            con = sq.connect(db_name)
-
-            cur = con.cursor()
-            cur.execute("SELECT * FROM group_tables WHERE admin_id == ? AND table_name == ? AND group_name == ?", (admin_id, table, group_name))
-            existing_record = cur.fetchone()
+            con = aiosqlite.connect(db_name)
+            existing_record = await con.execute("SELECT * FROM group_tables WHERE admin_id == ? AND table_name == ? AND group_name == ?", (admin_id, table, group_name))
+            existing_record = existing_record.fetchone()
 
             if existing_record is not None:
 
-                cur.execute("SELECT table_description FROM group_tables WHERE admin_id == ? AND table_name == ? AND group_name  == ?",  (admin_id, table, group_name))
-                description = cur.fetchone()
+                description = await con.execute("SELECT table_description FROM group_tables WHERE admin_id == ? AND table_name == ? AND group_name  == ?",  (admin_id, table, group_name))
+                description = description.fetchone()
 
                 if not description or description[0] is None:
                     table_description_line = table + ":"
@@ -79,7 +72,7 @@ def get_description(chat_id: int = None) -> List:
 
                 table_description.append(table_description_line)
 
-            con.commit()
+            await con.commit()
 
     else:
         for table in table_name:
@@ -103,28 +96,26 @@ def get_description(chat_id: int = None) -> List:
 
                 print("table description:", table_description)
             con.commit()
-    con.close()
     return table_description
 
 
-def get_summary(chat_id: int) -> str:
-    con = sq.connect(db_name)
-    cur = con.cursor()
-    cur.execute("SELECT group_flag FROM callback_manager WHERE user_id == ?", (chat_id,))
+async def get_summary(chat_id: int) -> str:
+    con = aiosqlite.connect(db_name)
+    group_flag = await con.execute("SELECT group_flag FROM callback_manager WHERE user_id == ?", (chat_id,))
 
-    group_flag = cur.fetchone()[0]
-    con.commit()
+    group_flag = group_flag.fetchone()[0]
+    await con.commit()
     if group_flag == True:
-        cur.execute("SELECT group_name FROM callback_manager WHERE user_id == ?", (chat_id,))
-        group_name = cur.fetchone()[0]
-        cur.execute("SELECT admin_id FROM callback_manager WHERE user_id == ?", (chat_id,))
-        admin_id = cur.fetchone()[0]
-        cur.execute("SELECT group_conv FROM groups WHERE admin_id == ? AND group_name == ?", (admin_id, group_name))
-        current_summary = cur.fetchone()
+        group_name = await  con.execute("SELECT group_name FROM callback_manager WHERE user_id == ?", (chat_id,))
+        group_name = group_name.fetchone()[0]
+        admin_id = await con.execute("SELECT admin_id FROM callback_manager WHERE user_id == ?", (chat_id,))
+        admin_id = admin_id.fetchone()[0]
+        current_summary = await con.execute("SELECT group_conv FROM groups WHERE admin_id == ? AND group_name == ?", (admin_id, group_name))
+        current_summary = current_summary.fetchone()
     else:
 
-        cur.execute("SELECT conv_sum FROM users WHERE user_id = ?", (chat_id,))
-        current_summary = cur.fetchone()
+        current_summary = await con.execute("SELECT conv_sum FROM users WHERE user_id = ?", (chat_id,))
+        current_summary = current_summary.fetchone()
 
     if not current_summary or current_summary[0] is None:
         current_summary = ""
@@ -132,8 +123,8 @@ def get_summary(chat_id: int) -> str:
         current_summary = current_summary[0][:250] + current_summary[0][-500:]
     return current_summary
 
-def settings_prep(chat_id: int):
-    settings = get_settings(chat_id)
+async def settings_prep(chat_id: int):
+    settings = await get_settings(chat_id)
     if settings["table_name"] is None:
         return False
     table_name = list(map(str, settings["table_name"].split(",")))
@@ -143,8 +134,8 @@ def settings_prep(chat_id: int):
     return ",".join(table_name)
 
 
-def delete_last_table(chat_id : int = None) -> List[str]:
-    settings = get_settings(chat_id)
+async def delete_last_table(chat_id : int = None) -> List[str]:
+    settings = await get_settings(chat_id)
     table_name = list(map(str, settings["table_name"].split(",")))
     table_name = table_name[:-1]
     if len(table_name) == 0:
@@ -155,36 +146,30 @@ def delete_last_table(chat_id : int = None) -> List[str]:
             settings["table_name"] += table_name[i] + ","
         settings["table_name"] += table_name[-1]
 
-    con = sq.connect(db_name)
-    cur = con.cursor()
+    con = aiosqlite.connect(db_name)
+
     group_name = check_group_design(chat_id)
     if group_name is not None:
-        cur.execute("UPDATE groups SET current_tables = ? WHERE admin_id == ? AND group_name == ?",
+        await con.execute("UPDATE groups SET current_tables = ? WHERE admin_id == ? AND group_name == ?",
                     (settings["table_name"], chat_id, group_name))
-        con.commit()
+        await con.commit()
     else:
-        cur.execute("UPDATE users SET current_tables = ? WHERE user_id == ?", (settings["table_name"], chat_id))
-        con.commit()
+        await con.execute("UPDATE users SET current_tables = ? WHERE user_id == ?", (settings["table_name"], chat_id))
+        await con.commit()
 
-    con.close()
     return table_name
 
 
-
-def exit_from_group_db(chat_id: int = None) -> None:
-    con = sq.connect(db_name)
-    cur = con.cursor()
-    cur.execute("UPDATE callback_manager SET group_flag = 0 WHERE user_id == ?", (chat_id,))
-    con.commit()
-    con.close()
+async def exit_from_group_db(chat_id: int = None) -> None:
+    con = aiosqlite.connect(db_name)
+    await con.execute("UPDATE callback_manager SET group_flag = 0 WHERE user_id == ?", (chat_id,))
+    await con.commit()
 
 
-def exit_from_model(chat_id: int = None) -> None:
-    con = sq.connect(db_name)
-    cur = con.cursor()
-    cur.execute("UPDATE callback_manager SET group_flag = 0 WHERE user_id == ?", (chat_id,))
-    con.commit()
-    con.close()
+async def exit_from_model(chat_id: int = None) -> None:
+    con = aiosqlite.connect(db_name)
+    await con.execute("UPDATE callback_manager SET group_flag = 0 WHERE user_id == ?", (chat_id,))
+    await con.commit()
 
 
 async def make_insertion(chat_id: int = None) -> bool:
@@ -201,21 +186,22 @@ async def make_insertion(chat_id: int = None) -> bool:
             if not existing_record:
                 await db.execute("""INSERT INTO users(user_id) values(?)""", (chat_id,))
                 await db.commit()
-                await db.close()
+
                 print("making_insertion1")
                 return True
             await db.commit()
-            await db.close()
+
         except Exception as e:
             print(traceback.format_exc())
             print("error is:", e)
             logging.error(traceback.format_exc())
-            await db.close()
+
+        print("making_insertion2")
         return False
 
 
-def model_call(chat_id, user_question, callback):
-    settings = get_settings(chat_id)
+async def model_call(chat_id, user_question, callback):
+    settings = await get_settings(chat_id)
     table_name = list(map(str, settings["table_name"].split(",")))
     print("available tables for model:", table_name)
     table_name_path = table_name.copy()

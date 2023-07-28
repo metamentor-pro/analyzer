@@ -8,7 +8,7 @@ from db_manager import *
 async def get_page(chat_id: int, page_type: str) -> int:
     con = aiosqlite.connect(db_name)
     page = None
-    group_name = check_group_design(chat_id)
+    group_name = await check_group_design(chat_id)
     if group_name is not None:
         query = f"SELECT {page_type} FROM group_manager WHERE admin_id == ? AND group_name == ?"
         page = await con.execute(query, (chat_id, group_name))
@@ -16,20 +16,20 @@ async def get_page(chat_id: int, page_type: str) -> int:
         page = page[0]
 
         await con.commit()
-        await con.close()
+
     else:
         query = f"SELECT {page_type} FROM callback_manager WHERE user_id == ?"
         page = await con.execute(query, (chat_id,))
         page = page.fetchone()
         page = page[0]
         await con.commit()
-        await con.close()
+
     return page
 
 
 async def change_page(chat_id: int, page_type: str, new_page: int) -> None:
     con = aiosqlite.connect(db_name)
-    group_name = check_group_design(chat_id)
+    group_name = await check_group_design(chat_id)
     if group_name is not None:
         query = f"UPDATE group_manager SET {page_type} = ? WHERE admin_id == ?"
         await con.execute(query, (new_page, chat_id))
@@ -39,12 +39,11 @@ async def change_page(chat_id: int, page_type: str, new_page: int) -> None:
         await con.execute(query, (new_page, chat_id))
 
     await con.commit()
-    await con.close()
 
 
 async def get_pages_amount(chat_id: int) -> int:
     con = aiosqlite.connect(db_name)
-    group_name = check_group_design(chat_id)
+    group_name = await check_group_design(chat_id)
     if group_name is not None:
         await con.execute("SELECT * FROM group_tables WHERE admin_id == ? AND  group_name == ?", (chat_id, group_name))
     else:
@@ -52,7 +51,7 @@ async def get_pages_amount(chat_id: int) -> int:
     amount = len(amount.fetchall())//3 + 1
 
     await con.commit()
-    await con.close()
+
     return amount
 
 
@@ -82,13 +81,12 @@ async def create_group_keyboard(chat_id: int = None, show_groups: bool = False):
         markup.add(btn1)
         markup.add(btn2)
         markup.add(btn3)
-    await db.close()
+
     return markup
 
 
 async def inline_keyboard(chat_id: int = None, page_type: str = None, page: int = 1, status_flag: bool = True):
     group_name = await check_group_design(chat_id)
-    print("Bimba")
     if group_name is not None:
         query = "select table_name from group_tables where admin_id == ? and group_name == ? LIMIT 3 OFFSET ?"
         if page == 1:
@@ -103,7 +101,7 @@ async def inline_keyboard(chat_id: int = None, page_type: str = None, page: int 
             offset = ((page - 1) * 3)
     markup = types.InlineKeyboardMarkup(row_width=3)
     prefix = page_type[0] + "|"
-    settings = get_settings(chat_id)
+    settings = await get_settings(chat_id)
     async with aiosqlite.connect(db_name) as db:
         if group_name is not None:
             current = await db.execute(query, (chat_id, group_name, offset))
@@ -113,7 +111,7 @@ async def inline_keyboard(chat_id: int = None, page_type: str = None, page: int 
         rows = await current.fetchall()
 
         await db.commit()
-        await db.close()
+
         btn = None
 
     for row in rows:
@@ -136,8 +134,8 @@ async def inline_keyboard(chat_id: int = None, page_type: str = None, page: int 
 
             markup.add(btn2)
 
-    page = get_page(chat_id=chat_id, page_type=page_type)
-    amount = get_pages_amount(chat_id=chat_id)
+    page = await get_page(chat_id=chat_id, page_type=page_type)
+    amount = await get_pages_amount(chat_id=chat_id)
     markup.add(types.InlineKeyboardButton(text=f'{page}/{amount}', callback_data=f' '))
     right = types.InlineKeyboardButton(text="→", callback_data=f"{prefix}right")
     left = types.InlineKeyboardButton(text="←", callback_data=f"{prefix}left")

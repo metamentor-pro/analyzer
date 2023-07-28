@@ -42,13 +42,12 @@ class Form(StatesGroup):
 
 @dp.message_handler(commands=['start'])
 async def send_welcome(message: types.Message):
-    print("processing")
+
     first_time = await bot_data_handler.make_insertion(message.chat.id)
 
     if first_time:
 
         await help_info(message)
-        
     text = "Вы можете выбрать одну из опций"
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add(
@@ -146,13 +145,15 @@ async def group_options(message: types.Message):
 
 @dp.message_handler()
 async def create_inline_keyboard(chat_id, page_type, page=1, group_mode=False):
-    print("start")
+
     keyboard_types = ["table_page", "description_page", "context_page"]
-    if not page_type not in keyboard_types:
+
+    if page_type not in keyboard_types:
         raise ValueError("Invalid page type")
-    print("HU")
+
     return await inline_keyboard_manager.inline_keyboard(chat_id=chat_id, page_type=page_type, page=page,
                                                          status_flag=False)
+
 
 if __name__ == '__main__':
 
