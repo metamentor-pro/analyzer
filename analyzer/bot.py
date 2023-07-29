@@ -29,6 +29,7 @@ else:
 
 import bot_data_handler
 import inline_keyboard_manager
+import db_manager
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
@@ -60,6 +61,7 @@ async def send_welcome(message: types.Message):
         types.KeyboardButton("Добавить контекст"),
         types.KeyboardButton("Группы таблиц")  
     )
+
     await message.reply(text, reply_markup=markup)
 
 
@@ -99,6 +101,50 @@ async def select_table(message: types.Message):
     await Form.table_name.set()
     markup = await create_inline_keyboard(message.chat.id, "table_page")
     await message.reply("Можете выбрать нужную таблицу или добавить новую", reply_markup=markup)
+    await send_welcome(message)
+
+
+@dp.callback_query_handler(Text(startswith="t|"), state=Form.table_name)
+async def choose_table(call: types.CallbackQuery):
+    action = call.data.split("|")[1]
+    chat_id = call.message.chat.id
+
+    if action == "new_table":
+        await call.message.answer("Чтобы добавить таблицу, отправьте файл в формате csv, XLSX или json")
+        await Form.table_name.set()
+
+    elif action == "delete_tables":
+        tables = await bot_data_handler.delete_last_table(call.message.chat.id)
+        await call.message.answer(f"Таблица {tables[-1]} удалена из текущего списка")
+
+    elif action in ("right", "left"):
+        amount = await inline_keyboard_manager.get_pages_amount(chat_id=chat_id,)
+        page = await inline_keyboard_manager.get_page(chat_id=chat_id, page_type="table_page")
+        new_page = page
+        if page < amount:
+            if action == "right":
+                new_page = page + 1
+            elif page > 1:
+                new_page = page - 1
+
+        await inline_keyboard_manager.change_page(call.message.chat.id, "table_page", new_page=new_page)
+        markup = await create_inline_keyboard(call.message.chat.id,"table_page", new_page)
+        await call.message.edit_text("Вы можете выбрать таблицу или добавить новую",
+                                     reply_markup=markup)
+
+    else:
+        await choose_table(call.data, call.message)
+        await call.message.answer("Таблица выбрана")
+        #await state.finish()
+
+    await bot.answer_callback_query(call.id)
+
+
+@dp.message_handler(content_types=['document'], state=Form.table_name)
+async def load_table(message: types.Message):
+    await db_manager.add_table_db(message)
+    await message.reply("Файл сохранен")
+    #await state.finish()
 
 
 @dp.message_handler(Text(equals="Добавить контекст"))
@@ -106,7 +152,47 @@ async def add_description(message: types.Message):
     await Form.description.set()
 
     markup = await create_inline_keyboard(message.chat.id, "context_page")
+
     await message.reply("Выберите, к какой таблице вы хотите добавить описание", reply_markup=markup)
+    await send_welcome(message)
+
+
+@dp.callback_query_handler(Text(startswith="c|"), state=Form.context)
+async def choose_context(call: types.CallbackQuery):
+    action = call.data.split("|")[1]
+    chat_id = call.message.chat.id
+
+    if action in ("right", "left"):
+        amount = await inline_keyboard_manager.get_pages_amount(chat_id=chat_id,)
+        page = await inline_keyboard_manager.get_page(chat_id=chat_id, page_type="context_page")
+        new_page = page
+        if page < amount:
+            if action == "right":
+                new_page = page + 1
+            elif page > 1:
+                new_page = page - 1
+
+        await inline_keyboard_manager.change_page(call.message.chat.id, "context_page", new_page=new_page)
+        markup = await create_inline_keyboard(call.message.chat.id, "context_page", new_page)
+        await call.message.edit_text("Вы можете выбрать таблицу или добавить новую",
+                                     reply_markup=markup)
+
+    elif action == "exit":
+        await call.message.delete()
+        #await state.finish()
+
+    else:
+        await call.message.answer(f"Таблица {action} выбрана, отправьте контекст в формате txt")
+        await Form.next()
+        await bot.answer_callback_query(call.id)
+
+
+@dp.message_handler(content_types=['text', 'document'], state=Form.context)
+async def save_context(message: types.Message):
+    table_name = message.text
+    await bot_data_handler.add_context(message, table_name)
+    await message.reply("Контекст сохранен")
+    #await state.finish()
 
 
 @dp.message_handler(Text(equals="➕ Добавить описание таблицы"))
@@ -115,6 +201,45 @@ async def add_description(message: types.Message):
 
     markup = await create_inline_keyboard(message.chat.id, "description_page")
     await message.reply("Выберите, к какой таблице вы хотите добавить описание", reply_markup=markup)
+    await send_welcome(message)
+
+
+@dp.callback_query_handler(Text(startswith="d|"), state=Form.description)
+async def choose_description(call: types.CallbackQuery):
+    action = call.data.split("|")[1]
+    chat_id = call.message.chat.id
+    if action in ("right", "left"):
+        amount = await inline_keyboard_manager.get_pages_amount(chat_id=chat_id, )
+        page = await inline_keyboard_manager.get_page(chat_id=chat_id, page_type="description_page")
+        new_page = page
+        if page < amount:
+            if action == "right":
+                new_page = page + 1
+            elif page > 1:
+                new_page = page - 1
+
+        await inline_keyboard_manager.change_page(call.message.chat.id, "description_page", new_page=new_page)
+        markup = await create_inline_keyboard(call.message.chat.id, "description_page", new_page)
+        await call.message.edit_text("Вы можете выбрать таблицу или добавить новую",
+                                     reply_markup=markup)
+
+
+    elif action == "exit":
+        await call.message.delete()
+        #await state.finish()
+
+    else:
+        await call.message.answer(f"Таблица {action} выбрана, отправьте описание в формате txt")
+        await Form.next()
+        await bot.answer_callback_query(call.id)
+
+
+@dp.message_handler(content_types=['text', 'document'], state=Form.description)
+async def save_description(message: types.Message):
+    table_name = message.text
+    await db_manager.choose_description_db(message, table_name)
+    await message.reply("Описание сохранено")
+    #await state.finish()
 
 
 @dp.message_handler(Text(equals="🖻 Режим визуализации"))
@@ -123,13 +248,12 @@ async def toggle_plots(message: types.Message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add(types.KeyboardButton("Вернуться в главное меню"))
     await message.reply(text, reply_markup=markup)
+    await send_welcome(message)
 
 
 @dp.message_handler(Text(equals="❓ Режим отправки запроса"))
 async def request_mode(message: types.Message):
     #await call_to_model(message.chat.id)
-    pass
-
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add(types.KeyboardButton("🚫 exit"))
     print(markup)
@@ -141,6 +265,7 @@ async def request_mode(message: types.Message):
 async def group_options(message: types.Message):
     markup = await inline_keyboard_manager.create_group_keyboard(message.chat.id)
     await message.reply("Вы можете выбрать опцию", reply_markup=markup)
+    await send_welcome(message)
 
 
 @dp.message_handler()

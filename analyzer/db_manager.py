@@ -247,7 +247,7 @@ async def create_group_db(admin_id: int, group_name: str, group_name_for_link: s
 async def set_plots(message) -> str:
     chat_id = message.chat.id
     async with aiosqlite.connect(db_name) as con:
-        group_name = check_group_design(chat_id)
+        group_name = await check_group_design(chat_id)
         if message.text == "Выключить":
             text = "Режим визуализации отключён"
             if group_name is not None:
@@ -269,7 +269,7 @@ async def set_plots(message) -> str:
 async def add_table_db(message=None, call=None, downloaded_file=None) -> None:
     chat_id = message.chat.id
     message = message
-    group_name = check_group_design(chat_id)
+    group_name = await check_group_design(chat_id)
     src = "data/" + message.document.file_name
     src.replace("|", "_")
 
@@ -410,7 +410,6 @@ async def add_context_db(message=None, table_name=None, downloaded_file=None) ->
                 await con.commit()
 
 
-
 async def check_for_demo(chat_id : int = None) -> Union[None, str]:
     if demo:
         con = aiosqlite.connect(db_name)
@@ -455,7 +454,7 @@ async def choose_group_db(admin_id: int = None, group_name: str = None) -> None:
 
 async def update_table(chat_id: int = None, settings : dict = None) -> None:
 
-    group_name = check_group_design(chat_id=chat_id)
+    group_name = await check_group_design(chat_id=chat_id)
     con = aiosqlite.connect(db_name)
     if group_name is not None:
         await con.execute("UPDATE groups SET current_tables = ? WHERE admin_id == ? and group_name == ?",

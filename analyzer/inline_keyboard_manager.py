@@ -1,6 +1,5 @@
 
-
-from telebot import types
+from aiogram import types
 import yaml
 from db_manager import *
 
@@ -144,6 +143,5 @@ async def inline_keyboard(chat_id: int = None, page_type: str = None, page: int 
 
     btn3 = types.InlineKeyboardButton(text="🚫 exit", callback_data=f"{prefix}exit")
     markup.add(btn3)
-    print(markup)
     return markup
 
