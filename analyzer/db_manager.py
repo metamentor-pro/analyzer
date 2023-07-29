@@ -137,6 +137,7 @@ async def check_group_design(chat_id: int = None) -> Union[int, None]:
     else:
         return None
 
+
 async def get_settings(chat_id: int) -> dict:
     group_name = check_group_design(chat_id)
     con = aiosqlite.connect(db_name)

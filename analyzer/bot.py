@@ -143,6 +143,7 @@ async def group_options(message: types.Message):
     markup = await inline_keyboard_manager.create_group_keyboard(message.chat.id)
     await message.reply("Вы можете выбрать опцию", reply_markup=markup)
 
+
 @dp.message_handler()
 async def create_inline_keyboard(chat_id, page_type, page=1, group_mode=False):
 
