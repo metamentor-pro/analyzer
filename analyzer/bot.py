@@ -96,11 +96,9 @@ async def help_info(message: types.Message):
 
 @dp.message_handler(Text(equals="🖹 Выбрать таблицу"))
 async def select_table(message: types.Message):
-
     await Form.table_name.set()
     markup = await create_inline_keyboard(message.chat.id, "table_page")
-
-    await message.reply("Можете выбрать нужную таблицу или добавить новую", reply_markup=markup)
+    await message.answer("Можете выбрать нужную таблицу или добавить новую", reply_markup=markup)
 
 
 @dp.message_handler(Text(equals="➕ Добавить описание таблицы"))
@@ -115,7 +113,7 @@ async def add_description(message: types.Message):
 async def add_description(message: types.Message):
     await Form.description.set()
 
-    markup = await bot_data_handler.create_inline_keyboard(message.chat.id, "description_page")
+    markup = await create_inline_keyboard(message.chat.id, "description_page")
     await message.reply("Выберите, к какой таблице вы хотите добавить описание", reply_markup=markup)
 
 
@@ -156,6 +154,10 @@ async def create_inline_keyboard(chat_id, page_type, page=1, group_mode=False):
                                                          status_flag=False)
 
 
-if __name__ == '__main__':
+async def main():
+    # Your code to start the bot, setup handlers, etc.
+    await dp.start_polling()
 
-    executor.start_polling(dp, skip_updates=True)
+if __name__ == "__main__":
+    # Run the main function inside the asyncio event loop
+    asyncio.run(main())
