@@ -98,14 +98,14 @@ async def help_info(message: types.Message):
 async def select_table(message: types.Message):
     await Form.table_name.set()
     markup = await create_inline_keyboard(message.chat.id, "table_page")
-    await message.answer("Можете выбрать нужную таблицу или добавить новую", reply_markup=markup)
+    await message.reply("Можете выбрать нужную таблицу или добавить новую", reply_markup=markup)
 
 
-@dp.message_handler(Text(equals="➕ Добавить описание таблицы"))
+@dp.message_handler(Text(equals="Добавить контекст"))
 async def add_description(message: types.Message):
     await Form.description.set()
 
-    markup = await create_inline_keyboard(message.chat.id, "description_page")
+    markup = await create_inline_keyboard(message.chat.id, "context_page")
     await message.reply("Выберите, к какой таблице вы хотите добавить описание", reply_markup=markup)
 
 
@@ -132,6 +132,7 @@ async def request_mode(message: types.Message):
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add(types.KeyboardButton("🚫 exit"))
+    print(markup)
     await message.reply("Отправьте запрoс. До получения ответа взаимодействие с ботом блокируется",
                         reply_markup=markup)
 
