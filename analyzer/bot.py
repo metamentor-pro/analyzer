@@ -51,6 +51,7 @@ class Form(StatesGroup):
 
 
 class GroupForm(StatesGroup):
+    group_callback = State()
     group_menu = State()
     choose_group = State()
     create_group = State()
@@ -120,9 +121,10 @@ async def select_table(message: types.Message):
     markup = await create_inline_keyboard(message.chat.id, "table_page")
     print(markup)
     await message.reply("Можете выбрать нужную таблицу или добавить новую", reply_markup=markup)
+    await Form.table_callback.set()
 
 
-@dp.callback_query_handler(lambda query: query.data.startswith('t|'))
+@dp.callback_query_handler(lambda query: query.data.startswith('t|'), state="*")
 async def callback_query(call: types.CallbackQuery, state: FSMContext) -> None:
     action = call.data.split("|")[1]
     chat_id = call.message.chat.id
@@ -259,7 +261,7 @@ async def add_description(message: types.Message, state: FSMContext):
     await main_menu(message)
 
 
-@dp.callback_query_handler(Text(startswith="c|"))
+@dp.callback_query_handler(Text(startswith="c|"), state="*")
 async def callback_query(call: types.CallbackQuery, state: FSMContext):
     action = call.data.split("|")[1]
     chat_id = call.message.chat.id
@@ -303,7 +305,7 @@ async def description(message: types.Message, state: FSMContext):
     await message.reply("Выберите, к какой таблице вы хотите добавить описание", reply_markup=markup)
 
 
-@dp.callback_query_handler(Text(startswith="d|"))
+@dp.callback_query_handler(Text(startswith="d|"), state="*")
 async def callback_query(call: types.CallbackQuery):
     action = call.data.split("|")[1]
     chat_id = call.message.chat.id
@@ -365,7 +367,7 @@ async def plots_handler(message: types.Message, state: FSMContext) -> None:
     await message.answer(text)
     await state.finish()
     if group_name is not None:
-        await group_main_menu(message,state)
+        await group_main_menu(message, state)
     else:
         await main_menu(message, state)
 
@@ -409,7 +411,7 @@ async def group_main_menu(message: types.Message, state: FSMContext) -> None:
             await bot.send_message(chat_id, "Вы можете  выбрать одну из опций", reply_markup=markup)
 
 
-@dp.callback_query_handler(Text(startswith="g|"))
+@dp.callback_query_handler(Text(startswith="g|"), state='*')
 async def callback_query(call) -> None:
     callback_type, action = map(str, call.data.split("|"))
     call.data = action
@@ -470,13 +472,13 @@ async def create_inline_keyboard(chat_id, page_type, page=1, group_mode=False):
 
 @dp.message_handler(Text(equals="Доступные таблицы"))
 async def group_table_list(message: types.Message, state: FSMContext) -> None:
-    # Your handler logic here
     chat_id = message.chat.id
     prepared_settings = await bot_data_handler.settings_prep(chat_id)
     if prepared_settings == False:
         await bot.send_message(chat_id, "В данной группе пока нет доступных таблиц")
     else:
         await bot.send_message(chat_id, f"Доступные таблицы: {prepared_settings}")
+
 
 @dp.message_handler(state=GroupForm.create_group)
 async def create_group(message: types.Message, state: FSMContext):
@@ -485,14 +487,11 @@ async def create_group(message: types.Message, state: FSMContext):
     await state.finish()
 
 
-
 @dp.message_handler(Text(equals="Сохранить настройки группы"))
 async def save_group(message: types.Message):
     link = await bot_data_handler.save_group_settings(message.chat.id)
     await message.reply("Изменения группы сохранены")
     await message.reply(f"Ссылка для группы: {link}")
-
-
 
 
 @dp.message_handler(Text(equals="exit"))

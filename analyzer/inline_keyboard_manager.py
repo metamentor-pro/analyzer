@@ -133,7 +133,7 @@ async def inline_keyboard(chat_id: int = None, page_type: str = None, page: int 
 
     page = await get_page(chat_id=chat_id, page_type=page_type)
     amount = await get_pages_amount(chat_id=chat_id)
-    markup.add(types.InlineKeyboardButton(text=f'{page}/{amount}', callback_data=f'{prefix} '))
+    markup.add(types.InlineKeyboardButton(text=f'{page}/{amount}', callback_data=f' '))
     right = types.InlineKeyboardButton(text="→", callback_data=f"{prefix}right")
     left = types.InlineKeyboardButton(text="←", callback_data=f"{prefix}left")
     if page > 1:
