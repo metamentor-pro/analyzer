@@ -416,6 +416,7 @@ async def exit_group_mode(message: types.Message):
     await bot_data_handler.exit_from_group(message.chat.id)
     await message.reply("Редактирование группы завершено")
 
+
 @dp.message_handler(state=Form.question)
 async def call_to_model(message: types.Message, state: FSMContext):
     demo_status = await db_manager.check_for_demo(chat_id=message.chat.id)
