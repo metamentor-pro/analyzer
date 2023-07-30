@@ -50,7 +50,9 @@ class Form(StatesGroup):
     question = State()
 
 class GroupForm(StatesGroup):
-    group = State()
+    group_menu = State()
+    choose_group = State()
+    create_group = State()
 
 data_keys = {
     Form.load_table: "call_message_id"
@@ -114,6 +116,7 @@ async def help_info(message: types.Message):
 @dp.message_handler(Text(equals="🖹 Выбрать таблицу"), state="*")
 async def select_table(message: types.Message):
     markup = await create_inline_keyboard(message.chat.id, "table_page")
+    print(markup)
     await message.reply("Можете выбрать нужную таблицу или добавить новую", reply_markup=markup)
 
 
@@ -355,16 +358,15 @@ async def plot_on_click(message: types.Message, state: FSMContext) -> None:
 @dp.message_handler(state=Form.plot)
 async def plots_handler(message: types.Message, state: FSMContext) -> None:
     chat_id = message.chat.id
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    btn1 = types.KeyboardButton("Вернуться в главное меню")
-    markup.add(btn1)
     group_name = await db_manager.check_group_design(chat_id)
-    if group_name is not None:
-        pass#bot.register_next_step_handler(message, group_main)
-    else:
-        pass
     text = await bot_data_handler.set_plots(message)
-    await message.answer(text, reply_markup=markup)
+    await message.answer(text)
+    await state.finish()
+    if group_name is not None:
+        await group_main_menu(message,state)
+    else:
+        await main_menu(message, state)
+
 
 
 @dp.message_handler(Text(equals="❓ Режим отправки запроса"), state="*")
@@ -380,7 +382,85 @@ async def request_mode(message: types.Message, state: FSMContext):
 async def group_options(message: types.Message, state: FSMContext):
     markup = await inline_keyboard_manager.create_group_keyboard(message.chat.id)
     await message.reply("Вы можете выбрать опцию", reply_markup=markup)
-    await main_menu(message)
+
+@dp.message_handler(state=GroupForm.group_menu)
+async def group_main_menu(message: types.Message, state: FSMContext) -> None:
+    chat_id = message.chat.id
+    group_name = await db_manager.check_group_design(chat_id)
+    async with aiosqlite.connect(db_name) as con:
+        await con.execute("select * from groups")
+        if message.text == "Нет":
+            await con.execute("UPDATE groups SET design_flag = False WHERE admin_id == ? AND group_name == ?", (chat_id, group_name))
+            await con.commit()
+            await main_menu(message, state)
+        else:
+            chat_id = message.chat.id
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            btn1 = types.KeyboardButton("🖹 Выбрать таблицу")
+            btn2 = types.KeyboardButton("➕ Добавить описание таблицы")
+            btn3 = types.KeyboardButton("🖻 Режим визуализации")
+            btn4 = types.KeyboardButton("exit")
+            btn5 = types.KeyboardButton("Добавить контекст")
+            btn6 = types.KeyboardButton("Сохранить настройки группы")
+            markup.row(btn1, btn2, btn3)
+            markup.row(btn5, btn4, btn6)
+            await bot.send_message(chat_id, "Вы можете  выбрать одну из опций", reply_markup=markup)
+
+
+@dp.callback_query_handler(Text(startswith="g|"))
+def callback_query(call) -> None:
+    callback_type, action = map(str, call.data.split("|"))
+    call.data = action
+    chat_id = call.message.chat.id
+    if call.data == "exit":
+        await bot_data_handler.exit_from_group(chat_id=chat_id)
+        bot.delete_message(call.message.chat.id, call.message.message_id)
+    elif call.data == "create_group":
+        bot.send_message(chat_id, "Дайте название группе")
+        #bot.register_next_step_handler(call.message, create_group)
+    elif call.data == "choose_group":
+        markup = await inline_keyboard_manager.create_group_keyboard(chat_id=chat_id, show_groups=True)
+        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                              text="Вы можете выбрать группу",
+                              reply_markup=markup)
+    elif call.data == "back":
+        markup = await inline_keyboard_manager.create_group_keyboard(chat_id=chat_id, show_groups=False)
+        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                              text="Вы можете выбрать группу или добавить новую",
+                              reply_markup=markup)
+    else:
+        await choose_group(group_name=call.data, admin_id=call.message.chat.id, message=call.message)
+    bot.answer_callback_query(call.id)
+
+
+@dp.message_handler(func=lambda message: message.text == "Доступные таблицы")
+def group_table_list(message: types.Message, state: FSMContext) -> None:
+    chat_id = message.chat.id
+    prepared_settings = await bot_data_handler.settings_prep(chat_id)
+    if prepared_settings == False:
+        bot.send_message(chat_id, "В данной группе пока нет доступных таблиц")
+    else:
+        bot.send_message(chat_id, f"Доступные таблицы:{prepared_settings}")
+
+
+@dp.message_handler(state=GroupForm.create_group)
+async def create_group(message: types.Message, state: FSMContext) -> None:
+    admin_id = message.chat.id
+    group_name = message.text.replace(" ", "")
+    group_name_for_link = "group_" + str(admin_id)
+    text = await  db_manager.create_group_db(admin_id=admin_id, group_name=group_name, group_name_for_link=group_name_for_link)
+    await bot.send_message(admin_id, text)
+    await main_menu(message, state)
+
+@dp.message_handler(state=GroupForm.choose_group)
+async def choose_group(group_name: str = None, admin_id: int = None, message=None) -> None:
+    await db_manager.choose_group_db(admin_id=admin_id, group_name=group_name)
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    btn1 = types.KeyboardButton("Да")
+    btn2 = types.KeyboardButton("Нет")
+    markup.row(btn1, btn2)
+    await bot.send_message(message.chat.id, f"Вы точно ходите перейти к редактированию группы {group_name}?", reply_markup=markup)
+    #bot.register_next_step_handler(message, group_main)
 
 
 @dp.message_handler()
