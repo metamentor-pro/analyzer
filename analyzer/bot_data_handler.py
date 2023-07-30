@@ -165,7 +165,7 @@ async def delete_last_table(chat_id : int = None) -> List[str]:
         return table_name
 
 
-async def exit_from_group_db(chat_id: int = None) -> None:
+async def exit_from_group(chat_id: int = None) -> None:
     async with aiosqlite.connect(db_name) as con:
         await con.execute("UPDATE callback_manager SET group_flag = 0 WHERE user_id == ?", (chat_id,))
         await con.commit()

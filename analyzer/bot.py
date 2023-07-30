@@ -12,6 +12,7 @@ from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.utils import markdown
+import aiosqlite
 
 import interactor
 import matplotlib
@@ -27,6 +28,7 @@ if len(sys.argv) > 1:
     config.config = config.read_config(sys.argv[1])
 else:
     API_TOKEN = config.config["bot_api"]
+    db_name = config.config["db_name"]
 
 import bot_data_handler
 import inline_keyboard_manager
@@ -45,13 +47,17 @@ class Form(StatesGroup):
     request = State()
     question = State()
 
+class GroupForm(StatesGroup):
+    group = State()
+
+data_keys = {
+    Form.load_table: "call_message_id"
+}
 
 @dp.message_handler(commands=["start"], state=[Form.start, None])
 async def main_menu(message: types.Message, state: FSMContext):
     first_time = await bot_data_handler.make_insertion(message.chat.id)
-
     if first_time:
-
         await help_info(message)
     text = "Вы можете выбрать одну из опций"
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -108,13 +114,14 @@ async def select_table(message: types.Message):
 
 
 @dp.callback_query_handler(Text(startswith="t|"))
-async def choose_table(call: types.CallbackQuery):
+async def callback_query(call: types.CallbackQuery, state: FSMContext) -> None:
     action = call.data.split("|")[1]
     chat_id = call.message.chat.id
 
     if action == "new_table":
         await call.message.answer("Чтобы добавить таблицу, отправьте файл в формате csv, XLSX или json")
         await Form.load_table.set()
+        await state.update_data({load_table: call.message.message_id })
 
     elif action == "delete_tables":
         tables = await bot_data_handler.delete_last_table(call.message.chat.id)
@@ -136,18 +143,104 @@ async def choose_table(call: types.CallbackQuery):
                                      reply_markup=markup)
 
     else:
-        await choose_table(call.data, call.message)
+        await choose_table(call.data)
         await call.message.answer("Таблица выбрана")
     await bot.answer_callback_query(call.id)
 
 
+
 @dp.message_handler(content_types=['document'], state=Form.load_table)
 async def load_table(message: types.Message, state: FSMContext):
-    print("asss")
-    await db_manager.add_table_db(message)
+    chat_id = message.chat.id
+    message = message
+    message_id = await state.get_data()
+    message_id = message_id.get(load_table)
+    group_name = await db_manager.check_group_design(chat_id)
+    group_id = await db_manager.get_group_id(group_name, chat_id)
+    if message.text == "🚫 exit":
+        await main_menu(message)
+    else:
+        try:
 
-    await message.reply("Файл сохранен")
-    await state.finish()
+            file_id = message.document.file_id
+            file_info = await bot.get_file(file_id)
+            file_path = await file_info.file_path
+            downloaded_file = bot.download_file(file_path)
+            if len(message.document.file_name) > 40:
+                await message.answer("К сожалению, название таблицы слишком длинное, придётся его сократить")
+                #bot.register_next_step_handler(message, add_table, call)
+            else:
+                message.document.file_name = str(chat_id) + "_" + message.document.file_name
+                if group_name is not None:
+                    async with aiosqlite.connect(db_name) as con:
+                        existing_reocd = await con.execute(
+                        """SELECT * FROM group_tables WHERE admin_id == ? AND table_name == ? and group_id and group_id == ?""",
+                        (chat_id, message.document.file_name, group_id))
+                    existing_record = await existing_reocd.fetchone()
+                    if existing_record is None:
+                        await db_manager.add_table(message=message, downloaded_file=downloaded_file)
+                        await message.reply('Файл сохранен')
+                        page_type = "table_page"
+                        markup2 = await create_inline_keyboard(chat_id=chat_id, page_type=page_type)
+                        bot.edit_message_text(chat_id=chat_id, message_id=message_id,
+                                              text="Вы можете выбрать таблицу или добавить новую",
+                                              reply_markup=markup2)
+                        #group_main(message)
+                    else:
+                        await bot.send_message(chat_id, "Данная таблица уже была добавлена, попробуйте другую")
+                        #bot.register_next_step_handler(message, add_table, call)
+                else:
+                    async with aiosqlite.connect(db_name) as con:
+                        existing_record = await con.execute("SELECT * FROM tables WHERE user_id == ? AND table_name == ?",
+                                (chat_id, message.document.file_name))
+                        existing_record = await existing_record.fetchone()
+                        if existing_record is None:
+                            await db_manager.add_table(message=message, downloaded_file=downloaded_file)
+                            await message.reply('Файл сохранен')
+                            page_type = "table_page"
+                            markup2 = await create_inline_keyboard(chat_id=chat_id, page_type=page_type)
+                            bot.edit_message_text(chat_id=chat_id, message_id=message_id,
+                                              text="Вы можете выбрать таблицу или добавить новую",
+                                              reply_markup=markup2)
+                            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+                            btn1 = types.KeyboardButton("Нет")
+                            btn2 = types.KeyboardButton("Да")
+                            markup.row(btn2, btn1)
+                            await bot.send_message(chat_id, "Хотите ли вы получить предварительную информацию по таблице?",
+                                         reply_markup=markup)
+                        #bot.register_next_step_handler(message, call_to_model)
+                        else:
+                            await bot.send_message(chat_id, "Данная таблица уже была добавлена, попробуйте другую")
+                            #bot.register_next_step_handler(message, add_table, call)
+        except Exception as e:
+            print(e)
+            await bot.send_message(chat_id, "Что-то пошло не так, попробуйте другой файл")
+            #bot.register_next_step_handler(message, add_table, call)
+
+
+@dp.message_handler(content_types=['document'], state=Form.choose_table)
+async def choose_table(call: types.callback_query, state: FSMContext):
+    try:
+        chat_id = call.message.chat.id
+        text = call.data
+        message = call.message
+    except Exception as e:
+        print(e)
+        chat_id = call.chat.id
+        text = call.text
+        message = call
+
+    settings = await db_manager.get_settings(chat_id)
+    if settings["table_name"] is not None and len(settings["table_name"]) != 0:
+        if text not in settings["table_name"]:
+            settings["table_name"] += ", " + text
+            await message.answer("Таблица добавлена")
+        else:
+            await message.answer("Данная таблица уже добавлена в список")
+    else:
+        settings["table_name"] = text
+        await message.answer("Таблица выбрана.")
+    await db_manager.update_table(chat_id=chat_id, settings=settings)
 
 
 @dp.message_handler(Text(equals="Добавить контекст"))
@@ -159,7 +252,7 @@ async def add_description(message: types.Message, state: FSMContext):
 
 
 @dp.callback_query_handler(Text(startswith="c|"))
-async def choose_context(call: types.CallbackQuery, state: FSMContext):
+async def callback_query(call: types.CallbackQuery, state: FSMContext):
     action = call.data.split("|")[1]
     chat_id = call.message.chat.id
 
@@ -203,7 +296,7 @@ async def add_description(message: types.Message, state: FSMContext):
 
 
 @dp.callback_query_handler(Text(startswith="d|"))
-async def choose_description(call: types.CallbackQuery):
+async def callback_query(call: types.CallbackQuery):
     action = call.data.split("|")[1]
     chat_id = call.message.chat.id
     if action in ("right", "left"):
@@ -220,8 +313,6 @@ async def choose_description(call: types.CallbackQuery):
         markup = await create_inline_keyboard(call.message.chat.id, "description_page", new_page)
         await call.message.edit_text("Вы можете выбрать таблицу или добавить новую",
                                      reply_markup=markup)
-
-
     elif action == "exit":
         await call.message.delete()
         #await state.finish()
@@ -291,6 +382,40 @@ async def create_inline_keyboard(chat_id, page_type, page=1, group_mode=False):
                                                          status_flag=False)
 
 
+@dp.message_handler(state=GroupForm)
+async def create_group(message: types.Message, state: FSMContext):
+    await db_manager.create_group(message.text, message.chat.id)
+    await message.reply("Группа создана")
+    await state.finish()
+
+
+@dp.message_handler(Text(equals="Группы таблиц"))
+async def group_options(message: types.Message):
+    markup = await bot_data_handler.create_group_keyboard(message.chat.id)
+    await message.reply("Вы можете выбрать опцию", reply_markup=markup)
+
+
+@dp.message_handler(Text(equals="Сохранить настройки группы"))
+async def save_group(message: types.Message):
+    link = await bot_data_handler.save_group_settings(message.chat.id)
+    await message.reply("Изменения группы сохранены")
+    await message.reply(f"Ссылка для группы: {link}")
+
+
+@dp.message_handler(Text(equals="Доступные таблицы"))
+async def list_tables(message: types.Message):
+    tables = await bot_data_handler.get_table_names(message.chat.id, group_mode=True)
+    if not tables:
+        await message.reply("В группе пока нет доступных таблиц")
+    else:
+        await message.reply(f"Доступные таблицы: {', '.join(tables)}")
+
+
+@dp.message_handler(Text(equals="exit"))
+async def exit_group_mode(message: types.Message):
+    await bot_data_handler.exit_from_group(message.chat.id)
+    await message.reply("Редактирование группы завершено")
+
 @dp.message_handler(state=Form.question)
 async def call_to_model(message: types.Message, state: FSMContext):
     demo_status = await db_manager.check_for_demo(chat_id=message.chat.id)
@@ -299,6 +424,7 @@ async def call_to_model(message: types.Message, state: FSMContext):
     if message.text == "🚫 exit":
         await bot_data_handler.exit_from_model(message.chat.id)
         await Form.start.set()
+        #await main_menu(message)
 
     elif message.text == "Нет":
         await main_menu(message)
