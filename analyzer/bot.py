@@ -408,15 +408,15 @@ async def group_main_menu(message: types.Message, state: FSMContext) -> None:
 
 
 @dp.callback_query_handler(Text(startswith="g|"))
-def callback_query(call) -> None:
+async def callback_query(call) -> None:
     callback_type, action = map(str, call.data.split("|"))
     call.data = action
     chat_id = call.message.chat.id
     if call.data == "exit":
         await bot_data_handler.exit_from_group(chat_id=chat_id)
-        bot.delete_message(call.message.chat.id, call.message.message_id)
+        await bot.delete_message(call.message.chat.id, call.message.message_id)
     elif call.data == "create_group":
-        bot.send_message(chat_id, "Дайте название группе")
+        await bot.send_message(chat_id, "Дайте название группе")
         #bot.register_next_step_handler(call.message, create_group)
     elif call.data == "choose_group":
         markup = await inline_keyboard_manager.create_group_keyboard(chat_id=chat_id, show_groups=True)
@@ -430,17 +430,17 @@ def callback_query(call) -> None:
                               reply_markup=markup)
     else:
         await choose_group(group_name=call.data, admin_id=call.message.chat.id, message=call.message)
-    bot.answer_callback_query(call.id)
+    await bot.answer_callback_query(call.id)
 
 
 @dp.message_handler(func=lambda message: message.text == "Доступные таблицы")
-def group_table_list(message: types.Message, state: FSMContext) -> None:
+async def group_table_list(message: types.Message, state: FSMContext) -> None:
     chat_id = message.chat.id
     prepared_settings = await bot_data_handler.settings_prep(chat_id)
     if prepared_settings == False:
-        bot.send_message(chat_id, "В данной группе пока нет доступных таблиц")
+        await bot.send_message(chat_id, "В данной группе пока нет доступных таблиц")
     else:
-        bot.send_message(chat_id, f"Доступные таблицы:{prepared_settings}")
+        await bot.send_message(chat_id, f"Доступные таблицы:{prepared_settings}")
 
 
 @dp.message_handler(state=GroupForm.create_group)
