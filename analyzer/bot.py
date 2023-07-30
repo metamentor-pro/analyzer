@@ -37,15 +37,17 @@ dp = Dispatcher(bot, storage=MemoryStorage())
 
 
 class Form(StatesGroup):
-    table_name = State()  
+    start = State()
+    load_table = State()
+    choose_table = State()
     description = State()
     context = State()
     request = State()
     question = State()
 
-@dp.message_handler(commands=['start'])
-async def send_welcome(message: types.Message):
 
+@dp.message_handler(commands=["start"], state=[Form.start, None])
+async def main_menu(message: types.Message, state: FSMContext):
     first_time = await bot_data_handler.make_insertion(message.chat.id)
 
     if first_time:
@@ -65,6 +67,7 @@ async def send_welcome(message: types.Message):
     )
 
     await message.reply(text, reply_markup=markup)
+    await state.finish()
 
 
 @dp.message_handler(commands=['help'])
@@ -99,21 +102,19 @@ async def help_info(message: types.Message):
 
 
 @dp.message_handler(Text(equals="🖹 Выбрать таблицу"))
-async def select_table(message: types.Message, state: FSMContext):
-    await Form.table_name.set()
+async def select_table(message: types.Message):
     markup = await create_inline_keyboard(message.chat.id, "table_page")
     await message.reply("Можете выбрать нужную таблицу или добавить новую", reply_markup=markup)
-    await send_welcome(message)
 
 
-@dp.callback_query_handler(Text(startswith="t|"), state=Form.table_name)
+@dp.callback_query_handler(Text(startswith="t|"))
 async def choose_table(call: types.CallbackQuery):
     action = call.data.split("|")[1]
     chat_id = call.message.chat.id
 
     if action == "new_table":
         await call.message.answer("Чтобы добавить таблицу, отправьте файл в формате csv, XLSX или json")
-        await Form.table_name.set()
+        await Form.load_table.set()
 
     elif action == "delete_tables":
         tables = await bot_data_handler.delete_last_table(call.message.chat.id)
@@ -137,29 +138,27 @@ async def choose_table(call: types.CallbackQuery):
     else:
         await choose_table(call.data, call.message)
         await call.message.answer("Таблица выбрана")
-
-
     await bot.answer_callback_query(call.id)
 
 
-@dp.message_handler(content_types=['document'], state=Form.table_name)
+@dp.message_handler(content_types=['document'], state=Form.load_table)
 async def load_table(message: types.Message, state: FSMContext):
+    print("asss")
     await db_manager.add_table_db(message)
+
     await message.reply("Файл сохранен")
     await state.finish()
 
 
 @dp.message_handler(Text(equals="Добавить контекст"))
 async def add_description(message: types.Message, state: FSMContext):
-    await Form.description.set()
-
     markup = await create_inline_keyboard(message.chat.id, "context_page")
 
     await message.reply("Выберите, к какой таблице вы хотите добавить описание", reply_markup=markup)
-    await send_welcome(message)
+    await main_menu(message)
 
 
-@dp.callback_query_handler(Text(startswith="c|"), state=Form.context)
+@dp.callback_query_handler(Text(startswith="c|"))
 async def choose_context(call: types.CallbackQuery, state: FSMContext):
     action = call.data.split("|")[1]
     chat_id = call.message.chat.id
@@ -199,13 +198,11 @@ async def save_context(message: types.Message, state: FSMContext):
 
 @dp.message_handler(Text(equals="➕ Добавить описание таблицы"))
 async def add_description(message: types.Message, state: FSMContext):
-    await Form.description.set()
     markup = await create_inline_keyboard(message.chat.id, "description_page")
     await message.reply("Выберите, к какой таблице вы хотите добавить описание", reply_markup=markup)
 
 
-
-@dp.callback_query_handler(Text(startswith="d|"), state=Form.description)
+@dp.callback_query_handler(Text(startswith="d|"))
 async def choose_description(call: types.CallbackQuery):
     action = call.data.split("|")[1]
     chat_id = call.message.chat.id
@@ -249,8 +246,21 @@ async def toggle_plots(message: types.Message, state: FSMContext):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add(types.KeyboardButton("Вернуться в главное меню"))
     await message.reply(text, reply_markup=markup)
-    await send_welcome(message)
+    await main_menu(message)
 
+
+async def plots_handler(message) -> None:
+    chat_id = message.chat.id
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    btn1 = types.KeyboardButton("Вернуться в главное меню")
+    markup.add(btn1)
+    group_name = db_manager.check_group_design(chat_id)
+    if group_name is not None:
+        pass #bot.register_next_step_handler(message, group_main)
+    else:
+        pass #bot.register_next_step_handler(message, main)
+    text = await bot_data_handler.set_plots(message)
+    await message.answer(text, reply_markup=markup)
 
 @dp.message_handler(Text(equals="❓ Режим отправки запроса"))
 async def request_mode(message: types.Message, state: FSMContext):
@@ -266,7 +276,7 @@ async def request_mode(message: types.Message, state: FSMContext):
 async def group_options(message: types.Message, state: FSMContext):
     markup = await inline_keyboard_manager.create_group_keyboard(message.chat.id)
     await message.reply("Вы можете выбрать опцию", reply_markup=markup)
-    await send_welcome(message)
+    await main_menu(message)
 
 
 @dp.message_handler()
@@ -287,14 +297,11 @@ async def call_to_model(message: types.Message, state: FSMContext):
     if demo_status is not None:
         pass
     if message.text == "🚫 exit":
-
         await bot_data_handler.exit_from_model(message.chat.id)
-
-        await state.finish()
-        await send_welcome()
+        await Form.start.set()
 
     elif message.text == "Нет":
-        await send_welcome(message)
+        await main_menu(message)
 
     else:
         if message.text == "Да":
