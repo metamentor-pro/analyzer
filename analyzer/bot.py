@@ -49,10 +49,12 @@ class Form(StatesGroup):
     request = State()
     question = State()
 
+
 class GroupForm(StatesGroup):
     group_menu = State()
     choose_group = State()
     create_group = State()
+
 
 data_keys = {
     Form.load_table: "call_message_id"
@@ -120,7 +122,7 @@ async def select_table(message: types.Message):
     await message.reply("Можете выбрать нужную таблицу или добавить новую", reply_markup=markup)
 
 
-@dp.callback_query_handler(Text(startswith="t|"))
+@dp.callback_query_handler(lambda query: query.data.startswith('t|'))
 async def callback_query(call: types.CallbackQuery, state: FSMContext) -> None:
     action = call.data.split("|")[1]
     chat_id = call.message.chat.id
@@ -433,16 +435,6 @@ async def callback_query(call) -> None:
     await bot.answer_callback_query(call.id)
 
 
-@dp.message_handler(Text(equals="Доступные таблицы"))
-async def group_table_list(message: types.Message, state: FSMContext) -> None:
-    # Your handler logic here
-    chat_id = message.chat.id
-    prepared_settings = await bot_data_handler.settings_prep(chat_id)
-    if prepared_settings == False:
-        await bot.send_message(chat_id, "В данной группе пока нет доступных таблиц")
-    else:
-        await bot.send_message(chat_id, f"Доступные таблицы: {prepared_settings}")
-
 @dp.message_handler(state=GroupForm.create_group)
 async def create_group(message: types.Message, state: FSMContext) -> None:
     admin_id = message.chat.id
@@ -476,7 +468,17 @@ async def create_inline_keyboard(chat_id, page_type, page=1, group_mode=False):
                                                          status_flag=False)
 
 
-@dp.message_handler(state=GroupForm)
+@dp.message_handler(Text(equals="Доступные таблицы"))
+async def group_table_list(message: types.Message, state: FSMContext) -> None:
+    # Your handler logic here
+    chat_id = message.chat.id
+    prepared_settings = await bot_data_handler.settings_prep(chat_id)
+    if prepared_settings == False:
+        await bot.send_message(chat_id, "В данной группе пока нет доступных таблиц")
+    else:
+        await bot.send_message(chat_id, f"Доступные таблицы: {prepared_settings}")
+
+@dp.message_handler(state=GroupForm.create_group)
 async def create_group(message: types.Message, state: FSMContext):
     await db_manager.create_group(message.text, message.chat.id)
     await message.reply("Группа создана")
@@ -491,13 +493,6 @@ async def save_group(message: types.Message):
     await message.reply(f"Ссылка для группы: {link}")
 
 
-@dp.message_handler(Text(equals="Доступные таблицы"))
-async def list_tables(message: types.Message):
-    tables = await bot_data_handler.get_table_names(message.chat.id, group_mode=True)
-    if not tables:
-        await message.reply("В группе пока нет доступных таблиц")
-    else:
-        await message.reply(f"Доступные таблицы: {', '.join(tables)}")
 
 
 @dp.message_handler(Text(equals="exit"))

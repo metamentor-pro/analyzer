@@ -431,7 +431,7 @@ async def check_for_demo(chat_id : int = None) -> Union[None, str]:
             return None
 
 
-async def save_group_settings_db(chat_id : int = None, group_name : str = None) -> str:
+async def save_group_settings(chat_id : int = None, group_name : str = None) -> str:
     async with aiosqlite.connect(db_name) as con:
 
         group_link = await con.execute("SELECT group_link FROM groups where admin_id == ? AND group_name == ?", (chat_id, group_name))
@@ -453,7 +453,6 @@ async def choose_group_db(admin_id: int = None, group_name: str = None) -> None:
         await con.commit()
 
 
-
 async def update_table(chat_id: int = None, settings : dict = None) -> None:
 
     group_name = await check_group_design(chat_id=chat_id)
@@ -466,6 +465,7 @@ async def update_table(chat_id: int = None, settings : dict = None) -> None:
             await con.execute(
             "UPDATE users SET current_tables = ? WHERE user_id == ?", (settings["table_name"], chat_id))
             await con.commit()
+
 
 async def get_group_id(group_name : str = None, admin_id : int = None):
     async with aiosqlite.connect(db_name) as con:
