@@ -178,7 +178,7 @@ async def exit_from_model(chat_id: int = None) -> None:
 
 
 async def make_insertion(chat_id: int = None) -> bool:
-    print("making_insertion")
+
     async with aiosqlite.connect(db_name) as con:
         result = await con.execute("SELECT * FROM callback_manager WHERE user_id = ?", (chat_id,))
         existing_record = await result.fetchone()
@@ -192,7 +192,7 @@ async def make_insertion(chat_id: int = None) -> bool:
                 await con.execute("""INSERT INTO users(user_id) values(?)""", (chat_id,))
                 await con.commit()
 
-                print("making_insertion1")
+
                 return True
             await con.commit()
 
@@ -201,7 +201,7 @@ async def make_insertion(chat_id: int = None) -> bool:
             print("error is:", e)
             logging.error(traceback.format_exc())
 
-        print("making_insertion2")
+
         return False
 
 

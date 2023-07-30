@@ -369,8 +369,7 @@ async def choose_description_db(message, table_name: str = None, downloaded_file
                 await con.commit()
 
 
-async def add_context_db(message=None, table_name=None, downloaded_file=None) -> None:
-
+async def add_context(message=None, table_name=None, downloaded_file=None) -> None:
     chat_id = message.chat.id
     table_name = table_name
     group_name = check_group_design(chat_id)
