@@ -433,24 +433,25 @@ async def callback_query(call) -> None:
     await bot.answer_callback_query(call.id)
 
 
-@dp.message_handler(func=lambda message: message.text == "Доступные таблицы")
+@dp.message_handler(Text(equals="Доступные таблицы"))
 async def group_table_list(message: types.Message, state: FSMContext) -> None:
+    # Your handler logic here
     chat_id = message.chat.id
     prepared_settings = await bot_data_handler.settings_prep(chat_id)
     if prepared_settings == False:
         await bot.send_message(chat_id, "В данной группе пока нет доступных таблиц")
     else:
-        await bot.send_message(chat_id, f"Доступные таблицы:{prepared_settings}")
-
+        await bot.send_message(chat_id, f"Доступные таблицы: {prepared_settings}")
 
 @dp.message_handler(state=GroupForm.create_group)
 async def create_group(message: types.Message, state: FSMContext) -> None:
     admin_id = message.chat.id
     group_name = message.text.replace(" ", "")
     group_name_for_link = "group_" + str(admin_id)
-    text = await  db_manager.create_group_db(admin_id=admin_id, group_name=group_name, group_name_for_link=group_name_for_link)
+    text = await db_manager.create_group(admin_id=admin_id, group_name=group_name, group_name_for_link=group_name_for_link)
     await bot.send_message(admin_id, text)
     await main_menu(message, state)
+
 
 @dp.message_handler(state=GroupForm.choose_group)
 async def choose_group(group_name: str = None, admin_id: int = None, message=None) -> None:
