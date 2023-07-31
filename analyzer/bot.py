@@ -168,6 +168,7 @@ async def load_table(message: types.Message, state: FSMContext):
     data = await state.get_data()
     message_id = data.get("message_id")
     group_name = await db_manager.check_group_design(chat_id)
+
     if group_name is not None:
         group_id = await db_manager.get_group_id(group_name, chat_id)
 
@@ -183,7 +184,7 @@ async def load_table(message: types.Message, state: FSMContext):
             if group_name is not None:
                 async with aiosqlite.connect(db_name) as con:
                     existing_record = await con.execute(
-                        """SELECT * FROM group_tables WHERE admin_id == ? AND table_name == ? and group_id and group_id == ?""",
+                        """SELECT * FROM group_tables WHERE admin_id == ? AND table_name == ? and group_id == ?""",
                     (chat_id, message.document.file_name, group_id))
                 existing_record = await existing_record.fetchone()
 
@@ -550,9 +551,11 @@ async def save_group(message: types.Message):
 
 
 @dp.message_handler(Text(equals="exit"), state='*')
-async def exit_group_mode(message: types.Message):
+async def exit_group_mode(message: types.Message, state: FSMContext):
     await bot_data_handler.exit_from_group(message.chat.id)
     await message.reply("Редактирование группы завершено")
+    await Form.start.set()
+    await main_menu(message, state)
 
 
 @dp.message_handler(state=Form.question)
