@@ -52,12 +52,15 @@ async def get_description(chat_id: int = None) -> List:
         table_name_path[table] = "data/" + table_name_path[table]
     async with aiosqlite.connect(db_name) as con:
         group_flag = await con.execute("SELECT group_flag FROM callback_manager WHERE user_id == ?", (chat_id,))
-        group_flag = group_flag.fetchone()[0]
+        group_flag = await group_flag.fetchone()
+        group_flag = group_flag[0]
         if group_flag == True:
             group_name = await con.execute("SELECT group_name FROM callback_manager WHERE user_id == ?", (chat_id,))
-            group_name = group_name.fetchone()[0]
+            group_name = await group_name.fetchone()
+            group_name = group_name[0]
             admin_id = await con.execute("SELECT admin_id FROM callback_manager WHERE user_id == ?", (chat_id,))
-            admin_id = admin_id.fetchone()[0]
+            admin_id = await admin_id.fetchone()
+            admin_id = admin_id[0]
             for table in table_name:
                 con = aiosqlite.connect(db_name)
                 existing_record = await con.execute("SELECT * FROM group_tables WHERE admin_id == ? AND table_name == ? AND group_name == ?", (admin_id, table, group_name))
@@ -66,7 +69,7 @@ async def get_description(chat_id: int = None) -> List:
                 if existing_record is not None:
 
                     description = await con.execute("SELECT table_description FROM group_tables WHERE admin_id == ? AND table_name == ? AND group_name  == ?",  (admin_id, table, group_name))
-                    description = description.fetchone()
+                    description = await description.fetchone()
 
                     if not description or description[0] is None:
                         table_description_line = table + ":"

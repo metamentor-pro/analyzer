@@ -119,7 +119,6 @@ async def help_info(message: types.Message):
 @dp.message_handler(Text(equals="🖹 Выбрать таблицу"), state="*")
 async def select_table(message: types.Message):
     markup = await create_inline_keyboard(message.chat.id, "table_page")
-    print(markup)
     await message.reply("Можете выбрать нужную таблицу или добавить новую", reply_markup=markup)
 
 
@@ -127,12 +126,11 @@ async def select_table(message: types.Message):
 async def callback_query(call: types.CallbackQuery, state: FSMContext) -> None:
     action = call.data.split("|")[1]
     chat_id = call.message.chat.id
-    print(action)
+
     if action == "new_table":
         await call.message.answer("Чтобы добавить таблицу, отправьте файл в формате csv, XLSX или json")
         await Form.load_table.set()
-        await state.update_data({load_table: call.message.message_id})
-
+        await state.update_data({'message_id': call.message.message_id})
 
     elif action == "delete_tables":
         tables = await bot_data_handler.delete_last_table(call.message.chat.id)
@@ -163,20 +161,21 @@ async def callback_query(call: types.CallbackQuery, state: FSMContext) -> None:
 
 @dp.message_handler(content_types=['document'], state=Form.load_table)
 async def load_table(message: types.Message, state: FSMContext):
+
     chat_id = message.chat.id
     message = message
-    message_id = await state.get_data()
-    message_id = message_id.get(load_table)
+    data = await state.get_data()
+    message_id = data.get("message_id")
     group_name = await db_manager.check_group_design(chat_id)
-    group_id = await db_manager.get_group_id(group_name, chat_id)
-    print("here")
+    if group_name is not None:
+        group_id = await db_manager.get_group_id(group_name, chat_id)
 
     try:
-
         file_id = message.document.file_id
-        file_info = await bot.get_file(file_id)
-        file_path = await file_info.file_path
-        downloaded_file = bot.download_file(file_path)
+        file = await bot.get_file(file_id)
+
+        # Download the file content using bot.download_file_by_id()
+        downloaded_file = await bot.download_file_by_id(file.file_id)
         if len(message.document.file_name) > 40:
             await message.answer("К сожалению, название таблицы слишком длинное, придётся его сократить")
 
@@ -184,10 +183,10 @@ async def load_table(message: types.Message, state: FSMContext):
             message.document.file_name = str(chat_id) + "_" + message.document.file_name
             if group_name is not None:
                 async with aiosqlite.connect(db_name) as con:
-                    existing_reocd = await con.execute(
+                    existing_record = await con.execute(
                         """SELECT * FROM group_tables WHERE admin_id == ? AND table_name == ? and group_id and group_id == ?""",
                     (chat_id, message.document.file_name, group_id))
-                existing_record = await existing_reocd.fetchone()
+                existing_record = await existing_record.fetchone()
 
                 if existing_record is None:
                     await db_manager.add_table(message=message, downloaded_file=downloaded_file)
@@ -211,7 +210,7 @@ async def load_table(message: types.Message, state: FSMContext):
                         await message.reply('Файл сохранен')
                         page_type = "table_page"
                         markup2 = await create_inline_keyboard(chat_id=chat_id, page_type=page_type)
-                        bot.edit_message_text(chat_id=chat_id, message_id=message_id,
+                        await bot.edit_message_text(chat_id=chat_id, message_id=message_id,
                                               text="Вы можете выбрать таблицу или добавить новую",
                                               reply_markup=markup2)
                         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -220,17 +219,20 @@ async def load_table(message: types.Message, state: FSMContext):
                         markup.row(btn2, btn1)
                         await bot.send_message(chat_id, "Хотите ли вы получить предварительную информацию по таблице?",
                                          reply_markup=markup)
-                        #bot.register_next_step_handler(message, call_to_model)
+                        await call_to_model(message, state)
                     else:
                         await bot.send_message(chat_id, "Данная таблица уже была добавлена, попробуйте другую")
-                            #bot.register_next_step_handler(message, add_table, call)
+                        await call_to_model(message, state)
     except Exception as e:
         print(e)
         await bot.send_message(chat_id, "Что-то пошло не так, попробуйте другой файл")
-            #bot.register_next_step_handler(message, add_table, call)
+        print(traceback.format_exc())
+        print("error is:", e)
+        logging.error(traceback.format_exc())
+        await call_to_model(message, state)
 
 
-@dp.message_handler(content_types=['document'], state=Form.choose_table)
+@dp.message_handler(state=Form.choose_table)
 async def choose_table(call: types.callback_query, state: FSMContext):
     try:
         chat_id = call.message.chat.id
@@ -525,7 +527,7 @@ async def call_to_model(message: types.Message, state: FSMContext):
 
         def callback(sum_on_step):
             message_id = send_message.message_id
-            bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=send_message.text + f"\n{sum_on_step}")
+            await bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=send_message.text + f"\n{sum_on_step}")
         settings = await db_manager.get_settings(chat_id)
         try:
             if settings["table_name"] is None or settings["table_name"] == "":

@@ -6,7 +6,7 @@ from msg_parser import msg_to_string
 import config
 import traceback
 import logging
-
+import aiofiles
 logging.basicConfig(level=logging.INFO, filename="py_log.log", filemode="w",
                     format="%(asctime)s %(levelname)s %(message)s")
 
@@ -274,12 +274,12 @@ async def add_table(message=None, downloaded_file=None) -> None:
     src = "data/" + message.document.file_name
     src.replace("|", "_")
 
-    with open(src, 'wb') as f:
-        f.write(downloaded_file)
+    async with aiofiles.open(src, 'wb') as f:
+        await f.write(downloaded_file.getvalue())
         async with aiosqlite.connect(db_name) as con:
             if group_name is not None:
                 existing_record = await con.execute("SELECT * FROM group_tables WHERE admin_id == ? AND table_name == ?",(chat_id, message.document.file_name))
-                existing_record = existing_record.fetchone()
+                existing_record = await existing_record.fetchone()
                 if existing_record is None:
                     await con.execute("""INSERT INTO group_tables(admin_id, group_name, table_name) VALUES(?,?,?)""",
                                 (chat_id, group_name, message.document.file_name))
@@ -290,7 +290,7 @@ async def add_table(message=None, downloaded_file=None) -> None:
                     await con.commit()
             else:
                 existing_record = await con.execute("SELECT * FROM tables WHERE user_id == ? AND table_name == ?",(chat_id, message.document.file_name))
-                existing_record = existing_record.fetchone()
+                existing_record = await existing_record.fetchone()
                 if existing_record is None:
 
                     await con.execute("""INSERT INTO tables(user_id, table_name) VALUES(?,?)""",
@@ -393,8 +393,8 @@ async def add_context(message=None, table_name=None, downloaded_file=None) -> No
             downloaded_file = downloaded_file
             src = "data/" + message.document.file_name
             if ".msg" in src:
-                with open(src, 'wb') as f:
-                    f.write(downloaded_file)
+                async with aiofiles.open(src, 'wb') as f:
+                    await f.write(downloaded_file)
                 context = msg_to_string(src)
             else:
                 context = downloaded_file.decode('utf-8')
@@ -470,4 +470,5 @@ async def update_table(chat_id: int = None, settings : dict = None) -> None:
 async def get_group_id(group_name : str = None, admin_id : int = None):
     async with aiosqlite.connect(db_name) as con:
         result = await con.execute("SELECT group_id FROM group_tables WHERE group_name = ? AND admin_id = ?", (group_name, admin_id))
-    return await result.fetchone()
+        result = await result.fetchone()
+    return result
