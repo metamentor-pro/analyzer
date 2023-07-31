@@ -481,17 +481,20 @@ async def callback_query(call: types.CallbackQuery, state: FSMContext) -> None:
         await bot.send_message(chat_id, "Дайте название группе")
         await GroupForm.create_group.set()
     elif call.data == "choose_group":
+
         markup = await inline_keyboard_manager.create_group_keyboard(chat_id=chat_id, show_groups=True)
         await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                               text="Вы можете выбрать группу",
                               reply_markup=markup)
-        await GroupForm.choose_group.set()
-        await choose_group(chat_id, call)
     elif call.data == "back":
         markup = await inline_keyboard_manager.create_group_keyboard(chat_id=chat_id, show_groups=False)
         await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                               text="Вы можете выбрать группу или добавить новую",
                               reply_markup=markup)
+    else:
+
+        await GroupForm.choose_group.set()
+        await choose_group(chat_id, call, state)
     await bot.answer_callback_query(call.id)
 
 
@@ -506,9 +509,9 @@ async def create_group(message: types.Message, state: FSMContext) -> None:
 
 
 @dp.message_handler(state=GroupForm.choose_group)
-async def choose_group(admin_id: int = None, call: types.CallbackQuery = None, state: FSMContext = None ) -> None:
+async def choose_group(admin_id: int = None, call: types.CallbackQuery = None, state: FSMContext = None) -> None:
     group_name = call.data
-    message = group_name.message
+    message = call.message
 
     await db_manager.choose_group_db(admin_id=admin_id, group_name=group_name)
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -516,7 +519,7 @@ async def choose_group(admin_id: int = None, call: types.CallbackQuery = None, s
     btn2 = types.KeyboardButton("Нет")
     markup.row(btn1, btn2)
     await bot.send_message(admin_id, f"Вы точно ходите перейти к редактированию группы {group_name}?", reply_markup=markup)
-    await group_main_menu(message, state)
+    await GroupForm.group_menu.set()
 
 
 @dp.message_handler()
