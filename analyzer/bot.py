@@ -635,16 +635,10 @@ async def call_to_model(message: types.Message, state: FSMContext):
                     await message.answer(f"Answer: {answer_from_model[0]}")
                 else:
                     await message.answer(f"Answer: {answer_from_model[0]}")
-                #bot.register_next_step_handler(message, call_to_model)
         except requests.exceptions.ConnectionError:
             await call_to_model(message)
             await message.answer("Что-то пошло не так, пожалуйста, повторите вопрос или используйте команду start")
 
-
-            #await message.reply(f"Ответ: {answer}")
-            #await bot_data_handler.update_summary(message.chat.id, new_summary)
-
-            #await Form.request.set()
 
 @dp.message_handler(state="*")
 async def create_inline_keyboard(chat_id, page_type, page=1, status_flag: bool = True):
