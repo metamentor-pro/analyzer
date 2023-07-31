@@ -39,8 +39,8 @@ dp = Dispatcher(bot, storage=MemoryStorage())
 
 
 class Form(StatesGroup):
-    start = State()
     working = State()
+    start = State()
     load_table = State()
     choose_table = State()
     description = State()

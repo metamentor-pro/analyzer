@@ -19,7 +19,6 @@ df_info_sub = None
 
 encoding = tiktoken.encoding_for_model("gpt-4")
 
-
 def find_thought(text):
     pattern = r"Thought:(.*)"
     match = re.search(pattern, text)
@@ -70,10 +69,10 @@ class CustomPromptTemplate(StringPromptTemplate):
     summary_line = ""
 
     @property
-    async def _prompt_type(self) -> str:
+    def _prompt_type(self) -> str:
         return "taskmaster"
 
-    async def thought_log(self, thoughts: str) -> str:
+    def thought_log(self, thoughts: str) -> str:
         result = ""
         for action, AResult in thoughts:
             if AResult.startswith("\r"):
@@ -86,7 +85,6 @@ class CustomPromptTemplate(StringPromptTemplate):
     async def format(self, **kwargs) -> str:
         # Get the intermediate steps (AgentAction, AResult tuples)
         # Format them in a particular way
-        print("here is ok")
         intermediate_steps = kwargs.pop("intermediate_steps")
 
         # if self.callback is not None and len(intermediate_steps) > 0:
@@ -96,7 +94,7 @@ class CustomPromptTemplate(StringPromptTemplate):
                 and self.my_summarize_agent
         ):
             self.steps_since_last_summarize = 0
-            self.last_summary = await self.my_summarize_agent.run(
+            self.last_summary = self.my_summarize_agent.run(
                 # to do: there should be better ways to do that
                 summary=self.last_summary,
                 thought_process=self.thought_log(
@@ -105,7 +103,6 @@ class CustomPromptTemplate(StringPromptTemplate):
                     ]
                 ),
             )
-
             if self.callback is not None:
                 if self.last_summary is None:
                     self.last_summary = ""
@@ -121,13 +118,13 @@ class CustomPromptTemplate(StringPromptTemplate):
             kwargs["agent_scratchpad"] += "\nEND OF SUMMARY\n"
         else:
             kwargs["agent_scratchpad"] = ""
-        tokens_integer = encoding.encode(await self.thought_log(intermediate_steps))
+        tokens_integer = encoding.encode(self.thought_log(intermediate_steps))
         if len(tokens_integer) > 3500:
-            kwargs["agent_scratchpad"] = "Here go your thoughts and actions:\n" + await self.thought_log(intermediate_steps[1000:])
+            kwargs["agent_scratchpad"] = "Here go your thoughts and actions:\n" + self.thought_log(intermediate_steps[1000:])
             print("deleted")
 
         else:
-            kwargs["agent_scratchpad"] = "Here go your thoughts and actions:\n" + await self.thought_log(intermediate_steps)
+            kwargs["agent_scratchpad"] = "Here go your thoughts and actions:\n" + self.thought_log(intermediate_steps)
         self.steps_since_last_summarize += 1
         kwargs["tools"] = "\n".join(
             [
@@ -140,8 +137,8 @@ class CustomPromptTemplate(StringPromptTemplate):
         if self.project:
             for key, value in self.project.prompt_fields().items():
                 kwargs[key] = value
-        logging.info("Prompt:\n\n" + await self.template.format(**kwargs) + "\n\n\n")
-        result = await self.template.format(**kwargs)
+        logging.info("Prompt:\n\n" + self.template.format(**kwargs) + "\n\n\n")
+        result = self.template.format(**kwargs)
         #print(result)
         return result
 
@@ -224,10 +221,11 @@ class BaseMinion:
             agent=agent, tools=available_tools, verbose=True, max_iterations=max_iterations
         )
 
-    async def run(self, **kwargs):
+    def run(self, **kwargs):
+
         question = kwargs["input"]
         ans = (
-                await self.agent_executor.run(**kwargs)
+                self.agent_executor.run(**kwargs)
                 or "No result. The execution was probably unsuccessful."
         )
 
@@ -297,10 +295,10 @@ class SubagentTool(BaseMinion):
             agent=agent, tools=available_tools, verbose=True, max_iterations=max_iterations
         )
 
-    async def run(self, **kwargs):
+    def run(self, **kwargs):
         question = kwargs["input"]
         ans = (
-                await self.agent_executor.run(**kwargs)
+                self.agent_executor.run(**kwargs)
                 or "No result. The execution was probably unsuccessful."
         )
         return ans
