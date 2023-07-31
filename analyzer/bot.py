@@ -126,7 +126,7 @@ async def select_table(message: types.Message):
 async def callback_query(call: types.CallbackQuery, state: FSMContext) -> None:
     action = call.data.split("|")[1]
     chat_id = call.message.chat.id
-
+    print(action)
     if action == "new_table":
         await call.message.answer("Чтобы добавить таблицу, отправьте файл в формате csv, XLSX или json")
         await Form.load_table.set()
@@ -140,11 +140,12 @@ async def callback_query(call: types.CallbackQuery, state: FSMContext) -> None:
         amount = await inline_keyboard_manager.get_pages_amount(chat_id=chat_id,)
         page = await inline_keyboard_manager.get_page(chat_id=chat_id, page_type="table_page")
         new_page = page
+        print(page)
         if page < amount:
             if action == "right":
                 new_page = page + 1
-            elif page > 1:
-                new_page = page - 1
+        elif page > 1:
+            new_page = page - 1
 
         await inline_keyboard_manager.change_page(call.message.chat.id, "table_page", new_page=new_page)
         markup = await create_inline_keyboard(call.message.chat.id,"table_page", new_page)
@@ -277,8 +278,8 @@ async def callback_query(call: types.CallbackQuery, state: FSMContext):
         if page < amount:
             if action == "right":
                 new_page = page + 1
-            elif page > 1:
-                new_page = page - 1
+        elif page > 1:
+            new_page = page - 1
 
         await inline_keyboard_manager.change_page(call.message.chat.id, "context_page", new_page=new_page)
         markup = await create_inline_keyboard(call.message.chat.id, "context_page", new_page)
@@ -320,8 +321,8 @@ async def callback_query(call: types.CallbackQuery, state: FSMContext):
         if page < amount:
             if action == "right":
                 new_page = page + 1
-            elif page > 1:
-                new_page = page - 1
+        elif page > 1:
+            new_page = page - 1
 
         await inline_keyboard_manager.change_page(call.message.chat.id, "description_page", new_page=new_page)
         markup = await create_inline_keyboard(call.message.chat.id, "description_page", new_page)
@@ -516,7 +517,9 @@ async def call_to_model(message: types.Message, state: FSMContext):
         await main_menu(message, state)
 
     elif message.text == "Нет":
-        await main_menu(message)
+        await bot_data_handler.exit_from_model(message.chat.id)
+        await Form.start.set()
+        await main_menu(message, state)
 
     else:
         if message.text == "Да":

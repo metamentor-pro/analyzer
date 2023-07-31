@@ -119,13 +119,9 @@ async def run_loop_bot(path_list: List[str] = None, build_plots: Union[bool, Non
         question = user_question  # this is for interacting with the user's request via a bot
         if question == "exit":
             break
-        try:
-            answer = ag.run(input=question, df_head=df_head, df_info=df_info)
-            return answer
+        answer = await ag.run(input=question, df_head=df_head, df_info=df_info)
+        return answer
 
-        except Exception as e:
-            print(e)
-            return (f"Failed with error: {traceback.format_exc()}")
 
 
 # rewrite the code above using typer library
