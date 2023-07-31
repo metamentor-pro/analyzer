@@ -303,9 +303,8 @@ async def add_table(message=None, downloaded_file=None) -> None:
 
 async def choose_description_db(message, table_name: str = None, downloaded_file = None) -> None:
     table_name = table_name
-    con = aiosqlite.connect(db_name)
     chat_id = message.from_user.id
-    group_name = check_group_design(chat_id)
+    group_name = await check_group_design(chat_id)
     async with aiosqlite.connect(db_name) as con:
         if message.content_type == "text":
             description = str(message.text)
@@ -313,7 +312,7 @@ async def choose_description_db(message, table_name: str = None, downloaded_file
 
                 existing_record = await con.execute("select table_name from group_tables where admin_id == ? and group_name == ?",
                         (chat_id, group_name))
-                existing_record = existing_record.fetchall()
+                existing_record = await existing_record.fetchall()
                 if existing_record:
                     await con.execute(
                     """UPDATE group_tables SET table_description = ? WHERE table_name == ? and admin_id == ? and group_name == ?""",
@@ -321,11 +320,11 @@ async def choose_description_db(message, table_name: str = None, downloaded_file
                         description, table_name, chat_id, group_name))
 
                 await con.commit()
-                await con.close()
+
 
             else:
                 existing_record = await con.execute("select table_name from tables where user_id == ?", (chat_id,))
-                existing_record = existing_record.fetchall()
+                existing_record = await existing_record.fetchall()
                 if existing_record:
                     await con.execute("""UPDATE tables SET table_description = ? WHERE table_name == ? and user_id = ? """,
                             (description, table_name, chat_id))
@@ -343,27 +342,26 @@ async def choose_description_db(message, table_name: str = None, downloaded_file
             if file_encoding:
                 print(file_encoding)
             else:
-                print("ni")
+                print("no file encoding")
 
             try:
-                description = downloaded_file.decode('utf-8')
+                description = await downloaded_file.decode('utf-8')
             except UnicodeDecodeError as e:
-                description = downloaded_file.decode("cp1251", "ignore")
+                description = await downloaded_file.decode("cp1251", "ignore")
 
             if group_name is not None:
                 existing_record = await con.execute("select table_name from group_tables where admin_id == ? and group_name == ?",(chat_id, group_name))
 
-                existing_record = existing_record.fetchall()
+                existing_record = await existing_record.fetchall()
                 if existing_record:
                     await con.execute(
                     """UPDATE group_tables SET table_description = ? WHERE table_name == ? and admin_id == ? and group_name == ? """,
                     (description, table_name, chat_id, group_name))
                 await con.commit()
-                await con.close()
 
             else:
                 existing_record = await con.execute("select table_name from tables where user_id == ?", (chat_id,))
-                existing_record = existing_record.fetchall()
+                existing_record = await existing_record.fetchall()
                 if existing_record:
                     await con.execute("""UPDATE tables SET table_description = ? WHERE table_name == ? """,
                                 (description, table_name))
@@ -394,7 +392,7 @@ async def add_context(message=None, table_name=None, downloaded_file=None) -> No
             src = "data/" + message.document.file_name
             if ".msg" in src:
                 async with aiofiles.open(src, 'wb') as f:
-                    await f.write(downloaded_file)
+                    await f.write(downloaded_file.getvalue())
                 context = msg_to_string(src)
             else:
                 context = downloaded_file.decode('utf-8')

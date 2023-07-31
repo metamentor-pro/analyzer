@@ -174,8 +174,6 @@ async def load_table(message: types.Message, state: FSMContext):
     try:
         file_id = message.document.file_id
         file = await bot.get_file(file_id)
-
-        # Download the file content using bot.download_file_by_id()
         downloaded_file = await bot.download_file_by_id(file.file_id)
         if len(message.document.file_name) > 40:
             await message.answer("К сожалению, название таблицы слишком длинное, придётся его сократить")
@@ -293,7 +291,7 @@ async def callback_query(call: types.CallbackQuery, state: FSMContext):
     else:
         await call.message.answer(f"Таблица {action} выбрана, отправьте контекст в формате txt")
         await Form.next()
-        await bot.answer_callback_query(call.id)
+    await bot.answer_callback_query(call.id)
 
 
 @dp.message_handler(content_types=['text', 'document'], state=Form.context)
@@ -333,17 +331,45 @@ async def callback_query(call: types.CallbackQuery, state: FSMContext):
         await state.finish()
 
     else:
-        await call.message.answer(f"Таблица {action} выбрана, отправьте описание в формате txt")
+        await call.message.answer(f"Таблица {action} выбрана, отправьте описание в формате txt или текстовым сообщением")
         await Form.description.set()
-        await bot.answer_callback_query(call.id)
+        await state.update_data({'table_name': call.data})
+    await bot.answer_callback_query(call.id)
 
 
 @dp.message_handler(content_types=['text', 'document'], state=Form.description)
 async def save_description(message: types.Message, state: FSMContext):
-    table_name = message.text
-    await db_manager.choose_description_db(message, table_name)
-    await message.reply("Описание сохранено")
-    await state.finish()
+
+    chat_id = message.chat.id
+    data = await state.get_data()
+    table_name = data.get("message_id")
+    try:
+        table_name = table_name
+        group_name = await db_manager.check_group_design(chat_id)
+        if message.content_type == "text":
+            await db_manager.choose_description_db(message=message, table_name=table_name)
+            if group_name is not None:
+                await group_main_menu(message, state)
+            else:
+                await main_menu(message, state)
+            await bot.send_message(message.chat.id, 'Контекст сохранен')
+        elif message.content_type == "document":
+            file_id = message.document.file_id
+            file = await bot.get_file(file_id)
+            downloaded_file = await bot.download_file_by_id(file.file_id)
+            await db_manager.choose_description_db(message=message, table_name=table_name, downloaded_file=downloaded_file)
+            if group_name is not None:
+                await group_main_menu(message, state)
+            else:
+                await main_menu(message, state)
+            await bot.send_message(chat_id, 'Контекст сохранен')
+    except Exception as e:
+        await bot.send_message(message.chat.id, "Что-то пошло не так, попробуйте другой файл")
+        print(traceback.format_exc())
+        print("error is:", e)
+        logging.error(traceback.format_exc())
+        await Form.question.set()
+
 
 
 
