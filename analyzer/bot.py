@@ -522,13 +522,14 @@ async def choose_group(admin_id: int = None, call: types.CallbackQuery = None, s
     await GroupForm.group_menu.set()
 
 
-@dp.message_handler(func=lambda message: message.text == "Сохранить настройки группы")
-def save_group_settings(message: types.Message, state: FSMContext) -> None:
+@dp.message_handler(Text(equals="Сохранить настройки группы"))
+async def save_group_settings(message: types.Message, state: FSMContext) -> None:
     group_name = await db_manager.check_group_design(message.chat.id)
     group_link = await db_manager.save_group_settings(chat_id=message.chat.id, group_name=group_name)
-    bot.send_message(message.chat.id, "Изменения группы сохранены, ссылка для взаимодействия с группой: ")
-    bot.send_message(message.chat.id, f'{group_link}')
+    await bot.send_message(message.chat.id, "Изменения группы сохранены, ссылка для взаимодействия с группой: ")
+    await bot.send_message(message.chat.id, f'{group_link}')
     await main_menu(message, state)
+
 
 
 @dp.message_handler(state="*")
@@ -560,13 +561,6 @@ async def group_table_list(message: types.Message, state: FSMContext) -> None:
         await bot.send_message(chat_id, f"Доступные таблицы: {prepared_settings}")
 
 
-@dp.message_handler(state=GroupForm.create_group)
-async def create_group(message: types.Message, state: FSMContext):
-    await db_manager.create_group(message.text, message.chat.id)
-    await message.reply("Группа создана")
-    await state.finish()
-
-
 @dp.message_handler(Text(equals="Сохранить настройки группы"))
 async def save_group(message: types.Message):
     link = await bot_data_handler.save_group_settings(message.chat.id)
@@ -574,7 +568,7 @@ async def save_group(message: types.Message):
     await message.reply(f"Ссылка для группы: {link}")
 
 
-@dp.message_handler(Text(equals="exit"))
+@dp.message_handler(Text(equals="exit"), state='*')
 async def exit_group_mode(message: types.Message):
     await bot_data_handler.exit_from_group(message.chat.id)
     await message.reply("Редактирование группы завершено")

@@ -446,11 +446,9 @@ async def save_group_settings(chat_id : int = None, group_name : str = None) -> 
 
 
 async def choose_group_db(admin_id: int = None, group_name: str = None) -> None:
-    print("here")
     async with aiosqlite.connect(db_name) as con:
         await con.execute("UPDATE groups SET design_flag = True WHERE admin_id == ? AND group_name == ?", (admin_id, group_name))
         await con.commit()
-
 
 
 async def update_table(chat_id: int = None, settings : dict = None) -> None:
