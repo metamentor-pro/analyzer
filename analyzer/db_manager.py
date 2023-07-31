@@ -279,13 +279,13 @@ async def add_table(message=None, downloaded_file=None) -> None:
     async with aiofiles.open(src, 'wb') as f:
         await f.write(downloaded_file.getvalue())
         async with aiosqlite.connect(db_name) as con:
-            group_id = get_group_id(group_name=group_name,admin_id=chat_id)
+            group_id = await get_group_id(group_name=group_name, admin_id=chat_id)
             if group_name is not None:
-                existing_record = await con.execute("SELECT * FROM group_tables WHERE admin_id == ? AND table_name == ?",(chat_id, message.document.file_name, group_id))
+                existing_record = await con.execute("SELECT * FROM group_tables WHERE admin_id == ? AND table_name == ? and group_id == ?",(chat_id, message.document.file_name, group_id))
                 existing_record = await existing_record.fetchone()
                 if existing_record is None:
-                    await con.execute("""INSERT INTO group_tables(admin_id, group_name, table_name) VALUES(?,?,?)""",
-                                (chat_id, group_name, message.document.file_name))
+                    await con.execute("""INSERT INTO group_tables(admin_id, group_name, table_name, group_id) VALUES(?,?,?,?)""",
+                                (chat_id, group_name, message.document.file_name, group_id))
                     await con.commit()
 
                     await con.execute("UPDATE groups SET current_tables = ? WHERE admin_id == ? AND group_name == ?",
@@ -470,7 +470,7 @@ async def update_table(chat_id: int = None, settings: dict = None) -> None:
 
 async def get_group_id(group_name: str = None, admin_id: int = None) -> Union[None, int]:
     async with aiosqlite.connect(db_name) as con:
-        result = await con.execute("SELECT group_id FROM group_tables WHERE group_name == ? AND admin_id == ?",
+        result = await con.execute("SELECT group_id FROM groups WHERE group_name == ? AND admin_id == ?",
                                    (group_name, admin_id,))
         row = await result.fetchone()
         await con.commit()
