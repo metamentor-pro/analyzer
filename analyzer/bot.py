@@ -221,7 +221,7 @@ async def load_table(message: types.Message, state: FSMContext):
                         await Form.question.set()
                     else:
                         await bot.send_message(chat_id, "Данная таблица уже была добавлена, попробуйте другую")
-                        await Form.question.set()
+
     except Exception as e:
         print(e)
         await bot.send_message(chat_id, "Что-то пошло не так, попробуйте другой файл")
@@ -532,25 +532,6 @@ async def save_group_settings(message: types.Message, state: FSMContext) -> None
 
 
 
-@dp.message_handler(state="*")
-async def create_inline_keyboard(chat_id, page_type, page=1, status_flag: bool = True):
-
-    keyboard_types = ["table_page", "description_page", "context_page"]
-
-    if page_type not in keyboard_types:
-        raise ValueError("Invalid page type")
-    if page_type == "table_page":
-        settings = await db_manager.get_settings(chat_id)
-        if settings["table_name"] is not None and len(settings["table_name"]) > 0:
-            print("status_flag", status_flag)
-            if status_flag:
-                settings_prep = await bot_data_handler.settings_prep(chat_id)
-                settings["table_name"] = settings_prep
-                await bot.send_message(chat_id, f"Сейчас доступны для анализа: {settings['table_name']}")
-    return await inline_keyboard_manager.inline_keyboard(chat_id=chat_id, page_type=page_type, page=page,
-                                                         status_flag=False)
-
-
 @dp.message_handler(Text(equals="Доступные таблицы"))
 async def group_table_list(message: types.Message, state: FSMContext) -> None:
     chat_id = message.chat.id
@@ -665,6 +646,23 @@ async def call_to_model(message: types.Message, state: FSMContext):
 
             #await Form.request.set()
 
+@dp.message_handler(state="*")
+async def create_inline_keyboard(chat_id, page_type, page=1, status_flag: bool = True):
+
+    keyboard_types = ["table_page", "description_page", "context_page"]
+
+    if page_type not in keyboard_types:
+        raise ValueError("Invalid page type")
+    if page_type == "table_page":
+        settings = await db_manager.get_settings(chat_id)
+        if settings["table_name"] is not None and len(settings["table_name"]) > 0:
+            print("status_flag", status_flag)
+            if status_flag:
+                settings_prep = await bot_data_handler.settings_prep(chat_id)
+                settings["table_name"] = settings_prep
+                await bot.send_message(chat_id, f"Сейчас доступны для анализа: {settings['table_name']}")
+    return await inline_keyboard_manager.inline_keyboard(chat_id=chat_id, page_type=page_type, page=page,
+                                                         status_flag=False)
 
 async def main():
     # Your code to start the bot, setup handlers, etc.
