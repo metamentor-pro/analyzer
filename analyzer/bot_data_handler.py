@@ -1,5 +1,5 @@
 import aiosqlite
-
+from aiogram import types
 from db_manager import *
 import interactor
 
@@ -226,3 +226,24 @@ async def model_call(chat_id, user_question, callback):
     answer_from_model = await interactor.run_loop_bot(table_name_path, build_plots, user_question, current_summary,
                                                 table_description, context_list, callback=callback)
     return answer_from_model
+
+async def start_markup(is_group: bool = False) -> types.ReplyKeyboardMarkup:
+
+    if is_group == False:
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        markup.add(
+            types.KeyboardButton("🖹 Выбрать таблицу"),
+            types.KeyboardButton("➕ Добавить описание таблицы"),
+            types.KeyboardButton("🖻 Режим визуализации"),
+        )
+        markup.add(
+            types.KeyboardButton("❓ Режим отправки запроса"),
+            types.KeyboardButton("Добавить контекст"),
+            types.KeyboardButton("Группы таблиц")
+        )
+    else:
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        markup.add(types.KeyboardButton("❓ Режим отправки запроса"),
+                   types.KeyboardButton("Доступные таблицы"))
+
+    return markup

@@ -112,7 +112,7 @@ async def check_for_group(message) -> bool:
         if start == "/start":
 
             existing_record = await con.execute("SELECT * FROM groups where group_id == ?", (group_id,))
-            existing_record = existing_record.fetchone()
+            existing_record = await existing_record.fetchone()
             if existing_record is not None:
                 group_name = await con.execute("SELECT group_name FROM groups where group_id == ?", (group_id,))
                 group_name = await group_name.fetchone()

@@ -68,19 +68,12 @@ async def main_menu(message: types.Message, state: FSMContext):
     first_time = await bot_data_handler.make_insertion(message.chat.id)
     if first_time:
         await help_info(message)
+    is_group = await db_manager.check_for_group(message)
+    if is_group == True:
+        markup = await bot_data_handler.start_markup(is_group=True)
+    else:
+        markup = await bot_data_handler.start_markup(is_group=False)
     text = "Вы можете выбрать одну из опций"
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add(
-        types.KeyboardButton("🖹 Выбрать таблицу"),
-        types.KeyboardButton("➕ Добавить описание таблицы"), 
-        types.KeyboardButton("🖻 Режим визуализации"),
-    )
-    markup.add(
-        types.KeyboardButton("❓ Режим отправки запроса"),
-        types.KeyboardButton("Добавить контекст"),
-        types.KeyboardButton("Группы таблиц")  
-    )
-
     await message.reply(text, reply_markup=markup)
     await Form.working.set()
 
@@ -535,7 +528,7 @@ async def save_group_settings(message: types.Message, state: FSMContext) -> None
     await main_menu(message, state)
 
 
-@dp.message_handler(Text(equals="Доступные таблицы"))
+@dp.message_handler(Text(equals="Доступные таблицы"), state="*")
 async def group_table_list(message: types.Message, state: FSMContext) -> None:
     chat_id = message.chat.id
     prepared_settings = await bot_data_handler.settings_prep(chat_id)
