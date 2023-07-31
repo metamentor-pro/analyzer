@@ -99,7 +99,7 @@ class CustomPromptTemplate(StringPromptTemplate):
                 summary=self.last_summary,
                 thought_process=self.thought_log(
                     intermediate_steps[
-                     -self.summarize_every_n_steps: -self.keep_n_last_thoughts
+                    -self.summarize_every_n_steps: -self.keep_n_last_thoughts
                     ]
                 ),
             )
@@ -120,7 +120,8 @@ class CustomPromptTemplate(StringPromptTemplate):
             kwargs["agent_scratchpad"] = ""
         tokens_integer = encoding.encode(self.thought_log(intermediate_steps))
         if len(tokens_integer) > 3500:
-            kwargs["agent_scratchpad"] = "Here go your thoughts and actions:\n" + self.thought_log(intermediate_steps[1000:])
+            kwargs["agent_scratchpad"] = "Here go your thoughts and actions:\n" + self.thought_log(
+                intermediate_steps[1000:])
             print("deleted")
 
         else:
@@ -137,9 +138,9 @@ class CustomPromptTemplate(StringPromptTemplate):
         if self.project:
             for key, value in self.project.prompt_fields().items():
                 kwargs[key] = value
-        logging.info("Prompt:\n\n" + self.template.format(**kwargs) + "\n\n\n")
-        result = self.template.format(**kwargs)
-        #print(result)
+        logging.info("Prompt:\n\n" + await self.template.format(**kwargs) + "\n\n\n")
+        result = await self.template.format(**kwargs)
+        # print(result)
         return result
 
 
@@ -221,11 +222,10 @@ class BaseMinion:
             agent=agent, tools=available_tools, verbose=True, max_iterations=max_iterations
         )
 
-    def run(self, **kwargs):
-
+    async def run(self, **kwargs):
         question = kwargs["input"]
         ans = (
-                self.agent_executor.run(**kwargs)
+                await self.agent_executor.run(**kwargs)  # Add 'await' here
                 or "No result. The execution was probably unsuccessful."
         )
 
@@ -236,7 +236,6 @@ class BaseMinion:
         final_answer.append(ans)
         final_answer.append(summary)
         return final_answer
-
 
 class SubagentTool(BaseMinion):
     def __init__(self, base_prompt: str, available_tools: List[Tool], model: BaseLanguageModel, df_head_sub: Any = None, df_info_sub: Any = None,
@@ -295,10 +294,10 @@ class SubagentTool(BaseMinion):
             agent=agent, tools=available_tools, verbose=True, max_iterations=max_iterations
         )
 
-    def run(self, **kwargs):
+    async def run(self, **kwargs):  # Add 'async' here
         question = kwargs["input"]
         ans = (
-                self.agent_executor.run(**kwargs)
+                await self.agent_executor.run(**kwargs)  # Add 'await' here
                 or "No result. The execution was probably unsuccessful."
         )
         return ans

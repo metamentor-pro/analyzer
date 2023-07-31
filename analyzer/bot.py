@@ -19,7 +19,8 @@ import matplotlib
 import re
 
 import config
-
+import tracemalloc
+tracemalloc.start()
 
 logging.basicConfig(level=logging.INFO)
 
