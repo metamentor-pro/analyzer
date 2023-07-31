@@ -219,7 +219,7 @@ async def load_table(message: types.Message, state: FSMContext):
                         markup.row(btn2, btn1)
                         await bot.send_message(chat_id, "Хотите ли вы получить предварительную информацию по таблице?",
                                          reply_markup=markup)
-                        await call_to_model(message, state)
+                        await Form.question.set()
                     else:
                         await bot.send_message(chat_id, "Данная таблица уже была добавлена, попробуйте другую")
                         await Form.question.set()
