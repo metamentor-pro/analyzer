@@ -371,7 +371,7 @@ async def choose_description_db(message, table_name: str = None, downloaded_file
 async def add_context(message=None, table_name=None, downloaded_file=None) -> None:
     chat_id = message.chat.id
     table_name = table_name
-    group_name = check_group_design(chat_id)
+    group_name = await check_group_design(chat_id)
     async with aiosqlite.connect(db_name) as con:
         if message.content_type == "text":
             context = str(message.text)

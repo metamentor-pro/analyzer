@@ -126,7 +126,6 @@ async def select_table(message: types.Message):
 async def callback_query(call: types.CallbackQuery, state: FSMContext) -> None:
     action = call.data.split("|")[1]
     chat_id = call.message.chat.id
-    print(action)
     if action == "new_table":
         await call.message.answer("Чтобы добавить таблицу, отправьте файл в формате csv, XLSX или json")
         await Form.load_table.set()
@@ -290,16 +289,42 @@ async def callback_query(call: types.CallbackQuery, state: FSMContext):
 
     else:
         await call.message.answer(f"Таблица {action} выбрана, отправьте контекст в формате txt")
-        await Form.next()
+        await Form.context.set()
+        await state.update_data({"table_name": call.data})
     await bot.answer_callback_query(call.id)
 
 
 @dp.message_handler(content_types=['text', 'document'], state=Form.context)
 async def save_context(message: types.Message, state: FSMContext):
-    table_name = message.text
-    await db_manager.add_context(message, table_name)
-    await message.reply("Контекст сохранен")
-    await state.finish()
+    chat_id = message.chat.id
+    try:
+        data = await state.get_data()
+        table_name = data.get("table_name")
+        group_name = await db_manager.check_group_design(chat_id)
+        if message.content_type == "text":
+            await db_manager.add_context(message=message, table_name=table_name)
+            if group_name is not None:
+                await group_main_menu(message, state)
+            else:
+                await main_menu(message, state)
+            await bot.send_message(message.chat.id, 'Контекст сохранен')
+        elif message.content_type == "document":
+            file_id = message.document.file_id
+            file = await bot.get_file(file_id)
+            downloaded_file = await bot.download_file_by_id(file.file_id)
+            await db_manager.add_context(message=message, table_name=table_name, downloaded_file=downloaded_file)
+            if group_name is not None:
+                await group_main_menu(message, state)
+            else:
+                await main_menu(message, state)
+            await bot.send_message(chat_id, 'Контекст сохранен')
+    except Exception as e:
+        print(e)
+        await bot.send_message(chat_id, "Что-то пошло не так, попробуйте другой файл")
+        print(traceback.format_exc())
+        print("error is:", e)
+        logging.error(traceback.format_exc())
+        await Form.question.set()
 
 
 @dp.message_handler(Text(equals="➕ Добавить описание таблицы"), state="*")
