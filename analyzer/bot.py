@@ -126,7 +126,7 @@ async def select_table(message: types.Message):
 async def callback_query(call: types.CallbackQuery, state: FSMContext) -> None:
     action = call.data.split("|")[1]
     chat_id = call.message.chat.id
-    print(action)
+    call.data = action
     if action == "new_table":
         await call.message.answer("Чтобы добавить таблицу, отправьте файл в формате csv, XLSX или json")
         await Form.load_table.set()
@@ -140,7 +140,7 @@ async def callback_query(call: types.CallbackQuery, state: FSMContext) -> None:
         amount = await inline_keyboard_manager.get_pages_amount(chat_id=chat_id,)
         page = await inline_keyboard_manager.get_page(chat_id=chat_id, page_type="table_page")
         new_page = page
-        print(page)
+
         if page < amount:
             if action == "right":
                 new_page = page + 1
@@ -148,7 +148,7 @@ async def callback_query(call: types.CallbackQuery, state: FSMContext) -> None:
             new_page = page - 1
 
         await inline_keyboard_manager.change_page(call.message.chat.id, "table_page", new_page=new_page)
-        markup = await create_inline_keyboard(call.message.chat.id,"table_page", new_page)
+        markup = await create_inline_keyboard(call.message.chat.id,"table_page", new_page, status_flag=False)
         await call.message.edit_text("Вы можете выбрать таблицу или добавить новую",
                                      reply_markup=markup)
     elif action == "exit":
@@ -269,6 +269,7 @@ async def add_description(message: types.Message, state: FSMContext):
 async def callback_query(call: types.CallbackQuery, state: FSMContext):
     action = call.data.split("|")[1]
     chat_id = call.message.chat.id
+    call.data = action
 
     if action in ("right", "left"):
         amount = await inline_keyboard_manager.get_pages_amount(chat_id=chat_id,)
@@ -338,6 +339,7 @@ async def description(message: types.Message, state: FSMContext):
 @dp.callback_query_handler(Text(startswith="d|"), state="*")
 async def callback_query(call: types.CallbackQuery, state: FSMContext):
     action = call.data.split("|")[1]
+    call.data = action
     chat_id = call.message.chat.id
     if action in ("right", "left"):
         amount = await inline_keyboard_manager.get_pages_amount(chat_id=chat_id, )
@@ -518,13 +520,20 @@ async def choose_group(admin_id: int = None, call: types.CallbackQuery = None, s
 
 
 @dp.message_handler()
-async def create_inline_keyboard(chat_id, page_type, page=1, group_mode=False):
+async def create_inline_keyboard(chat_id, page_type, page=1, status_flag: bool = True):
 
     keyboard_types = ["table_page", "description_page", "context_page"]
 
     if page_type not in keyboard_types:
         raise ValueError("Invalid page type")
-
+    if page_type == "table_page":
+        settings = await db_manager.get_settings(chat_id)
+        if settings["table_name"] is not None and len(settings["table_name"]) > 0:
+            print("status_flag", status_flag)
+            if status_flag:
+                settings_prep = await bot_data_handler.settings_prep(chat_id)
+                settings["table_name"] = settings_prep
+                await bot.send_message(chat_id, f"Сейчас доступны для анализа: {settings['table_name']}")
     return await inline_keyboard_manager.inline_keyboard(chat_id=chat_id, page_type=page_type, page=page,
                                                          status_flag=False)
 

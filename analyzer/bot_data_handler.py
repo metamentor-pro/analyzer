@@ -145,6 +145,7 @@ async def settings_prep(chat_id: int):
 async def delete_last_table(chat_id : int = None) -> List[str]:
     settings = await get_settings(chat_id)
     table_name = list(map(str, settings["table_name"].split(",")))
+    prev_table = table_name.copy()
     table_name = table_name[:-1]
     if len(table_name) == 0:
         settings["table_name"] = ''
@@ -156,7 +157,7 @@ async def delete_last_table(chat_id : int = None) -> List[str]:
 
     async with aiosqlite.connect(db_name) as con:
 
-        group_name = check_group_design(chat_id)
+        group_name = await check_group_design(chat_id)
         if group_name is not None:
             await con.execute("UPDATE groups SET current_tables = ? WHERE admin_id == ? AND group_name == ?",
                     (settings["table_name"], chat_id, group_name))
@@ -165,7 +166,7 @@ async def delete_last_table(chat_id : int = None) -> List[str]:
             await con.execute("UPDATE users SET current_tables = ? WHERE user_id == ?", (settings["table_name"], chat_id))
             await con.commit()
 
-        return table_name
+        return prev_table
 
 
 async def exit_from_group(chat_id: int = None) -> None:
