@@ -141,7 +141,7 @@ async def check_for_group(message) -> bool:
                 return False
 
 
-async def check_group_design(chat_id: int = None) -> Union[int, None]:
+async def check_group_design(chat_id: int = None) -> Union[str, None]:
 
     admin_id = chat_id
     async with aiosqlite.connect(db_name) as con:

@@ -51,7 +51,7 @@ class Form(StatesGroup):
 
 
 class GroupForm(StatesGroup):
-    group_callback = State()
+    group_settings = State()
     group_menu = State()
     choose_group = State()
     create_group = State()
@@ -119,7 +119,6 @@ async def help_info(message: types.Message):
 @dp.message_handler(Text(equals="🖹 Выбрать таблицу"), state="*")
 async def select_table(message: types.Message):
     markup = await create_inline_keyboard(message.chat.id, "table_page")
-    print(markup)
     await message.reply("Можете выбрать нужную таблицу или добавить новую", reply_markup=markup)
 
 
@@ -459,6 +458,7 @@ async def group_main_menu(message: types.Message, state: FSMContext) -> None:
             await con.commit()
             await main_menu(message, state)
         else:
+            print("да")
             chat_id = message.chat.id
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
             btn1 = types.KeyboardButton("🖹 Выбрать таблицу")
@@ -469,7 +469,8 @@ async def group_main_menu(message: types.Message, state: FSMContext) -> None:
             btn6 = types.KeyboardButton("Сохранить настройки группы")
             markup.row(btn1, btn2, btn3)
             markup.row(btn5, btn4, btn6)
-            await bot.send_message(chat_id, "Вы можете  выбрать одну из опций", reply_markup=markup)
+            await GroupForm.group_settings.set()
+            await bot.send_message(chat_id, "Вы можете  выбрать одну из опций:", reply_markup=markup)
 
 
 @dp.callback_query_handler(Text(startswith="g|"), state='*')
@@ -525,14 +526,13 @@ async def choose_group(admin_id: int = None, call: types.CallbackQuery = None, s
     await GroupForm.group_menu.set()
 
 
-@dp.message_handler(Text(equals="Сохранить настройки группы"))
+@dp.message_handler(Text(equals="Сохранить настройки группы"), state="*")
 async def save_group_settings(message: types.Message, state: FSMContext) -> None:
     group_name = await db_manager.check_group_design(message.chat.id)
     group_link = await db_manager.save_group_settings(chat_id=message.chat.id, group_name=group_name)
     await bot.send_message(message.chat.id, "Изменения группы сохранены, ссылка для взаимодействия с группой: ")
     await bot.send_message(message.chat.id, f'{group_link}')
     await main_menu(message, state)
-
 
 
 @dp.message_handler(Text(equals="Доступные таблицы"))
@@ -545,14 +545,7 @@ async def group_table_list(message: types.Message, state: FSMContext) -> None:
         await bot.send_message(chat_id, f"Доступные таблицы: {prepared_settings}")
 
 
-@dp.message_handler(Text(equals="Сохранить настройки группы"))
-async def save_group(message: types.Message):
-    link = await bot_data_handler.save_group_settings(message.chat.id)
-    await message.reply("Изменения группы сохранены")
-    await message.reply(f"Ссылка для группы: {link}")
-
-
-@dp.message_handler(Text(equals="exit"), state='*')
+@dp.message_handler(Text(equals="exit"), state="*")
 async def exit_group_mode(message: types.Message, state: FSMContext):
     await bot_data_handler.exit_from_group(message.chat.id)
     await message.reply("Редактирование группы завершено")
