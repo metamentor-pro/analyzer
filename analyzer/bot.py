@@ -196,10 +196,10 @@ async def load_table(message: types.Message, state: FSMContext):
                     bot.edit_message_text(chat_id=chat_id, message_id=message_id,
                                               text="Вы можете выбрать таблицу или добавить новую",
                                               reply_markup=markup2)
-                        #group_main(message)
+                    await GroupForm.group_menu.set()
                 else:
                     await bot.send_message(chat_id, "Данная таблица уже была добавлена, попробуйте другую")
-                        #bot.register_next_step_handler(message, add_table, call)
+
             else:
                 async with aiosqlite.connect(db_name) as con:
                     existing_record = await con.execute("SELECT * FROM tables WHERE user_id == ? AND table_name == ?",
@@ -222,14 +222,14 @@ async def load_table(message: types.Message, state: FSMContext):
                         await call_to_model(message, state)
                     else:
                         await bot.send_message(chat_id, "Данная таблица уже была добавлена, попробуйте другую")
-                        await call_to_model(message, state)
+                        await Form.question.set()
     except Exception as e:
         print(e)
         await bot.send_message(chat_id, "Что-то пошло не так, попробуйте другой файл")
         print(traceback.format_exc())
         print("error is:", e)
         logging.error(traceback.format_exc())
-        await call_to_model(message, state)
+        await Form.question.set()
 
 
 @dp.message_handler(state=Form.choose_table)
@@ -525,7 +525,7 @@ async def call_to_model(message: types.Message, state: FSMContext):
             user_question = message.text
         chat_id = message.chat.id
 
-        def callback(sum_on_step):
+        async def callback(sum_on_step):
             message_id = send_message.message_id
             await bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=send_message.text + f"\n{sum_on_step}")
         settings = await db_manager.get_settings(chat_id)

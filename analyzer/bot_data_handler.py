@@ -222,6 +222,6 @@ async def model_call(chat_id, user_question, callback):
 
     build_plots = settings["build_plots"]
 
-    answer_from_model = interactor.run_loop_bot(table_name_path, build_plots, user_question, current_summary,
+    answer_from_model = await interactor.run_loop_bot(table_name_path, build_plots, user_question, current_summary,
                                                 table_description, context_list, callback=callback)
     return answer_from_model
