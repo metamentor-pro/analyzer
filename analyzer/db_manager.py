@@ -82,7 +82,8 @@ async def create_tables():
                           admin_id INTEGER,
                           table_name VARCHAR,
                           table_description TEXT,
-                          context TEXT)
+                          context TEXT,
+                          FOREIGN KEY(group_id) REFERENCES groups(group_id) ON DELETE CASCADE)
                           """)
     await con.commit()
 
@@ -139,7 +140,7 @@ async def check_for_group(message) -> bool:
                 return False
 
 
-async def check_group_design(chat_id: int = None) -> Union[str, None]:
+async def check_group_design(chat_id: int = None) -> Union[int, None]:
 
     admin_id = chat_id
     async with aiosqlite.connect(db_name) as con:
@@ -465,5 +466,11 @@ async def update_table(chat_id: int = None, settings: dict = None) -> None:
             await con.commit()
 
 
-async def get_group_id(group_name: str = None, admin_id: int = None):
-    return None
+async def get_group_id(group_name: str = None, admin_id: int = None) -> Union[None, int]:
+    async with aiosqlite.connect(db_name) as con:
+        result = await con.execute("SELECT group_id FROM group_tables WHERE group_name == ? AND admin_id == ?",
+                                   (group_name, admin_id,))
+        row = await result.fetchone()
+        await con.commit()
+        group_id = row[0] if row else None
+        return group_id

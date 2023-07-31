@@ -168,7 +168,6 @@ async def load_table(message: types.Message, state: FSMContext):
     data = await state.get_data()
     message_id = data.get("message_id")
     group_name = await db_manager.check_group_design(chat_id)
-
     if group_name is not None:
         group_id = await db_manager.get_group_id(group_name, chat_id)
 
