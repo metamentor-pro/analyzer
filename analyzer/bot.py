@@ -522,7 +522,16 @@ async def choose_group(admin_id: int = None, call: types.CallbackQuery = None, s
     await GroupForm.group_menu.set()
 
 
-@dp.message_handler()
+@dp.message_handler(func=lambda message: message.text == "Сохранить настройки группы")
+def save_group_settings(message: types.Message, state: FSMContext) -> None:
+    group_name = await db_manager.check_group_design(message.chat.id)
+    group_link = await db_manager.save_group_settings(chat_id=message.chat.id, group_name=group_name)
+    bot.send_message(message.chat.id, "Изменения группы сохранены, ссылка для взаимодействия с группой: ")
+    bot.send_message(message.chat.id, f'{group_link}')
+    await main_menu(message, state)
+
+
+@dp.message_handler(state="*")
 async def create_inline_keyboard(chat_id, page_type, page=1, status_flag: bool = True):
 
     keyboard_types = ["table_page", "description_page", "context_page"]
