@@ -225,7 +225,7 @@ async def create_group(admin_id: int, group_name: str, group_name_for_link: str)
     async with aiosqlite.connect(db_name) as con:
 
         existing_record = await con.execute("SELECT * FROM groups WHERE admin_id == ? AND group_name == ?", (admin_id, group_name))
-        existing_record = existing_record.fetchone()
+        existing_record = await existing_record.fetchone()
         if existing_record is None:
             await con.execute("INSERT INTO groups(admin_id, group_name) VALUES(?,?)", (admin_id, group_name))
             await con.commit()

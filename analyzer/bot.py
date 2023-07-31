@@ -126,6 +126,7 @@ async def select_table(message: types.Message):
 async def callback_query(call: types.CallbackQuery, state: FSMContext) -> None:
     action = call.data.split("|")[1]
     chat_id = call.message.chat.id
+    print(action)
     if action == "new_table":
         await call.message.answer("Чтобы добавить таблицу, отправьте файл в формате csv, XLSX или json")
         await Form.load_table.set()
@@ -154,8 +155,8 @@ async def callback_query(call: types.CallbackQuery, state: FSMContext) -> None:
         await call.message.delete()
         await state.finish()
     else:
-        await choose_table(call.data)
-        await call.message.answer("Таблица выбрана")
+        await Form.choose_table.set()
+        await choose_table(call, state)
     await bot.answer_callback_query(call.id)
 
 
@@ -232,6 +233,7 @@ async def load_table(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state=Form.choose_table)
 async def choose_table(call: types.callback_query, state: FSMContext):
+
     try:
         chat_id = call.message.chat.id
         text = call.data
@@ -396,8 +398,6 @@ async def save_description(message: types.Message, state: FSMContext):
         await Form.question.set()
 
 
-
-
 @dp.message_handler(Text(equals="🖻 Режим визуализации"), state="*")
 async def plot_on_click(message: types.Message, state: FSMContext) -> None:
     chat_id = message.chat.id
@@ -426,7 +426,6 @@ async def plots_handler(message: types.Message, state: FSMContext) -> None:
         await group_main_menu(message, state)
     else:
         await main_menu(message, state)
-
 
 
 @dp.message_handler(Text(equals="❓ Режим отправки запроса"), state="*")
@@ -469,7 +468,7 @@ async def group_main_menu(message: types.Message, state: FSMContext) -> None:
 
 
 @dp.callback_query_handler(Text(startswith="g|"), state='*')
-async def callback_query(call) -> None:
+async def callback_query(call: types.CallbackQuery, state: FSMContext) -> None:
     callback_type, action = map(str, call.data.split("|"))
     call.data = action
     chat_id = call.message.chat.id
@@ -478,19 +477,19 @@ async def callback_query(call) -> None:
         await bot.delete_message(call.message.chat.id, call.message.message_id)
     elif call.data == "create_group":
         await bot.send_message(chat_id, "Дайте название группе")
-        #bot.register_next_step_handler(call.message, create_group)
+        await GroupForm.create_group.set()
     elif call.data == "choose_group":
         markup = await inline_keyboard_manager.create_group_keyboard(chat_id=chat_id, show_groups=True)
-        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                               text="Вы можете выбрать группу",
                               reply_markup=markup)
+        await GroupForm.choose_group.set()
+        await choose_group(chat_id, call)
     elif call.data == "back":
         markup = await inline_keyboard_manager.create_group_keyboard(chat_id=chat_id, show_groups=False)
-        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                               text="Вы можете выбрать группу или добавить новую",
                               reply_markup=markup)
-    else:
-        await choose_group(group_name=call.data, admin_id=call.message.chat.id, message=call.message)
     await bot.answer_callback_query(call.id)
 
 
@@ -505,14 +504,17 @@ async def create_group(message: types.Message, state: FSMContext) -> None:
 
 
 @dp.message_handler(state=GroupForm.choose_group)
-async def choose_group(group_name: str = None, admin_id: int = None, message=None) -> None:
+async def choose_group(admin_id: int = None, call: types.CallbackQuery = None, state: FSMContext = None ) -> None:
+    group_name = call.data
+    message = group_name.message
+
     await db_manager.choose_group_db(admin_id=admin_id, group_name=group_name)
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn1 = types.KeyboardButton("Да")
     btn2 = types.KeyboardButton("Нет")
     markup.row(btn1, btn2)
-    await bot.send_message(message.chat.id, f"Вы точно ходите перейти к редактированию группы {group_name}?", reply_markup=markup)
-    #bot.register_next_step_handler(message, group_main)
+    await bot.send_message(admin_id, f"Вы точно ходите перейти к редактированию группы {group_name}?", reply_markup=markup)
+    await group_main_menu(message, state)
 
 
 @dp.message_handler()
