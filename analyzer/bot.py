@@ -74,7 +74,7 @@ async def main_menu(message: types.Message, state: FSMContext):
     else:
         markup = await bot_data_handler.start_markup(is_group=False)
     text = "Вы можете выбрать одну из опций"
-    await message.reply(text, reply_markup=markup)
+    await message.answer(text, reply_markup=markup)
     await Form.working.set()
 
 
@@ -189,6 +189,7 @@ async def load_table(message: types.Message, state: FSMContext):
                                               text="Вы можете выбрать таблицу или добавить новую",
                                               reply_markup=markup2)
                     await GroupForm.group_menu.set()
+                    await group_main_menu(message, state)
                 else:
                     await bot.send_message(chat_id, "Данная таблица уже была добавлена, попробуйте другую")
 
