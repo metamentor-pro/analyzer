@@ -86,8 +86,9 @@ async def create_group_keyboard(chat_id: int = None, show_groups: bool = False):
 
 async def inline_keyboard(chat_id: int = None, page_type: str = None, page: int = 1, status_flag: bool = True):
     group_name = await check_group_design(chat_id)
+    group_id = await get_group_id(group_name=group_name, admin_id=chat_id)
     if group_name is not None:
-        query = "select table_name from group_tables where admin_id == ? and group_name == ? LIMIT 3 OFFSET ?"
+        query = "select table_name from group_tables where admin_id == ? and group_name == ? and group_id = ? LIMIT 3 OFFSET ?"
         if page == 1:
             offset = 0
         else:
@@ -104,7 +105,7 @@ async def inline_keyboard(chat_id: int = None, page_type: str = None, page: int 
 
     async with aiosqlite.connect(db_name) as con:
         if group_name is not None:
-            current = await con.execute(query, (chat_id, group_name, offset))
+            current = await con.execute(query, (chat_id, group_name, group_id, offset))
         else:
             current = await con.execute(query, (chat_id, offset))
 

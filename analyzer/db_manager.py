@@ -83,7 +83,8 @@ async def create_tables():
                           table_name VARCHAR,
                           table_description TEXT,
                           context TEXT,
-                          FOREIGN KEY(group_id) REFERENCES groups(group_id) ON DELETE CASCADE)
+                          group_id INT,
+                          FOREIGN KEY(group_id) REFERENCES groups (group_id) on DELETE CASCADE)
                           """)
     await con.commit()
 
@@ -278,8 +279,9 @@ async def add_table(message=None, downloaded_file=None) -> None:
     async with aiofiles.open(src, 'wb') as f:
         await f.write(downloaded_file.getvalue())
         async with aiosqlite.connect(db_name) as con:
+            group_id = get_group_id(group_name=group_name,admin_id=chat_id)
             if group_name is not None:
-                existing_record = await con.execute("SELECT * FROM group_tables WHERE admin_id == ? AND table_name == ?",(chat_id, message.document.file_name))
+                existing_record = await con.execute("SELECT * FROM group_tables WHERE admin_id == ? AND table_name == ?",(chat_id, message.document.file_name, group_id))
                 existing_record = await existing_record.fetchone()
                 if existing_record is None:
                     await con.execute("""INSERT INTO group_tables(admin_id, group_name, table_name) VALUES(?,?,?)""",
@@ -473,4 +475,5 @@ async def get_group_id(group_name: str = None, admin_id: int = None) -> Union[No
         row = await result.fetchone()
         await con.commit()
         group_id = row[0] if row else None
+        print(group_id)
         return group_id

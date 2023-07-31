@@ -119,6 +119,7 @@ async def help_info(message: types.Message):
 @dp.message_handler(Text(equals="🖹 Выбрать таблицу"), state="*")
 async def select_table(message: types.Message):
     markup = await create_inline_keyboard(message.chat.id, "table_page")
+    print(markup)
     await message.reply("Можете выбрать нужную таблицу или добавить новую", reply_markup=markup)
 
 
@@ -185,14 +186,14 @@ async def load_table(message: types.Message, state: FSMContext):
                     existing_record = await con.execute(
                         """SELECT * FROM group_tables WHERE admin_id == ? AND table_name == ? and group_id == ?""",
                     (chat_id, message.document.file_name, group_id))
-                existing_record = await existing_record.fetchone()
+                    existing_record = await existing_record.fetchone()
 
                 if existing_record is None:
                     await db_manager.add_table(message=message, downloaded_file=downloaded_file)
                     await message.reply('Файл сохранен')
                     page_type = "table_page"
                     markup2 = await create_inline_keyboard(chat_id=chat_id, page_type=page_type)
-                    bot.edit_message_text(chat_id=chat_id, message_id=message_id,
+                    await bot.edit_message_text(chat_id=chat_id, message_id=message_id,
                                               text="Вы можете выбрать таблицу или добавить новую",
                                               reply_markup=markup2)
                     await GroupForm.group_menu.set()
@@ -317,8 +318,10 @@ async def save_context(message: types.Message, state: FSMContext):
             downloaded_file = await bot.download_file_by_id(file.file_id)
             await db_manager.add_context(message=message, table_name=table_name, downloaded_file=downloaded_file)
             if group_name is not None:
+                await GroupForm.group_menu.set()
                 await group_main_menu(message, state)
             else:
+                await Form.start.set()
                 await main_menu(message, state)
             await bot.send_message(chat_id, 'Контекст сохранен')
     except Exception as e:
@@ -327,7 +330,7 @@ async def save_context(message: types.Message, state: FSMContext):
         print(traceback.format_exc())
         print("error is:", e)
         logging.error(traceback.format_exc())
-        await Form.question.set()
+        await Form.context.set()
 
 
 @dp.message_handler(Text(equals="➕ Добавить описание таблицы"), state="*")
