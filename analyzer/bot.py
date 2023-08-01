@@ -13,6 +13,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.utils import markdown
 import aiosqlite
+from concurrent.futures import ThreadPoolExecutor
 
 import interactor
 import matplotlib
@@ -368,7 +369,7 @@ async def save_description(message: types.Message, state: FSMContext):
 
     chat_id = message.chat.id
     data = await state.get_data()
-    table_name = data.get("table_name")
+    table_name = data.get("message_id")
     try:
         group_name = await db_manager.check_group_design(chat_id)
         if message.content_type == "text":
@@ -546,9 +547,12 @@ async def exit_group_mode(message: types.Message, state: FSMContext):
     await Form.start.set()
     await main_menu(message, state)
 
-
+ms = {"send_message": None,
+      "chat_id": None
+}
 @dp.message_handler(state=Form.question)
 async def call_to_model(message: types.Message, state: FSMContext):
+    global  ms
     demo_status = await db_manager.check_for_demo(chat_id=message.chat.id)
     if demo_status is not None:
         pass
@@ -568,10 +572,6 @@ async def call_to_model(message: types.Message, state: FSMContext):
         else:
             user_question = message.text
         chat_id = message.chat.id
-
-        async def callback(sum_on_step):
-            message_id = send_message.message_id
-            await bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=send_message.text + f"\n{sum_on_step}")
         settings = await db_manager.get_settings(chat_id)
         try:
             if settings["table_name"] is None or settings["table_name"] == "":
@@ -589,6 +589,8 @@ async def call_to_model(message: types.Message, state: FSMContext):
                                  reply_markup=markup)
                 await message.answer("Учтите, что первичная обработка больших таблиц может занять несколько минут, спасибо")
                 send_message = await message.answer("Здесь будет описан процесс моих рассуждений:")
+                ms["send_message"] = send_message
+                ms["chat_id"] = chat_id
                 answer_from_model = await bot_data_handler.model_call(chat_id=chat_id, user_question=user_question,callback=callback)
                 if answer_from_model[0] == "F":
                     await message.answer("Что-то пошло не так, повторяю запрос")
@@ -648,6 +650,14 @@ async def create_inline_keyboard(chat_id, page_type, page=1, status_flag: bool =
                 await bot.send_message(chat_id, f"Сейчас доступны для анализа: {settings['table_name']}")
     return await inline_keyboard_manager.inline_keyboard(chat_id=chat_id, page_type=page_type, page=page,
                                                          status_flag=False)
+
+#HERE SHOULD BE SOME WAY TO SOLVE THIS PROBLEM
+def callback(sum_on_step):
+    global ms
+    send_message = ms["send_message"]
+    chat_id = ms["chat_id"]
+    message_id = send_message.message_id
+    #bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=send_message.text + f"\n{sum_on_step}")
 
 async def main():
     # Your code to start the bot, setup handlers, etc.

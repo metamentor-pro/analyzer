@@ -10,11 +10,9 @@ from langchain import LLMChain
 from langchain.agents import LLMSingleActionAgent, AgentExecutor
 from langchain.base_language import BaseLanguageModel
 from langchain.prompts import StringPromptTemplate
-from langchain.prompts.base import StringPromptValue
 from langchain.tools import Tool
 from custom_output_parser import CustomOutputParser
 from warning_tool import WarningTool
-from langchain.schema import BaseMessage, BaseOutputParser, HumanMessage, PromptValue
 
 df_head_sub = None
 df_info_sub = None
@@ -84,11 +82,7 @@ class CustomPromptTemplate(StringPromptTemplate):
 
         return result
 
-    async def format_prompt(self, **kwargs: Any) -> PromptValue:
-        """Create Chat Messages."""
-        return StringPromptValue(text=await self.format(**kwargs))
-
-    async def format(self, **kwargs) -> str:
+    def format(self, **kwargs) -> str:
         # Get the intermediate steps (AgentAction, AResult tuples)
         # Format them in a particular way
         intermediate_steps = kwargs.pop("intermediate_steps")
@@ -105,7 +99,7 @@ class CustomPromptTemplate(StringPromptTemplate):
                 summary=self.last_summary,
                 thought_process=self.thought_log(
                     intermediate_steps[
-                    -self.summarize_every_n_steps: -self.keep_n_last_thoughts
+                     -self.summarize_every_n_steps: -self.keep_n_last_thoughts
                     ]
                 ),
             )
@@ -116,7 +110,7 @@ class CustomPromptTemplate(StringPromptTemplate):
                     self.summary_line += "\n" + self.last_summary
                     if len(self.summary_line) > 3900:
                         self.summary_line = self.summary_line[200:]
-                await self.callback(self.summary_line)
+                self.callback(self.summary_line)
         if self.my_summarize_agent:
             kwargs["agent_scratchpad"] = (
                     "Here is a summary of what has happened:\n" + self.last_summary
@@ -126,8 +120,7 @@ class CustomPromptTemplate(StringPromptTemplate):
             kwargs["agent_scratchpad"] = ""
         tokens_integer = encoding.encode(self.thought_log(intermediate_steps))
         if len(tokens_integer) > 3500:
-            kwargs["agent_scratchpad"] = "Here go your thoughts and actions:\n" + self.thought_log(
-                intermediate_steps[1000:])
+            kwargs["agent_scratchpad"] = "Here go your thoughts and actions:\n" + self.thought_log(intermediate_steps[1000:])
             print("deleted")
 
         else:
@@ -144,9 +137,9 @@ class CustomPromptTemplate(StringPromptTemplate):
         if self.project:
             for key, value in self.project.prompt_fields().items():
                 kwargs[key] = value
-        logging.info("Prompt:\n\n" + await self.template.format(**kwargs) + "\n\n\n")
-        result = await self.template.format(**kwargs)
-        # print(result)
+        logging.info("Prompt:\n\n" + self.template.format(**kwargs) + "\n\n\n")
+        result = self.template.format(**kwargs)
+        #print(result)
         return result
 
 
@@ -228,10 +221,11 @@ class BaseMinion:
             agent=agent, tools=available_tools, verbose=True, max_iterations=max_iterations
         )
 
-    async def run(self, **kwargs):
+    def run(self, **kwargs):
+
         question = kwargs["input"]
         ans = (
-                await self.agent_executor.run(**kwargs)  # Add 'await' here
+                self.agent_executor.run(**kwargs)
                 or "No result. The execution was probably unsuccessful."
         )
 
@@ -242,6 +236,7 @@ class BaseMinion:
         final_answer.append(ans)
         final_answer.append(summary)
         return final_answer
+
 
 class SubagentTool(BaseMinion):
     def __init__(self, base_prompt: str, available_tools: List[Tool], model: BaseLanguageModel, df_head_sub: Any = None, df_info_sub: Any = None,
@@ -300,10 +295,10 @@ class SubagentTool(BaseMinion):
             agent=agent, tools=available_tools, verbose=True, max_iterations=max_iterations
         )
 
-    async def run(self, **kwargs):  # Add 'async' here
+    def run(self, **kwargs):
         question = kwargs["input"]
         ans = (
-                await self.agent_executor.run(**kwargs)  # Add 'await' here
+                self.agent_executor.run(**kwargs)
                 or "No result. The execution was probably unsuccessful."
         )
         return ans
