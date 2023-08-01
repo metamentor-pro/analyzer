@@ -67,6 +67,7 @@ def preparation(path_list: List[str] = [], build_plots: Union[bool, None] = None
     prepared_path_list = list()
     start_time = datetime.datetime.now()
     callback("Идёт процесс обработки таблиц...")
+
     for path in path_list:
         file_extension = pathlib.Path(path).suffix.lower()
         if file_extension == ".xlsx":
@@ -75,7 +76,6 @@ def preparation(path_list: List[str] = [], build_plots: Union[bool, None] = None
             prepared_path_list.append(path)
 
     df_list = [read_df(path) for path in prepared_path_list]
-
     df_head = ""
     for i, item in enumerate(df_list):
         df_head += df_head_description(i, item[0], item[1])
@@ -112,7 +112,6 @@ logging.basicConfig(level=logging.INFO, filename="py_log.log", filemode="w")
 
 def run_loop_bot(path_list: List[str] = None, build_plots: Union[bool, None] = False, user_question: Union[str, None] = None, current_summary: Union[str, None] = "",
                  table_description: List[str] = None, context_list: List[str] = None, callback: Callable = None):
-    
     ag, df_head, df_info = preparation(path_list=path_list, build_plots=build_plots, current_summary=current_summary, table_description=table_description, context_list=context_list, callback=callback)
 
     while True:

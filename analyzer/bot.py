@@ -547,12 +547,11 @@ async def exit_group_mode(message: types.Message, state: FSMContext):
     await Form.start.set()
     await main_menu(message, state)
 
-ms = {"send_message": None,
-      "chat_id": None
-}
+ms = {}
+
 @dp.message_handler(state=Form.question)
 async def call_to_model(message: types.Message, state: FSMContext):
-    global  ms
+    global ms
     demo_status = await db_manager.check_for_demo(chat_id=message.chat.id)
     if demo_status is not None:
         pass
@@ -592,6 +591,7 @@ async def call_to_model(message: types.Message, state: FSMContext):
                 ms["send_message"] = send_message
                 ms["chat_id"] = chat_id
                 answer_from_model = await bot_data_handler.model_call(chat_id=chat_id, user_question=user_question,callback=callback)
+
                 if answer_from_model[0] == "F":
                     await message.answer("Что-то пошло не так, повторяю запрос")
                     answer_from_model = await bot_data_handler.model_call(chat_id=chat_id, user_question=user_question,
@@ -600,9 +600,7 @@ async def call_to_model(message: types.Message, state: FSMContext):
                         await message.answer("Что-то пошло не так")
                 current_summary = await bot_data_handler.get_summary(chat_id)
                 summary = answer_from_model[1]
-                await message.reply("Обрабатываю запрос...")
                 new_summary = current_summary + summary
-                print(summary)
                 await db_manager.update_summary(chat_id, new_summary)
                 time.sleep(10)
                 pattern = r"\b\w+\.png\b"
@@ -650,17 +648,22 @@ async def create_inline_keyboard(chat_id, page_type, page=1, status_flag: bool =
                 await bot.send_message(chat_id, f"Сейчас доступны для анализа: {settings['table_name']}")
     return await inline_keyboard_manager.inline_keyboard(chat_id=chat_id, page_type=page_type, page=page,
                                                          status_flag=False)
+import asyncio
 
-#HERE SHOULD BE SOME WAY TO SOLVE THIS PROBLEM
 def callback(sum_on_step):
-    global ms
-    send_message = ms["send_message"]
-    chat_id = ms["chat_id"]
-    message_id = send_message.message_id
-    #bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=send_message.text + f"\n{sum_on_step}")
+
+    async def async_callback(sum_on_step):
+        global ms
+        send_message = ms["send_message"]
+        chat_id = ms["chat_id"]
+        message_id = send_message.message_id
+        await bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=send_message.text + f"\n{sum_on_step}")
+    print(sum_on_step)
+    return asyncio.create_task(async_callback(sum_on_step))
+
+
 
 async def main():
-    # Your code to start the bot, setup handlers, etc.
     await dp.start_polling()
 
 if __name__ == "__main__":
