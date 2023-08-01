@@ -10,12 +10,8 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
-from aiogram.types import ReplyKeyboardRemove
-from aiogram.utils import markdown
 import aiosqlite
-from concurrent.futures import ThreadPoolExecutor
 
-import interactor
 import matplotlib
 import re
 
@@ -648,10 +644,9 @@ async def create_inline_keyboard(chat_id, page_type, page=1, status_flag: bool =
                 await bot.send_message(chat_id, f"Сейчас доступны для анализа: {settings['table_name']}")
     return await inline_keyboard_manager.inline_keyboard(chat_id=chat_id, page_type=page_type, page=page,
                                                          status_flag=False)
-import asyncio
+
 
 def callback(sum_on_step):
-
     async def async_callback(sum_on_step):
         global ms
         send_message = ms["send_message"]
@@ -660,7 +655,6 @@ def callback(sum_on_step):
         await bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=send_message.text + f"\n{sum_on_step}")
     print(sum_on_step)
     return asyncio.create_task(async_callback(sum_on_step))
-
 
 
 async def main():

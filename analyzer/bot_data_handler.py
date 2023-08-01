@@ -197,7 +197,6 @@ async def make_insertion(chat_id: int = None) -> bool:
                 await con.execute("""INSERT INTO users(user_id) values(?)""", (chat_id,))
                 await con.commit()
 
-
                 return True
             await con.commit()
 
@@ -205,7 +204,6 @@ async def make_insertion(chat_id: int = None) -> bool:
             print(traceback.format_exc())
             print("error is:", e)
             logging.error(traceback.format_exc())
-
 
         return False
 
