@@ -368,9 +368,8 @@ async def save_description(message: types.Message, state: FSMContext):
 
     chat_id = message.chat.id
     data = await state.get_data()
-    table_name = data.get("message_id")
+    table_name = data.get("table_name")
     try:
-        table_name = table_name
         group_name = await db_manager.check_group_design(chat_id)
         if message.content_type == "text":
             await db_manager.choose_description_db(message=message, table_name=table_name)
@@ -643,7 +642,6 @@ async def create_inline_keyboard(chat_id, page_type, page=1, status_flag: bool =
     if page_type == "table_page":
         settings = await db_manager.get_settings(chat_id)
         if settings["table_name"] is not None and len(settings["table_name"]) > 0:
-            print("status_flag", status_flag)
             if status_flag:
                 settings_prep = await bot_data_handler.settings_prep(chat_id)
                 settings["table_name"] = settings_prep

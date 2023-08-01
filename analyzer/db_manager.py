@@ -158,6 +158,10 @@ async def get_settings(chat_id: int) -> dict:
     group_name = await check_group_design(chat_id)
 
     async with aiosqlite.connect(db_name) as con:
+        result = await con.execute("SELECT * FROM group_tables")
+        print("group_tables", await result.fetchall())
+        result = await con.execute("SELECT * FROM tables")
+        print("tables", await result.fetchall())
         group_flag = await con.execute("SELECT group_flag FROM callback_manager WHERE user_id == ?", (chat_id,))
         group_flag = await group_flag.fetchone()
         group_flag = group_flag[0]
@@ -283,6 +287,7 @@ async def add_table(message=None, downloaded_file=None) -> None:
             if group_name is not None:
                 existing_record = await con.execute("SELECT * FROM group_tables WHERE admin_id == ? AND table_name == ? and group_id == ?",(chat_id, message.document.file_name, group_id))
                 existing_record = await existing_record.fetchone()
+
                 if existing_record is None:
                     await con.execute("""INSERT INTO group_tables(admin_id, group_name, table_name, group_id) VALUES(?,?,?,?)""",
                                 (chat_id, group_name, message.document.file_name, group_id))
@@ -294,6 +299,7 @@ async def add_table(message=None, downloaded_file=None) -> None:
             else:
                 existing_record = await con.execute("SELECT * FROM tables WHERE user_id == ? AND table_name == ?",(chat_id, message.document.file_name))
                 existing_record = await existing_record.fetchone()
+
                 if existing_record is None:
 
                     await con.execute("""INSERT INTO tables(user_id, table_name) VALUES(?,?)""",
@@ -305,7 +311,6 @@ async def add_table(message=None, downloaded_file=None) -> None:
 
 
 async def choose_description_db(message, table_name: str = None, downloaded_file = None) -> None:
-    table_name = table_name
     chat_id = message.from_user.id
     group_name = await check_group_design(chat_id)
     async with aiosqlite.connect(db_name) as con:
@@ -328,10 +333,10 @@ async def choose_description_db(message, table_name: str = None, downloaded_file
             else:
                 existing_record = await con.execute("select table_name from tables where user_id == ?", (chat_id,))
                 existing_record = await existing_record.fetchall()
+
                 if existing_record:
                     await con.execute("""UPDATE tables SET table_description = ? WHERE table_name == ? and user_id = ? """,
                             (description, table_name, chat_id))
-
                 await con.commit()
 
         elif message.content_type == "document":
@@ -373,7 +378,6 @@ async def choose_description_db(message, table_name: str = None, downloaded_file
 
 async def add_context(message=None, table_name=None, downloaded_file=None) -> None:
     chat_id = message.chat.id
-    table_name = table_name
     group_name = await check_group_design(chat_id)
     async with aiosqlite.connect(db_name) as con:
         if message.content_type == "text":
@@ -475,5 +479,4 @@ async def get_group_id(group_name: str = None, admin_id: int = None) -> Union[No
         row = await result.fetchone()
         await con.commit()
         group_id = row[0] if row else None
-        print(group_id)
         return group_id

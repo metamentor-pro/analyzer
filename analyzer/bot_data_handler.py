@@ -22,7 +22,8 @@ async def get_context(chat_id: int =None) -> List:
             chat_id = await chat_id.fetchone()
             chat_id = chat_id[0]
             for table in table_name:
-                context = await con.execute("SELECT context from group_tables WHERE admin_id == ? AND  group_name == ?", (chat_id, group_name))
+                group_id = await get_group_id(group_name=group_name, admin_id=chat_id)
+                context = await con.execute("SELECT context from group_tables WHERE admin_id == ? AND  group_id == ?", (chat_id, group_id))
                 context = await context.fetchone()
                 if not context or context[0] is None:
                     context_line = table + ":"
@@ -67,8 +68,8 @@ async def get_description(chat_id: int = None) -> List:
                 existing_record = existing_record.fetchone()
 
                 if existing_record is not None:
-
-                    description = await con.execute("SELECT table_description FROM group_tables WHERE admin_id == ? AND table_name == ? AND group_name  == ?",  (admin_id, table, group_name))
+                    group_id = await get_group_id(group_name=group_name,admin_id=admin_id)
+                    description = await con.execute("SELECT table_description FROM group_tables WHERE admin_id == ? AND table_name == ? AND group_id",  (admin_id, table, group_id))
                     description = await description.fetchone()
 
                     if not description or description[0] is None:

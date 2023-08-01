@@ -10,9 +10,11 @@ from langchain import LLMChain
 from langchain.agents import LLMSingleActionAgent, AgentExecutor
 from langchain.base_language import BaseLanguageModel
 from langchain.prompts import StringPromptTemplate
+from langchain.prompts.base import StringPromptValue
 from langchain.tools import Tool
 from custom_output_parser import CustomOutputParser
 from warning_tool import WarningTool
+from langchain.schema import BaseMessage, BaseOutputParser, HumanMessage, PromptValue
 
 df_head_sub = None
 df_info_sub = None
@@ -81,6 +83,10 @@ class CustomPromptTemplate(StringPromptTemplate):
                 result += action.log + f"\nAResult: {AResult}\n"
 
         return result
+
+    async def format_prompt(self, **kwargs: Any) -> PromptValue:
+        """Create Chat Messages."""
+        return StringPromptValue(text=await self.format(**kwargs))
 
     async def format(self, **kwargs) -> str:
         # Get the intermediate steps (AgentAction, AResult tuples)
