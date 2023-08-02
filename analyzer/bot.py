@@ -5,6 +5,8 @@ import time
 import requests
 import logging
 import traceback
+import asyncio
+import threading
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
@@ -19,7 +21,7 @@ import config
 import tracemalloc
 tracemalloc.start()
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 
 if len(sys.argv) > 1:
     API_TOKEN = config.read_config(sys.argv[1])["bot_api"]
@@ -34,7 +36,13 @@ import db_manager
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
+import telebot
 
+class Bot(telebot.TeleBot):
+    def __init__(self):
+        super().__init__(API_TOKEN)
+
+telebot_bot = Bot()
 
 class Form(StatesGroup):
     working = State()
@@ -645,21 +653,17 @@ async def create_inline_keyboard(chat_id, page_type, page=1, status_flag: bool =
     return await inline_keyboard_manager.inline_keyboard(chat_id=chat_id, page_type=page_type, page=page,
                                                          status_flag=False)
 
+import asyncio
 
 def callback(sum_on_step):
-    async def async_callback(sum_on_step):
-        global ms
-        send_message = ms["send_message"]
-        chat_id = ms["chat_id"]
-        message_id = send_message.message_id
-        await bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=send_message.text + f"\n{sum_on_step}")
-    print(sum_on_step)
-    return asyncio.create_task(async_callback(sum_on_step))
+    send_message = ms["send_message"]
+    chat_id = ms["chat_id"]
+    message_id = send_message.message_id
+    telebot_bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=send_message.text + f"\n{sum_on_step}")
 
 
 async def main():
     await dp.start_polling()
 
 if __name__ == "__main__":
-    # Run the main function inside the asyncio event loop
     asyncio.run(main())

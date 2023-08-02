@@ -224,7 +224,6 @@ async def model_call(chat_id, user_question, callback):
 
     answer_from_model = interactor.run_loop_bot(table_name_path, build_plots, user_question, current_summary,
                                                 table_description, context_list, callback=callback)
-    print("HERE")
     return answer_from_model
 
 
