@@ -435,7 +435,7 @@ async def plots_handler(message: types.Message, state: FSMContext) -> None:
 async def request_mode(message: types.Message, state: FSMContext):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add(types.KeyboardButton("🚫 exit"))
-    await message.reply(text="Отправьте запрoс. До получения ответа взаимодействие с ботом блокируется",
+    await message.reply(text="Отправьте Ваш запрос",
                         reply_markup=markup)
     await Form.question.set()
 
