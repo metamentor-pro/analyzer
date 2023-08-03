@@ -221,9 +221,12 @@ async def model_call(chat_id, user_question, callback):
     current_summary = await get_summary(chat_id)
 
     build_plots = settings["build_plots"]
+    loop = asyncio.get_event_loop()
 
-    answer_from_model = interactor.run_loop_bot(table_name_path, build_plots, user_question, current_summary,
-                                                table_description, context_list, callback=callback)
+    answer_from_model = await loop.run_in_executor(None, interactor.run_loop_bot,
+                                                   table_name_path, build_plots, user_question, current_summary,
+                                                   table_description, context_list, callback)
+
     return answer_from_model
 
 

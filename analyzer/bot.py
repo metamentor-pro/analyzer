@@ -53,6 +53,7 @@ class Form(StatesGroup):
     context = State()
     plot = State()
     request = State()
+    request_manager = State()
     question = State()
 
 
@@ -572,8 +573,8 @@ async def call_to_model(message: types.Message, state: FSMContext):
         return
 
     else:
+        await Form.request_manager.set()
         asyncio.create_task(process_model(message, state))
-
 
 
 async def process_model(message, state):
@@ -642,8 +643,15 @@ async def process_model(message, state):
             await call_to_model(message, state)
             await message.answer("Что-то пошло не так, пожалуйста, повторите вопрос или используйте команду start")
 
-
-
+@dp.message_handler(state=Form.request_manager)
+async def request_manager(message: types.Message, state: FSMContext):
+    await message.reply("dsfafasafsa")
+    if message.text == "🚫 exit":
+        await Form.start.set()
+        await main_menu(message, state)
+    else:
+        await Form.request.set()
+        await call_to_model(message, state)
 @dp.message_handler(state='*')
 async def unknown_message(message: types.Message, state: FSMContext):
     await message.reply("Извините, я вас не понимаю. Воспользуйтесь кнопками меню.")
