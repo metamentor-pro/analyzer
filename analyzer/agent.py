@@ -13,6 +13,7 @@ from langchain.prompts import StringPromptTemplate
 from langchain.tools import Tool
 from custom_output_parser import CustomOutputParser
 from warning_tool import WarningTool
+from langchain.callbacks import get_openai_callback
 
 df_head_sub = None
 df_info_sub = None
@@ -108,8 +109,6 @@ class CustomPromptTemplate(StringPromptTemplate):
                     self.last_summary = ""
                 else:
                     self.summary_line += "\n" + self.last_summary
-                    if len(self.summary_line) > 3900:
-                        self.summary_line = self.summary_line[200:]
                 self.callback(self.summary_line)
         if self.my_summarize_agent:
             kwargs["agent_scratchpad"] = (
@@ -139,6 +138,7 @@ class CustomPromptTemplate(StringPromptTemplate):
                 kwargs[key] = value
         logging.info("Prompt:\n\n" + self.template.format(**kwargs) + "\n\n\n")
         result = self.template.format(**kwargs)
+
         return result
 
 
@@ -223,11 +223,12 @@ class BaseMinion:
     def run(self, **kwargs):
 
         question = kwargs["input"]
-        ans = (
+        with get_openai_callback() as cb:
+            ans = (
                 self.agent_executor.run(**kwargs)
                 or "No result. The execution was probably unsuccessful."
-        )
-
+            )
+            self.callback(cb)
         summary = self.summarizer.add_question_answer(question, ans)
 
         final_answer = []

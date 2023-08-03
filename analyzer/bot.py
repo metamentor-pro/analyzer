@@ -577,17 +577,14 @@ async def call_to_model(message: types.Message, state: FSMContext):
         chat_id = message.chat.id
         settings = await db_manager.get_settings(chat_id)
         try:
+            markup = types.ReplyKeyboardMarkup()
+            btn1 = types.KeyboardButton("🚫 exit")
+            markup.add(btn1)
             if settings["table_name"] is None or settings["table_name"] == "":
                 await message.answer("Таблицы не найдены, вы можете выбрать другие")
-                markup = types.ReplyKeyboardMarkup()
-                btn1 = types.KeyboardButton("🚫 exit")
-                markup.add(btn1)
                 await message.answer(text="Вы можете выйти из режима работы с моделью с помощью 'exit'",
                              reply_markup=markup)
             else:
-                markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-                btn1 = types.KeyboardButton("🚫 exit")
-                markup.add(btn1)
                 await message.answer(text="Обрабатываю запрос, вы можете выйти из режима работы с моделью с помощью 'exit'",
                                  reply_markup=markup)
                 await message.answer("Учтите, что первичная обработка больших таблиц может занять несколько минут, спасибо")
@@ -599,6 +596,7 @@ async def call_to_model(message: types.Message, state: FSMContext):
                                                   text=send_message.text + f"\n{sum_on_step}")
 
                 answer_from_model = await bot_data_handler.model_call(chat_id=chat_id, user_question=user_question,callback=callback)
+
                 if answer_from_model[0] == "F":
                     await message.answer("Что-то пошло не так, повторяю запрос")
                     answer_from_model = await bot_data_handler.model_call(chat_id=chat_id, user_question=user_question,
