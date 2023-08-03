@@ -4,6 +4,7 @@ import logging
 import re
 import typing
 import tiktoken
+import config
 from dataclasses import dataclass
 from typing import Any, List, Callable, Union
 from langchain import LLMChain
@@ -228,6 +229,8 @@ class BaseMinion:
                 self.agent_executor.run(**kwargs)
                 or "No result. The execution was probably unsuccessful."
             )
+
+        if config.config["price_flag"] == True:
             self.callback(cb)
         summary = self.summarizer.add_question_answer(question, ans)
 
