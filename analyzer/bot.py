@@ -69,7 +69,7 @@ data_keys = {
 
 
 @dp.message_handler(commands=["start"], state="*")
-@dp.message_handler(state=[Form.start, None])
+@dp.message_handler(state=[Form.start])
 async def main_menu(message: types.Message, state: FSMContext):
     first_time = await bot_data_handler.make_insertion(message.chat.id)
     if first_time:
@@ -117,7 +117,7 @@ async def help_info(message: types.Message):
 
 @dp.message_handler(Text(equals="🖹 Выбрать таблицу"), state="*")
 async def select_table(message: types.Message):
-    markup = await create_inline_keyboard(message.chat.id, "table_page")
+    markup = await create_inline_keyboard(message.chat.id, page_type="table_page")
     await message.reply("Можете выбрать нужную таблицу или добавить новую", reply_markup=markup)
 
 
@@ -146,8 +146,8 @@ async def callback_query(call: types.CallbackQuery, state: FSMContext) -> None:
         elif page > 1:
             new_page = page - 1
 
-        await inline_keyboard_manager.change_page(call.message.chat.id, "table_page", new_page=new_page)
-        markup = await create_inline_keyboard(call.message.chat.id,"table_page", new_page, status_flag=False)
+        await inline_keyboard_manager.change_page(call.message.chat.id, page_type="table_page", new_page=new_page)
+        markup = await create_inline_keyboard(call.message.chat.id, page_type="table_page", new_page=new_page, status_flag=False)
         await call.message.edit_text("Вы можете выбрать таблицу или добавить новую",
                                      reply_markup=markup)
     elif action == "exit":
@@ -259,7 +259,7 @@ async def choose_table(call: types.callback_query, state: FSMContext):
 
 @dp.message_handler(Text(equals="Добавить контекст"), state="*")
 async def add_description(message: types.Message, state: FSMContext):
-    markup = await create_inline_keyboard(message.chat.id, "context_page")
+    markup = await create_inline_keyboard(message.chat.id, page_type="context_page")
 
     await message.reply("Выберите, к какой таблице вы хотите добавить описание", reply_markup=markup)
     await main_menu(message)
@@ -281,9 +281,9 @@ async def callback_query(call: types.CallbackQuery, state: FSMContext):
         elif page > 1:
             new_page = page - 1
 
-        await inline_keyboard_manager.change_page(call.message.chat.id, "context_page", new_page=new_page)
-        markup = await create_inline_keyboard(call.message.chat.id, "context_page", new_page)
-        await call.message.edit_text("Вы можете выбрать таблицу или добавить новую",
+        await inline_keyboard_manager.change_page(call.message.chat.id, page_type="context_page", new_page=new_page)
+        markup = await create_inline_keyboard(call.message.chat.id, page_type="context_page", new_page=new_page)
+        await call.message.edit_text(text="Вы можете выбрать таблицу или добавить новую",
                                      reply_markup=markup)
 
     elif action == "exit":
@@ -310,7 +310,7 @@ async def save_context(message: types.Message, state: FSMContext):
                 await group_main_menu(message, state)
             else:
                 await main_menu(message, state)
-            await bot.send_message(message.chat.id, 'Контекст сохранен')
+            await bot.send_message(message.chat.id, text='Контекст сохранен')
         elif message.content_type == "document":
             file_id = message.document.file_id
             file = await bot.get_file(file_id)
@@ -334,8 +334,8 @@ async def save_context(message: types.Message, state: FSMContext):
 
 @dp.message_handler(Text(equals="➕ Добавить описание таблицы"), state="*")
 async def description(message: types.Message, state: FSMContext):
-    markup = await create_inline_keyboard(message.chat.id, "description_page")
-    await message.reply("Выберите, к какой таблице вы хотите добавить описание", reply_markup=markup)
+    markup = await create_inline_keyboard(message.chat.id, page_type="description_page")
+    await message.reply(text="Выберите, к какой таблице вы хотите добавить описание", reply_markup=markup)
 
 
 @dp.callback_query_handler(Text(startswith="d|"), state="*")
@@ -353,9 +353,9 @@ async def callback_query(call: types.CallbackQuery, state: FSMContext):
         elif page > 1:
             new_page = page - 1
 
-        await inline_keyboard_manager.change_page(call.message.chat.id, "description_page", new_page=new_page)
-        markup = await create_inline_keyboard(call.message.chat.id, "description_page", new_page)
-        await call.message.edit_text("Вы можете выбрать таблицу или добавить новую",
+        await inline_keyboard_manager.change_page(call.message.chat.id, page_type="description_page", new_page=new_page)
+        markup = await create_inline_keyboard(call.message.chat.id, page_type="description_page", new_page=new_page)
+        await call.message.edit_text(text="Вы можете выбрать таблицу или добавить новую",
                                      reply_markup=markup)
     elif action == "exit":
         await call.message.delete()
@@ -382,7 +382,7 @@ async def save_description(message: types.Message, state: FSMContext):
                 await group_main_menu(message, state)
             else:
                 await main_menu(message, state)
-            await bot.send_message(message.chat.id, 'Контекст сохранен')
+            await bot.send_message(message.chat.id, text='Контекст сохранен')
         elif message.content_type == "document":
             file_id = message.document.file_id
             file = await bot.get_file(file_id)
@@ -392,9 +392,9 @@ async def save_description(message: types.Message, state: FSMContext):
                 await group_main_menu(message, state)
             else:
                 await main_menu(message, state)
-            await bot.send_message(chat_id, 'Контекст сохранен')
+            await bot.send_message(chat_id, text='Контекст сохранен')
     except Exception as e:
-        await bot.send_message(message.chat.id, "Что-то пошло не так, попробуйте другой файл")
+        await bot.send_message(message.chat.id, text="Что-то пошло не так, попробуйте другой файл")
         print(traceback.format_exc())
         print("error is:", e)
         logging.error(traceback.format_exc())
@@ -435,7 +435,7 @@ async def plots_handler(message: types.Message, state: FSMContext) -> None:
 async def request_mode(message: types.Message, state: FSMContext):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add(types.KeyboardButton("🚫 exit"))
-    await message.reply("Отправьте запрoс. До получения ответа взаимодействие с ботом блокируется",
+    await message.reply(text="Отправьте запрoс. До получения ответа взаимодействие с ботом блокируется",
                         reply_markup=markup)
     await Form.question.set()
 
@@ -443,7 +443,7 @@ async def request_mode(message: types.Message, state: FSMContext):
 @dp.message_handler(Text(equals="Группы таблиц"), state="*")
 async def group_options(message: types.Message, state: FSMContext):
     markup = await inline_keyboard_manager.create_group_keyboard(message.chat.id)
-    await message.reply("Вы можете выбрать опцию", reply_markup=markup)
+    await message.reply(text="Вы можете выбрать опцию", reply_markup=markup)
 
 
 @dp.message_handler(state=GroupForm.group_menu)
@@ -469,7 +469,7 @@ async def group_main_menu(message: types.Message, state: FSMContext) -> None:
             markup.row(btn1, btn2, btn3)
             markup.row(btn5, btn4, btn6)
             await GroupForm.group_settings.set()
-            await bot.send_message(chat_id, "Вы можете  выбрать одну из опций:", reply_markup=markup)
+            await bot.send_message(chat_id, text="Вы можете  выбрать одну из опций:", reply_markup=markup)
 
 
 @dp.callback_query_handler(Text(startswith="g|"), state='*')
@@ -481,7 +481,7 @@ async def callback_query(call: types.CallbackQuery, state: FSMContext) -> None:
         await bot_data_handler.exit_from_group(chat_id=chat_id)
         await bot.delete_message(call.message.chat.id, call.message.message_id)
     elif call.data == "create_group":
-        await bot.send_message(chat_id, "Дайте название группе")
+        await bot.send_message(chat_id, text="Дайте название группе")
         await GroupForm.create_group.set()
     elif call.data == "choose_group":
 
@@ -521,7 +521,7 @@ async def choose_group(admin_id: int = None, call: types.CallbackQuery = None, s
     btn1 = types.KeyboardButton("Да")
     btn2 = types.KeyboardButton("Нет")
     markup.row(btn1, btn2)
-    await bot.send_message(admin_id, f"Вы точно ходите перейти к редактированию группы {group_name}?", reply_markup=markup)
+    await bot.send_message(admin_id, text=f"Вы точно ходите перейти к редактированию группы {group_name}?", reply_markup=markup)
     await GroupForm.group_menu.set()
 
 
@@ -529,8 +529,8 @@ async def choose_group(admin_id: int = None, call: types.CallbackQuery = None, s
 async def save_group_settings(message: types.Message, state: FSMContext) -> None:
     group_name = await db_manager.check_group_design(message.chat.id)
     group_link = await db_manager.save_group_settings(chat_id=message.chat.id, group_name=group_name)
-    await bot.send_message(message.chat.id, "Изменения группы сохранены, ссылка для взаимодействия с группой: ")
-    await bot.send_message(message.chat.id, f'{group_link}')
+    await bot.send_message(message.chat.id, text="Изменения группы сохранены, ссылка для взаимодействия с группой: ")
+    await bot.send_message(message.chat.id, text=f'{group_link}')
     await main_menu(message, state)
 
 
@@ -539,9 +539,9 @@ async def group_table_list(message: types.Message, state: FSMContext) -> None:
     chat_id = message.chat.id
     prepared_settings = await bot_data_handler.settings_prep(chat_id)
     if prepared_settings == False:
-        await bot.send_message(chat_id, "В данной группе пока нет доступных таблиц")
+        await bot.send_message(chat_id, text="В данной группе пока нет доступных таблиц")
     else:
-        await bot.send_message(chat_id, f"Доступные таблицы: {prepared_settings}")
+        await bot.send_message(chat_id, text=f"Доступные таблицы: {prepared_settings}")
 
 
 @dp.message_handler(Text(equals="exit"), state="*")
@@ -552,6 +552,7 @@ async def exit_group_mode(message: types.Message, state: FSMContext):
     await main_menu(message, state)
 
 ms = {}
+
 
 @dp.message_handler(state=Form.question)
 async def call_to_model(message: types.Message, state: FSMContext):
@@ -582,13 +583,13 @@ async def call_to_model(message: types.Message, state: FSMContext):
                 markup = types.ReplyKeyboardMarkup()
                 btn1 = types.KeyboardButton("🚫 exit")
                 markup.add(btn1)
-                await message.answer("Вы можете выйти из режима работы с моделью с помощью 'exit'",
+                await message.answer(text="Вы можете выйти из режима работы с моделью с помощью 'exit'",
                              reply_markup=markup)
             else:
                 markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
                 btn1 = types.KeyboardButton("🚫 exit")
                 markup.add(btn1)
-                await message.answer("Обрабатываю запрос, вы можете выйти из режима работы с моделью с помощью 'exit'",
+                await message.answer(text="Обрабатываю запрос, вы можете выйти из режима работы с моделью с помощью 'exit'",
                                  reply_markup=markup)
                 await message.answer("Учтите, что первичная обработка больших таблиц может занять несколько минут, спасибо")
                 send_message = await message.answer("Здесь будет описан процесс моих рассуждений:")
@@ -636,6 +637,11 @@ async def call_to_model(message: types.Message, state: FSMContext):
             await message.answer("Что-то пошло не так, пожалуйста, повторите вопрос или используйте команду start")
 
 
+@dp.message_handler(state='*')
+async def unknown_message(message: types.Message, state: FSMContext):
+    await message.reply("Извините, я вас не понимаю. Воспользуйтесь кнопками меню.")
+
+
 @dp.message_handler(state="*")
 async def create_inline_keyboard(chat_id, page_type, page=1, status_flag: bool = True):
 
@@ -649,11 +655,10 @@ async def create_inline_keyboard(chat_id, page_type, page=1, status_flag: bool =
             if status_flag:
                 settings_prep = await bot_data_handler.settings_prep(chat_id)
                 settings["table_name"] = settings_prep
-                await bot.send_message(chat_id, f"Сейчас доступны для анализа: {settings['table_name']}")
+                await bot.send_message(chat_id, text=f"Сейчас доступны для анализа: {settings['table_name']}")
     return await inline_keyboard_manager.inline_keyboard(chat_id=chat_id, page_type=page_type, page=page,
                                                          status_flag=False)
 
-import asyncio
 
 def callback(sum_on_step):
     send_message = ms["send_message"]

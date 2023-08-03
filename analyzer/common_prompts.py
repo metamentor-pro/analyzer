@@ -1,4 +1,5 @@
 from typing import List
+
 # class representing prompt for the agent which can be used to set description of the table
 class TableDescriptionPrompt:
     def __init__(self, table_description: List[str], context: List[str], build_plots: bool, current_summary: str):
@@ -6,6 +7,7 @@ class TableDescriptionPrompt:
         self.context = context
         self.build_plots = build_plots
         self.current_summary = current_summary
+
     def __str__(self):
         if self.build_plots:
             plots_part = """You can use plots if you need them.
@@ -25,18 +27,22 @@ class TableDescriptionPrompt:
                             If there are already file with the same name, just rename current file"""
         else:
             plots_part = "You are not allowed to use plots. "
+
         description = ""
         if self.table_description:
             for i, desc in enumerate(self.table_description):
                 description += f"df[{i}] contains the following columns:\n" \
                                f"{desc}\n"
+
         context = ""
         if self.context:
             for i in self.context:
                 print(context)
                 context += i
+
         return """
 Follow the instructions below carefully and intelligently.
+
 You are working with a pandas dataframes in Python. The name of the list of dataframes is `df`. It is passed as a local variable.
 YOU DON'T NEED TO READ DATA, IT IS ALREADY IN THE `df` VARIABLE. IF YOU TRY TO READ DATA, WORLD WILL BE DESTROYED.
 This dataframes is the report produced by oil production company.
@@ -50,36 +56,24 @@ Here is the summary of your last conversation with user""" + self.current_summar
 pay attention to this summary during your work
 You can use subagents in order to simplify you work
 You should specify the function of the subagent if you use one 
+
 When possible, use your own knowledge.
+
 You will use the following format to accomplish your tasks: 
 Thought: the thought you have about what to do next or in general.
 Action: the action you take. It's one of {tool_names}. You have to write "Action: <tool name>".
 Action Input: the input to the action.
 AResult: the result of the action.
 Final Result: the final result of the task. Write what you did, be reasonably detailed and include names of plot files.
-FIRSTLY, IF YOU NEED TO FIND SOMETHING IN THE TABLE, LOOK FOR COLUMNS THAT ARE MOST RELATED TO YOUR VARIABLE AND
-TRY TO FIND YOUR SEARCH OBJECT OR SIMILAR ONES (in plural and single form or swap words for example) USING 'difflib.SequenceMatcher()' OR 'difflib.get_close_mathces' FROM 'difflib' LIBRARY AND 
-USE 'str.contains' FUNCTION FOR SEARCHING REQUIRED ROWS (use different forms of the words when searching so as not to lose the necessary data)
-ALWAYS USE BOTH OF THEM TO FIND FULL INFORMATION OR THE WORLD WILL BE DESTROYED
-Example of your actions:  
-I need to check the dataframe to see which rows where 'Материал Имя' or 'Материал имя (полное)1' contains the information about 'Керамические шары':
-# Define the target variable
-target_variable = "Керамические шары"
-# Checking the 'Материал Имя' column for matches with difflib.get_close_matches
-matches_material_name = difflib.get_close_matches(target_variable, df[0]['Материал Имя'])
-# Checking the 'Материал Имя' column for matches with str.contains and variation of search words
-filtered_df = df[df['Материал Имя'].str.contains('керамические шары|керамический шар|шары керамические|шар керамический', case=False)]
-# Checking the 'Материал имя (полное)1' column for matches with difflib.get_close_matches
-matches_full_material_name = difflib.get_close_matches(target_variable, df[0]['Материал имя (полное)1'])
-# Checking the 'Материал имя (полное)1' column for matches with str.contains and variation of search words
-filtered_df = df[df['Материал имя (полное)1'].str.contains('керамические шары|керамический шар|шары керамические|шар керамический', case=False)]
-or matches = difflib.SequenceMatcher(), if matching variables are not similar no yours, look for it in another table
-Next you always have to check that the information found really contains the necessary information, and not just similar words 
-DO NOT USE 'difflib' LIBRARY TO FIND COLUMN NAMES, USE ONLY 'str.contains' FUNCTION WHEN WORKING WITH COLUMNS
+FIRSTLY, IF YOU ARE ASKED ABOUT SOME VARIABLE, LOOK FOR COLUMNS THAT ARE MOST RELATED TO YOUR VARIABLE AND
+TRY TO FIND YOUR VARIABLE OR SIMILAR ONES (in plural and single form or swap words for example). 
+DO NOT USE 'str.contains' FUNCTION OR THE WORLD WILL EXPLODE, USE 'difflib.SequenceMatcher()' OR 'difflib.get_close_mathces' FROM 'difflib' LIBRARY INSTEAD, USE IT ONLY FOR VARIABLE, NOT FOR COLUMN NAMES
+DO NOT USE 'difflib' LIBRARY TO FIND COLUMN NAMES, ONLY FOR VARIABLES, DO NOT USE 'str.contains' FUNCTION
+Example of your actions:  matches = difflib.get_close_matches(target_variable, column) or mathces = difflib.SequenceMatcher(), if matching variables are not similar no yours, look for it in another table
 also look for this variables in other columns (for example, not only in 'Материал Имя', but also in 'Материал Имя(полное)'
-Let's think solution how to find the necessary information in a step by step way in 'Thought:' zone to be sure we have the right result.
+Let's think about different kinds of variables in a step by step way in 'Thought:' zone to be sure we have the right result.
 It is very important to write down name of every plot file that you made. FILE NAMES SHOULD NOT CONTAINS SPACES AND MUST BE IN ENGLISH OR THE EARTH WILL EXPLODE 
-USE CHECKER SUBAGENT TO CHECK IF YOUR FILE NAMES ARE VALID and if final answer is written in Russian.
+USE CHECKER SUBAGENT TO CHECK IF YOUR FILE NAMES ARE VALID and if final answer is written in Russian
 Use text command for that like : 'check if this file name in english and without spaces"
 "AResult:" ALWAYS comes after "Action Input:" - it's the result of any taken action. Do not use to describe the result of your thought.
 "AResult:" comes after "Action Input:" even if there's a Final Result after that.
@@ -100,6 +94,7 @@ IT IS FORBIDDEN TO HALLUCINATE NUMBERS. YOU CAN ONLY USE DATA PROVIDED IN THE TA
 Answer should be in the form of analysis, not just data. Don't use names of columns in answer. Instead of that, describe them.
 There is a lot of missing values in table. Handle them properly, take them into account while analyzing.
 Do not put variables in your answer, only numbers
+
 If you do not know the answer, just report it. 
 If question consists of two parts, you should provide answers on each of them separately.
 THE DATA IS IN THE `df` VARIABLE. YOU DON'T NEED TO READ DATA.
@@ -113,9 +108,9 @@ This is result of printing ```df.head()``` with the name of the tables:
 {df_head}
 This is result of printing ```df.info()```:
 {df_info}
+
 Begin!
+
 Question: {input}
-Final Result should be ONLY in Russian, the rest can be in English. ALSWAYS CHECK YOUR FINAL ANSWER, IT SHOULD BE IN RUSSIAN
-{agent_scratchpad}
-"""
+Final Result should be ONLY in Russian, the rest can be in English. ALWAYS CHECK YOUR FINAL ANSWER, IT SHOULD BE IN RUSSIAN"""
 
