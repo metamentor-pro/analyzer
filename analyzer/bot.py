@@ -632,7 +632,7 @@ async def call_to_model(message: types.Message, state: FSMContext):
                 else:
                     await message.answer(f"Answer: {answer_from_model[0]}")
         except requests.exceptions.ConnectionError:
-            await call_to_model(message)
+            await call_to_model(message, state)
             await message.answer("Что-то пошло не так, пожалуйста, повторите вопрос или используйте команду start")
 
 
