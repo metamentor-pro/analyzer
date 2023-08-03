@@ -514,8 +514,6 @@ async def create_group(message: types.Message, state: FSMContext) -> None:
 @dp.message_handler(state=GroupForm.choose_group)
 async def choose_group(admin_id: int = None, call: types.CallbackQuery = None, state: FSMContext = None) -> None:
     group_name = call.data
-    message = call.message
-
     await db_manager.choose_group_db(admin_id=admin_id, group_name=group_name)
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn1 = types.KeyboardButton("Да")
@@ -551,15 +549,16 @@ async def exit_group_mode(message: types.Message, state: FSMContext):
     await Form.start.set()
     await main_menu(message, state)
 
-ms = {}
 
-
-@dp.message_handler(state=Form.question)
+@dp.message_handler(content_types=['photo', 'document', 'text'], state=Form.question)
 async def call_to_model(message: types.Message, state: FSMContext):
-    global ms
+
     demo_status = await db_manager.check_for_demo(chat_id=message.chat.id)
     if demo_status is not None:
         pass
+    if message.content_type != "text":
+        await bot.send_message(chat_id=message.chat.id, text="В качестве запроса принимаются только текстовые данные")
+        return
     if message.text == "🚫 exit":
         await bot_data_handler.exit_from_model(message.chat.id)
         await Form.start.set()
@@ -593,10 +592,13 @@ async def call_to_model(message: types.Message, state: FSMContext):
                                  reply_markup=markup)
                 await message.answer("Учтите, что первичная обработка больших таблиц может занять несколько минут, спасибо")
                 send_message = await message.answer("Здесь будет описан процесс моих рассуждений:")
-                ms["send_message"] = send_message
-                ms["chat_id"] = chat_id
-                answer_from_model = await bot_data_handler.model_call(chat_id=chat_id, user_question=user_question,callback=callback)
 
+                def callback(sum_on_step):
+                    message_id = send_message.message_id
+                    telebot_bot.edit_message_text(chat_id=chat_id, message_id=message_id,
+                                                  text=send_message.text + f"\n{sum_on_step}")
+
+                answer_from_model = await bot_data_handler.model_call(chat_id=chat_id, user_question=user_question,callback=callback)
                 if answer_from_model[0] == "F":
                     await message.answer("Что-то пошло не так, повторяю запрос")
                     answer_from_model = await bot_data_handler.model_call(chat_id=chat_id, user_question=user_question,
@@ -658,13 +660,6 @@ async def create_inline_keyboard(chat_id, page_type, page=1, status_flag: bool =
                 await bot.send_message(chat_id, text=f"Сейчас доступны для анализа: {settings['table_name']}")
     return await inline_keyboard_manager.inline_keyboard(chat_id=chat_id, page_type=page_type, page=page,
                                                          status_flag=False)
-
-
-def callback(sum_on_step):
-    send_message = ms["send_message"]
-    chat_id = ms["chat_id"]
-    message_id = send_message.message_id
-    telebot_bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=send_message.text + f"\n{sum_on_step}")
 
 
 async def main():
