@@ -1,25 +1,19 @@
-import openpyxl
 import os
+import openpyxl
+import pandas as pd
 from openpyxl.utils.cell import range_boundaries
-
-
 def check_cells_content(wb):
     sheet = wb.active
-
     cell_a1 = sheet['A1']
     cell_a2 = sheet['A2']
     cell_b1 = sheet['B1']
-
     if cell_a1.value is not None and cell_a1.value != "":
         return True
     if cell_a2.value is not None and cell_a2.value != "":
         return True
     if cell_b1.value is not None and cell_b1.value != "":
         return True
-
     return False
-
-
 def get_data_range(sheet):
     start_row, start_col, end_row, end_col = None, None, None, None
     for row in sheet.iter_rows():
@@ -35,7 +29,6 @@ def get_data_range(sheet):
                     end_row = row_index
                 if end_col is None or col_index > end_col:
                     end_col = col_index
-
     if start_row is not None and start_col is not None and end_row is not None and end_col is not None:
         start_col_name = openpyxl.utils.get_column_letter(start_col)
         end_col_name = openpyxl.utils.get_column_letter(end_col)
@@ -43,19 +36,14 @@ def get_data_range(sheet):
         return data_range, start_row, start_col, start_col_name, end_col_name
     else:
         return None
-
-
 def move(wb):
     sheet = wb.active
     range = get_data_range(sheet)
     if range:
         sheet.move_range(range[0], rows=-range[1] + 1, cols=-range[2] + 1, translate=True)
-
-
 def unmerge_cells(wb):
     sheet = wb.active
     range = get_data_range(sheet)
-
     if range is not None:
         check_range = f'{range[3]}{range[1]}:{range[4]}{range[1]}'
         is_merged = False
@@ -65,7 +53,6 @@ def unmerge_cells(wb):
                 break
         if is_merged:
             name = sheet.cell(row=range[1], column=range[2]).value
-
         mcr_coord_list = [mcr.coord for mcr in sheet.merged_cells.ranges]
         for mcr in mcr_coord_list:
             min_col, min_row, max_col, max_row = range_boundaries(mcr)
@@ -77,12 +64,9 @@ def unmerge_cells(wb):
                         cell.value = top_left_cell_value
         if is_merged:
             sheet.delete_rows(range[1])
-
-
 def process(path):
     save_path = path[:-5] + '_prepared.xlsx'
     name = os.path.basename(path)
-
     if not os.path.exists(save_path):
         wb = openpyxl.load_workbook(path, data_only=True)
         unmerge_cells(wb)
@@ -90,28 +74,21 @@ def process(path):
             move(wb)
         wb.save(save_path)
     return save_path, name
-
-
 def unmerge_sheets(file_path):
     new_path = ""
     index = file_path.rfind("/")
     if index != -1:
         new_path = file_path[:index] + "/unmerged_{}/".format(os.path.basename(file_path))
-
     if not os.path.exists(new_path):
         check_path = file_path[:-5] + '_prepared.xlsx'
         if not os.path.exists(check_path):
-            wb = openpyxl.load_workbook(file_path)
-            if len(wb.sheetnames) > 1:
+            excel_file = pd.ExcelFile(file_path)
+            if len(excel_file.sheet_names) > 1:
                 os.makedirs(new_path)
                 new_paths = list()
-                for sheet_name in wb.sheetnames:
-                    new_workbook = openpyxl.Workbook()
-                    new_sheet = new_workbook.active
-                    sheet = wb[sheet_name]
-                    for row in sheet.iter_rows(values_only=True):
-                        new_sheet.append(row)
-                    new_workbook.save(new_path + sheet_name + '.xlsx')
+                for sheet_name in excel_file.sheet_names:
+                    df = excel_file.parse(sheet_name)
+                    df.to_excel(new_path + sheet_name + '.xlsx', index=False)
                     new_paths.append(new_path + sheet_name + '.xlsx')
                 return new_paths
             return [file_path]
@@ -123,3 +100,4 @@ def unmerge_sheets(file_path):
                 if not file.endswith('_prepared.xlsx'):
                     paths.append(os.path.join(root, file))
         return paths
+
