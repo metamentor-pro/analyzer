@@ -563,21 +563,28 @@ async def call_to_model(message: types.Message, state: FSMContext):
         await bot_data_handler.exit_from_model(message.chat.id)
         await Form.start.set()
         await main_menu(message, state)
+        return
 
     elif message.text == "Нет":
         await bot_data_handler.exit_from_model(message.chat.id)
         await Form.start.set()
         await main_menu(message, state)
+        return
 
     else:
-        if message.text == "Да":
-            user_question = "Проведи исследовательский анализ данных по таблице"
-        else:
-            user_question = message.text
+        asyncio.create_task(process_model(message, state))
+
+
+
+async def process_model(message, state):
+    if message.text == "Да":
+        user_question = "Проведи исследовательский анализ данных по таблице"
+    else:
+        user_question = message.text
         chat_id = message.chat.id
         settings = await db_manager.get_settings(chat_id)
         try:
-            markup = types.ReplyKeyboardMarkup()
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
             btn1 = types.KeyboardButton("🚫 exit")
             markup.add(btn1)
             if settings["table_name"] is None or settings["table_name"] == "":
@@ -596,7 +603,6 @@ async def call_to_model(message: types.Message, state: FSMContext):
                                                   text=send_message.text + f"\n{sum_on_step}")
 
                 answer_from_model = await bot_data_handler.model_call(chat_id=chat_id, user_question=user_question,callback=callback)
-
                 if answer_from_model[0] == "F":
                     await message.answer("Что-то пошло не так, повторяю запрос")
                     answer_from_model = await bot_data_handler.model_call(chat_id=chat_id, user_question=user_question,
@@ -635,6 +641,7 @@ async def call_to_model(message: types.Message, state: FSMContext):
         except requests.exceptions.ConnectionError:
             await call_to_model(message, state)
             await message.answer("Что-то пошло не так, пожалуйста, повторите вопрос или используйте команду start")
+
 
 
 @dp.message_handler(state='*')
