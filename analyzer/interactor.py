@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import plotly as plotly
-import sys
+import asyncio
 from langchain.agents import Tool
 from langchain.chat_models import ChatOpenAI
 from agent import BaseMinion
@@ -51,7 +51,7 @@ def df_info_description(i: int, df: pd.DataFrame) -> str:
 
 
 def preparation(path_list: List[str] = [], build_plots: Union[bool, None] = None, current_summary: Union[str, None] = "",
-                table_description: List[str] = None, context_list: List[str] = None, callback: Callable = None):
+                table_description: List[str] = None, context_list: List[str] = None, callback: Callable = None, stop_event = None):
 
     with open("config.yaml") as f:
         cfg = yaml.load(f, Loader=yaml.FullLoader)
@@ -103,7 +103,7 @@ def preparation(path_list: List[str] = [], build_plots: Union[bool, None] = None
     ag = BaseMinion(base_prompt=prompt.__str__(),
                     available_tools=[
                         Tool(name=python_tool.name, description=python_tool.description, func=python_tool._run)],
-                    model=llm, df_head=df_head, df_info=df_info, callback=callback, summarize_model="gpt-3.5-turbo")
+                    model=llm, df_head=df_head, df_info=df_info, callback=callback, summarize_model="gpt-3.5-turbo", stop_event=stop_event)
     return ag, df_head, df_info
 
 
@@ -111,9 +111,8 @@ logging.basicConfig(level=logging.INFO, filename="py_log.log", filemode="w")
 
 
 def run_loop_bot(path_list: List[str] = None, build_plots: Union[bool, None] = False, user_question: Union[str, None] = None, current_summary: Union[str, None] = "",
-                 table_description: List[str] = None, context_list: List[str] = None, callback: Callable = None):
-    ag, df_head, df_info = preparation(path_list=path_list, build_plots=build_plots, current_summary=current_summary, table_description=table_description, context_list=context_list, callback=callback)
-
+                 table_description: List[str] = None, context_list: List[str] = None, callback: Callable = None, stop_event = None):
+    ag, df_head, df_info = preparation(path_list=path_list, build_plots=build_plots, current_summary=current_summary, table_description=table_description, context_list=context_list, callback=callback, stop_event=stop_event)
     while True:
         question = user_question  # this is for interacting with the user's request via a bot
         if question == "exit":

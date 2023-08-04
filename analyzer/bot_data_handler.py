@@ -221,13 +221,34 @@ async def model_call(chat_id, user_question, callback):
     current_summary = await get_summary(chat_id)
 
     build_plots = settings["build_plots"]
+    global stop_event
+    stop_event = asyncio.Event()
+
+    # Create a function to stop the process when called
+
     loop = asyncio.get_event_loop()
 
-    answer_from_model = await loop.run_in_executor(None, interactor.run_loop_bot,
-                                                   table_name_path, build_plots, user_question, current_summary,
-                                                   table_description, context_list, callback)
+    # Run the synchronous process in a separate Task
+    task = loop.run_in_executor(None, interactor.run_loop_bot,
+                                table_name_path, build_plots, user_question, current_summary,
+                                table_description, context_list, callback, stop_event)
 
-    return answer_from_model
+    # Wait for either the synchronous process to finish or the stop_event to be set
+    done, pending = await asyncio.wait([task, stop_event.wait()], return_when=asyncio.FIRST_COMPLETED)
+    # If the stop_event was triggered, cancel the task and return None
+    if stop_event.is_set():
+        task.cancel()
+        return None
+
+    # If the task completed, return its result
+    return task.result()
+
+async def stop_process():
+    global stop_event
+    try:
+        stop_event.set()
+    except Exception as e:
+        print((f"Failed with error: {traceback.format_exc()}"))
 
 
 async def start_markup(is_group: bool = False) -> types.ReplyKeyboardMarkup:

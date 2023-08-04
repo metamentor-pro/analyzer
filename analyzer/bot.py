@@ -561,6 +561,7 @@ async def call_to_model(message: types.Message, state: FSMContext):
         return
     if message.text == "🚫 exit":
         await bot_data_handler.exit_from_model(message.chat.id)
+        await bot_data_handler.stop_process()
         await Form.start.set()
         await main_menu(message, state)
         return
@@ -576,10 +577,12 @@ async def call_to_model(message: types.Message, state: FSMContext):
 
 
 async def process_model(message, state):
+
     if message.text == "Да":
         user_question = "Проведи исследовательский анализ данных по таблице"
     else:
         user_question = message.text
+        print(message.text)
         chat_id = message.chat.id
         settings = await db_manager.get_settings(chat_id)
         try:
@@ -601,7 +604,7 @@ async def process_model(message, state):
                     telebot_bot.edit_message_text(chat_id=chat_id, message_id=message_id,
                                                   text=send_message.text + f"\n{sum_on_step}")
 
-                answer_from_model = await bot_data_handler.model_call(chat_id=chat_id, user_question=user_question,callback=callback)
+                answer_from_model = await bot_data_handler.model_call(chat_id=chat_id, user_question=user_question, callback=callback)
                 if answer_from_model[0] == "F":
                     await message.answer("Что-то пошло не так, повторяю запрос")
                     answer_from_model = await bot_data_handler.model_call(chat_id=chat_id, user_question=user_question,
@@ -638,8 +641,9 @@ async def process_model(message, state):
                 else:
                     await message.answer(f"Answer: {answer_from_model[0]}")
         except requests.exceptions.ConnectionError:
-            await call_to_model(message, state)
             await message.answer("Что-то пошло не так, пожалуйста, повторите вопрос или используйте команду start")
+        except Exception as e:
+            print(traceback.format_exc())
 
 
 @dp.message_handler(state='*')

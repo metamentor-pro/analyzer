@@ -1,3 +1,5 @@
+import asyncio
+
 from langchain.memory import ConversationBufferMemory
 import openai
 import logging
@@ -147,7 +149,7 @@ class CustomPromptTemplate(StringPromptTemplate):
 class BaseMinion:
     def __init__(self, base_prompt: str, available_tools: List[Tool], model: BaseLanguageModel,
                  max_iterations: int = 500, df_head: Any = None, df_info: Any = None,
-                 callback: Union[Callable, None] = None, summarize_model: Union[str, None] = None) -> None:
+                 callback: Union[Callable, None] = None, summarize_model: Union[str, None] = None, stop_event = None) -> None:
 
         self.callback = callback
         self.model = model
@@ -155,8 +157,7 @@ class BaseMinion:
         self.base_prompt = base_prompt
         self.df_head = df_head
         self.df_info = df_info
-
-
+        self.stop_event = stop_event
         llm = model
         available_tools.append(WarningTool().get_tool())
 
@@ -221,24 +222,24 @@ class BaseMinion:
             agent=agent, tools=available_tools, verbose=True, max_iterations=max_iterations
         )
 
+    import asyncio
     def run(self, **kwargs):
-
         question = kwargs["input"]
-        with get_openai_callback() as cb:
-            ans = (
-                self.agent_executor.run(**kwargs)
-                or "No result. The execution was probably unsuccessful."
-            )
+        print(self.stop_event.is_set())
+        while not self.stop_event.is_set():
+            if self.stop_event.is_set():
+                break
+            with get_openai_callback() as cb:
+                ans = asyncio.run(self.agent_executor.arun(**kwargs))
+                if config.config["price_flag"] == True:
+                    self.callback(cb)
+                summary = self.summarizer.add_question_answer(question, ans)
+                final_answer = [ans, summary]
+                return final_answer
+                # Do not return here; continue the loop until stop_event is set.
 
-        if config.config["price_flag"] == True:
-            self.callback(cb)
-        summary = self.summarizer.add_question_answer(question, ans)
+        print("stopping iteration")
 
-        final_answer = []
-
-        final_answer.append(ans)
-        final_answer.append(summary)
-        return final_answer
 
 
 class SubagentTool(BaseMinion):
