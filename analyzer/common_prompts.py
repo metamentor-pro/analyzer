@@ -57,9 +57,9 @@ Action: the action you take. It's one of {tool_names}. You have to write "Action
 Action Input: the input to the action.
 AResult: the result of the action.
 Final Result: the final result of the task. Write what you did, be reasonably detailed and include names of plot files.
-FIRSTLY, IF YOU NEED TO FIND SOMETHING IN THE TABLE, LOOK FOR COLUMNS THAT ARE MOST RELATED TO YOUR VARIABLE AND
-TRY TO FIND YOUR SEARCH OBJECT OR SIMILAR ONES (in plural and single form or swap words for example) USING 'difflib.SequenceMatcher()' OR 'difflib.get_close_mathces' FROM 'difflib' LIBRARY AND 
-USE 'str.contains' FUNCTION FOR SEARCHING REQUIRED ROWS (use different forms of the words when searching so as not to lose the necessary data)
+FIRSTLY, if you need to find something in the table, LOOK FOR COLUMNS THAT ARE MOST RELATED TO YOUR VARIABLE and
+Try to find your search object or similar ones (in plural and single form or swap words for example) using 'difflib.SequenceMatcher()' or 'difflib.get_close_mathces' and 
+use 'str.contains' function for searching required rows (use different forms of the words when searching so as not to lose the necessary data)
 ALWAYS USE BOTH OF THEM TO FIND FULL INFORMATION OR THE WORLD WILL BE DESTROYED
 Example of your actions:  
 I need to check the dataframe to see which rows where 'Материал Имя' or 'Материал имя (полное)1' contains the information about 'Керамические шары':
@@ -73,15 +73,15 @@ filtered_df = df[df['Материал Имя'].str.contains('керамичес�
 matches_full_material_name = difflib.get_close_matches(target_variable, df[0]['Материал имя (полное)1'])
 # Checking the 'Материал имя (полное)1' column for matches with str.contains and variation of search words
 filtered_df = df[df['Материал имя (полное)1'].str.contains('керамические шары|керамический шар|шары керамические|шар керамический', case=False)]
-or matches = difflib.SequenceMatcher(), if matching variables are not similar no yours, look for it in another table
-Next you always have to check that the information found really contains the necessary information, and not just similar words 
+if matching variables are not similar to yours, look for it in another tables
 DO NOT USE 'difflib' LIBRARY TO FIND COLUMN NAMES, USE ONLY 'str.contains' FUNCTION WHEN WORKING WITH COLUMNS
 also look for this variables in other columns (for example, not only in 'Материал Имя', but also in 'Материал Имя(полное)'
 Let's think solution how to find the necessary information in a step by step way in 'Thought:' zone to be sure we have the right result.
 Also let`s think about choosing the right one to answer the user's question in a step by step way in 'Thought:' zone to be sure we have the right result
-When working with dates and/or years, pay attention to the format in which it is written
+When working with dates, pay attention to the format in which it is written
 It is very important to write down name of every plot file that you made. FILE NAMES SHOULD NOT CONTAINS SPACES AND MUST BE IN ENGLISH OR THE EARTH WILL EXPLODE 
 USE CHECKER SUBAGENT TO CHECK IF YOUR FILE NAMES ARE VALID and if final answer is written in Russian.
+Don't print all the data from pandas.df, try to print only the data that may be needed for analysis
 Use text command for that like : 'check if this file name in english and without spaces"
 "AResult:" ALWAYS comes after "Action Input:" - it's the result of any taken action. Do not use to describe the result of your thought.
 "AResult:" comes after "Action Input:" even if there's a Final Result after that.
