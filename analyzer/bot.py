@@ -20,6 +20,7 @@ import re
 import config
 import tracemalloc
 tracemalloc.start()
+matplotlib.use('Agg')
 
 logging.basicConfig(level=logging.WARNING)
 
