@@ -147,7 +147,7 @@ async def callback_query(call: types.CallbackQuery, state: FSMContext) -> None:
             new_page = page - 1
 
         await inline_keyboard_manager.change_page(call.message.chat.id, page_type="table_page", new_page=new_page)
-        markup = await create_inline_keyboard(call.message.chat.id, page_type="table_page", new_page=new_page, status_flag=False)
+        markup = await create_inline_keyboard(call.message.chat.id, page_type="table_page", page=new_page, status_flag=False)
         await call.message.edit_text("Вы можете выбрать таблицу или добавить новую",
                                      reply_markup=markup)
     elif action == "exit":
@@ -282,7 +282,7 @@ async def callback_query(call: types.CallbackQuery, state: FSMContext):
             new_page = page - 1
 
         await inline_keyboard_manager.change_page(call.message.chat.id, page_type="context_page", new_page=new_page)
-        markup = await create_inline_keyboard(call.message.chat.id, page_type="context_page", new_page=new_page)
+        markup = await create_inline_keyboard(call.message.chat.id, page_type="context_page", page=new_page)
         await call.message.edit_text(text="Вы можете выбрать таблицу или добавить новую",
                                      reply_markup=markup)
 
@@ -354,7 +354,7 @@ async def callback_query(call: types.CallbackQuery, state: FSMContext):
             new_page = page - 1
 
         await inline_keyboard_manager.change_page(call.message.chat.id, page_type="description_page", new_page=new_page)
-        markup = await create_inline_keyboard(call.message.chat.id, page_type="description_page", new_page=new_page)
+        markup = await create_inline_keyboard(call.message.chat.id, page_type="description_page", page=new_page)
         await call.message.edit_text(text="Вы можете выбрать таблицу или добавить новую",
                                      reply_markup=markup)
     elif action == "exit":
