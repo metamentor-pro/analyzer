@@ -262,7 +262,6 @@ async def add_description(message: types.Message, state: FSMContext):
     markup = await create_inline_keyboard(message.chat.id, page_type="context_page")
 
     await message.reply("Выберите, к какой таблице вы хотите добавить описание", reply_markup=markup)
-    await main_menu(message)
 
 
 @dp.callback_query_handler(Text(startswith="c|"), state="*")
