@@ -1,8 +1,5 @@
 import asyncio
-import concurrent
-import multiprocessing
-import traceback
-from langchain.memory import ConversationBufferMemory
+import datetime
 import openai
 import logging
 import re
@@ -74,7 +71,8 @@ class CustomPromptTemplate(StringPromptTemplate):
     project: Any | None = None
     callback: Union[Callable, None] = None
     summary_line = ""
-    stop_event: asyncio.locks.Event  = None
+    stop_event: asyncio.locks.Event = None
+    start_time: Any = None
 
     @property
     def _prompt_type(self) -> str:
@@ -94,7 +92,6 @@ class CustomPromptTemplate(StringPromptTemplate):
         # Get the intermediate steps (AgentAction, AResult tuples)
         # Format them in a particular way
         intermediate_steps = kwargs.pop("intermediate_steps")
-
         # if self.callback is not None and len(intermediate_steps) > 0:
         # self.callback(intermediate_steps[-1][0].log)
         if (
@@ -118,21 +115,31 @@ class CustomPromptTemplate(StringPromptTemplate):
                     self.summary_line += "\n" + self.last_summary
                 self.callback(self.summary_line)
         if self.my_summarize_agent:
-
             if self.stop_event is not None and self.stop_event.is_set() == True:
                 self.callback("Останавливаю свою работу")
 
                 kwargs["agent_scratchpad"] = "YOU SHOULD STOP YOUR WORK IMMEDIATLY AND RETURN FINAL ANSWER. STOP YOUR WORK OR WE ALL DIE. STOP"
+
+            elif self.start_time is not None:
+                time_passed = datetime.datetime.now() - self.start_time
+                print(time_passed)
+                if (time_passed.seconds)//60 >= 3:
+                    print("Ускроряюсь")
+                    kwargs["agent_scratchpad"] = "YOUR THOUGHT PROCESS TAKES TO MUCH TIME. HURRY UP! HARRY UP!" + (
+                    "Here is a summary of what has happened:\n" + self.last_summary
+                    )
+                    kwargs["agent_scratchpad"] += "\nEND OF SUMMARY\n"
             else:
                 kwargs["agent_scratchpad"] = (
-                    "Here is a summary of what has happened:\n" + self.last_summary
+                        "Here is a summary of what has happened:\n" + self.last_summary
                 )
                 kwargs["agent_scratchpad"] += "\nEND OF SUMMARY\n"
         else:
             kwargs["agent_scratchpad"] = ""
         tokens_integer = encoding.encode(self.thought_log(intermediate_steps))
         if len(tokens_integer) > 3500:
-            kwargs["agent_scratchpad"] = "Here go your thoughts and actions:\n" + self.thought_log(intermediate_steps[1000:])
+            forget = int(0.3*len(intermediate_steps))
+            kwargs["agent_scratchpad"] = "Here go your thoughts and actions:\n" + self.thought_log(intermediate_steps[forget])
             print("deleted")
 
         else:
@@ -219,7 +226,8 @@ class BaseMinion:
             agent_toolnames=agent_toolnames,
             my_summarize_agent=self.summarizer,
             callback=self.callback,
-            stop_event=self.stop_event
+            stop_event=self.stop_event,
+            start_time=datetime.datetime.now()
         )
         llm_chain = LLMChain(llm=llm, prompt=self.prompt)
         output_parser = CustomOutputParser()
