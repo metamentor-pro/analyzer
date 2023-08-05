@@ -68,7 +68,7 @@ async def get_description(chat_id: int = None) -> List:
 
                 if existing_record is not None:
                     group_id = await get_group_id(group_name=group_name,admin_id=admin_id)
-                    description = await con.execute("SELECT table_description FROM group_tables WHERE admin_id == ? AND table_name == ? AND group_id",  (admin_id, table, group_id))
+                    description = await con.execute("SELECT table_description FROM group_tables WHERE admin_id == ? AND table_name == ? AND group_id == ?",  (admin_id, table, group_id))
                     description = await description.fetchone()
 
                     if not description or description[0] is None:
