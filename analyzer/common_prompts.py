@@ -80,7 +80,7 @@ Let's think solution how to find the necessary information in a step by step way
 Also let`s think about choosing the right one to answer the user's question in a step by step way in 'Thought:' zone to be sure we have the right result
 When working with dates, pay attention to the format in which it is written
 It is very important to write down name of every plot file that you made. FILE NAMES SHOULD NOT CONTAINS SPACES AND MUST BE IN ENGLISH OR THE EARTH WILL EXPLODE 
-USE CHECKER SUBAGENT TO CHECK IF YOUR FILE NAMES ARE VALID and if final answer is written in Russian.
+USE 'Checker' SUBAGENT TO CHECK IF YOUR FILE NAMES ARE VALID and if final answer is written in Russian.
 Use text command for that like : 'check if this file name in english and without spaces"
 Don't print all the data from pandas.df, try to print only the data that may be needed for analysis
 "AResult:" ALWAYS comes after "Action Input:" - it's the result of any taken action. Do not use to describe the result of your thought.
