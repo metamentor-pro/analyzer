@@ -63,7 +63,6 @@ async def get_description(chat_id: int = None) -> List:
             admin_id = await admin_id.fetchone()
             admin_id = admin_id[0]
             for table in table_name:
-                con = aiosqlite.connect(db_name)
                 existing_record = await con.execute("SELECT * FROM group_tables WHERE admin_id == ? AND table_name == ? AND group_name == ?", (admin_id, table, group_name))
                 existing_record = existing_record.fetchone()
 
