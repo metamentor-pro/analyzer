@@ -1,5 +1,7 @@
 import asyncio
-
+import concurrent
+import multiprocessing
+import traceback
 from langchain.memory import ConversationBufferMemory
 import openai
 import logging
@@ -22,6 +24,7 @@ df_head_sub = None
 df_info_sub = None
 
 encoding = tiktoken.encoding_for_model("gpt-4")
+
 
 def find_thought(text):
     pattern = r"Thought:(.*)"
@@ -71,6 +74,7 @@ class CustomPromptTemplate(StringPromptTemplate):
     project: Any | None = None
     callback: Union[Callable, None] = None
     summary_line = ""
+    stop_event: asyncio.locks.Event  = None
 
     @property
     def _prompt_type(self) -> str:
@@ -114,10 +118,16 @@ class CustomPromptTemplate(StringPromptTemplate):
                     self.summary_line += "\n" + self.last_summary
                 self.callback(self.summary_line)
         if self.my_summarize_agent:
-            kwargs["agent_scratchpad"] = (
+
+            if self.stop_event is not None and self.stop_event.is_set() == True:
+                self.callback("Останавливаю свою работу")
+
+                kwargs["agent_scratchpad"] = "YOU SHOULD STOP YOUR WORK IMMEDIATLY AND RETURN FINAL ANSWER. STOP YOUR WORK OR WE ALL DIE. STOP"
+            else:
+                kwargs["agent_scratchpad"] = (
                     "Here is a summary of what has happened:\n" + self.last_summary
-            )
-            kwargs["agent_scratchpad"] += "\nEND OF SUMMARY\n"
+                )
+                kwargs["agent_scratchpad"] += "\nEND OF SUMMARY\n"
         else:
             kwargs["agent_scratchpad"] = ""
         tokens_integer = encoding.encode(self.thought_log(intermediate_steps))
@@ -149,7 +159,7 @@ class CustomPromptTemplate(StringPromptTemplate):
 class BaseMinion:
     def __init__(self, base_prompt: str, available_tools: List[Tool], model: BaseLanguageModel,
                  max_iterations: int = 500, df_head: Any = None, df_info: Any = None,
-                 callback: Union[Callable, None] = None, summarize_model: Union[str, None] = None, stop_event = None) -> None:
+                 callback: Union[Callable, None] = None, summarize_model: Union[str, None] = None, stop_event:asyncio.locks.Event = None) -> None:
 
         self.callback = callback
         self.model = model
@@ -208,7 +218,8 @@ class BaseMinion:
             ),
             agent_toolnames=agent_toolnames,
             my_summarize_agent=self.summarizer,
-            callback=self.callback
+            callback=self.callback,
+            stop_event=self.stop_event
         )
         llm_chain = LLMChain(llm=llm, prompt=self.prompt)
         output_parser = CustomOutputParser()
@@ -222,33 +233,25 @@ class BaseMinion:
             agent=agent, tools=available_tools, verbose=True, max_iterations=max_iterations
         )
 
-    import asyncio
     def run(self, **kwargs):
         question = kwargs["input"]
-        print(self.stop_event.is_set())
-        while not self.stop_event.is_set():
-            if self.stop_event.is_set():
-                break
-            with get_openai_callback() as cb:
-                ans = asyncio.run(self.agent_executor.arun(**kwargs))
-                if config.config["price_flag"] == True:
-                    self.callback(cb)
-                summary = self.summarizer.add_question_answer(question, ans)
-                final_answer = [ans, summary]
-                return final_answer
-                # Do not return here; continue the loop until stop_event is set.
-
-        print("stopping iteration")
-
+        with get_openai_callback() as cb:
+            ans = self.agent_executor.run(**kwargs)
+        if config.config["price_flag"]:
+            self.callback(cb)
+        summary = self.summarizer.add_question_answer(question, ans)
+        final_answer = []
+        final_answer.append(ans)
+        final_answer.append(summary)
+        return final_answer
 
 
 class SubagentTool(BaseMinion):
-    def __init__(self, base_prompt: str, available_tools: List[Tool], model: BaseLanguageModel, df_head_sub: Any = None, df_info_sub: Any = None,
-                 max_iterations: int = 50) -> None:
-
+    def __init__(self, base_prompt: str, available_tools: List[Tool], model: BaseLanguageModel,
+                 max_iterations: int = 50, stop_event: asyncio.locks.Event = None) -> None:
         llm = model
         agent_toolnames = [tool.name for tool in available_tools]
-
+        self.stop_event = stop_event
         class Summarizer:
             def __init__(self, inner_summarize_model: Union[str, None] = None):
                 self.summary = ""
@@ -285,18 +288,18 @@ class SubagentTool(BaseMinion):
             ),
             agent_toolnames=agent_toolnames,
             my_summarize_agent=self.summarizer,
-
+            stop_event=self.stop_event
         )
-        llm_chain = LLMChain(llm=llm, prompt=self.prompt)
-        output_parser = CustomOutputParser()
-        agent = LLMSingleActionAgent(
-            llm_chain=llm_chain,
-            output_parser=output_parser,
+        self.llm_chain = LLMChain(llm=llm, prompt=self.prompt)
+        self.output_parser = CustomOutputParser()
+        self.agent = LLMSingleActionAgent(
+            llm_chain=self.llm_chain,
+            output_parser=self.output_parser,
             stop=["AResult:"],
             allowed_tools=[tool.name for tool in available_tools],
         )
         self.agent_executor = AgentExecutor.from_agent_and_tools(
-            agent=agent, tools=available_tools, verbose=True, max_iterations=max_iterations
+            agent=self.agent, tools=available_tools, verbose=True, max_iterations=max_iterations
         )
 
     def run(self, **kwargs):
@@ -305,7 +308,11 @@ class SubagentTool(BaseMinion):
                 self.agent_executor.run(**kwargs)
                 or "No result. The execution was probably unsuccessful."
         )
-        return ans
+        summary = self.summarizer.add_question_answer(question, ans)
+        final_answer = []
+        final_answer.append(ans)
+        final_answer.append(summary)
+        return final_answer
 
     name: str
     description: str
@@ -332,7 +339,7 @@ class Calculator(SubagentTool):
     def func(self, args: str) -> str:
         if (self.df_head is not None) and (self.df_info is not None):
             result = self.run(input=args, df_head=self.df_head, df_info=self.df_info)
-            return '\r' + result + '\n'
+            return '\r' + result[0] + '\n'
         else:
             return "Not enough data"
 
@@ -352,7 +359,7 @@ class Checker(SubagentTool):
     def func(self, args: str) -> str:
         if (self.df_head is not None) and (self.df_info is not None):
             result = self.run(input=args, df_head=self.df_head, df_info=self.df_info)
-            return '\r' + result + '\n'
+            return '\r' + result[0] + '\n'
         else:
             return "Not enough data"
 

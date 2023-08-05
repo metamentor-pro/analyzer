@@ -223,7 +223,6 @@ async def model_call(chat_id, user_question, callback):
     build_plots = settings["build_plots"]
     global stop_event
     stop_event = asyncio.Event()
-
     # Create a function to stop the process when called
 
     loop = asyncio.get_event_loop()

@@ -1,4 +1,4 @@
-import asyncio
+
 import os
 import sys
 import time
@@ -6,7 +6,6 @@ import requests
 import logging
 import traceback
 import asyncio
-import threading
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
@@ -578,73 +577,73 @@ async def call_to_model(message: types.Message, state: FSMContext):
 
 
 async def process_model(message, state):
-
     if message.text == "Да":
         user_question = "Проведи исследовательский анализ данных по таблице"
     else:
         user_question = message.text
-        print(message.text)
-        chat_id = message.chat.id
-        settings = await db_manager.get_settings(chat_id)
-        try:
-            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-            btn1 = types.KeyboardButton("🚫 exit")
-            markup.add(btn1)
-            if settings["table_name"] is None or settings["table_name"] == "":
-                await message.answer("Таблицы не найдены, вы можете выбрать другие")
-                await message.answer(text="Вы можете выйти из режима работы с моделью с помощью 'exit'",
-                             reply_markup=markup)
-            else:
-                await message.answer(text="Обрабатываю запрос, вы можете выйти из режима работы с моделью с помощью 'exit'",
-                                 reply_markup=markup)
-                await message.answer("Учтите, что первичная обработка больших таблиц может занять несколько минут, спасибо")
-                send_message = await message.answer("Здесь будет описан процесс моих рассуждений:")
 
-                def callback(sum_on_step):
-                    message_id = send_message.message_id
-                    telebot_bot.edit_message_text(chat_id=chat_id, message_id=message_id,
+    chat_id = message.chat.id
+    settings = await db_manager.get_settings(chat_id)
+    try:
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        btn1 = types.KeyboardButton("🚫 exit")
+        markup.add(btn1)
+        if settings["table_name"] is None or settings["table_name"] == "":
+            await message.answer("Таблицы не найдены, вы можете выбрать другие")
+            await message.answer(text="Вы можете выйти из режима работы с моделью с помощью 'exit'",
+                             reply_markup=markup)
+        else:
+            await message.answer(text="Обрабатываю запрос, вы можете выйти из режима работы с моделью с помощью 'exit'",
+                                 reply_markup=markup)
+            await message.answer("Учтите, что первичная обработка больших таблиц может занять несколько минут, спасибо")
+            send_message = await message.answer("Здесь будет описан процесс моих рассуждений:")
+
+            def callback(sum_on_step):
+                message_id = send_message.message_id
+                telebot_bot.edit_message_text(chat_id=chat_id, message_id=message_id,
                                                   text=send_message.text + f"\n{sum_on_step}")
 
-                answer_from_model = await bot_data_handler.model_call(chat_id=chat_id, user_question=user_question, callback=callback)
-                if answer_from_model[0] == "F":
-                    await message.answer("Что-то пошло не так, повторяю запрос")
-                    answer_from_model = await bot_data_handler.model_call(chat_id=chat_id, user_question=user_question,
+            answer_from_model = await bot_data_handler.model_call(chat_id=chat_id, user_question=user_question, callback=callback)
+            if answer_from_model[0] == "F":
+                await message.answer("Что-то пошло не так, повторяю запрос")
+                answer_from_model = await bot_data_handler.model_call(chat_id=chat_id, user_question=user_question,
                                                    callback=callback)
-                    if answer_from_model[0] == "F":
-                        await message.answer("Что-то пошло не так")
-                current_summary = await bot_data_handler.get_summary(chat_id)
-                summary = answer_from_model[1]
-                new_summary = current_summary + summary
-                await db_manager.update_summary(chat_id, new_summary)
-                time.sleep(10)
-                pattern = r"\b\w+\.png\b"
-                pattern2 = r"[\w.-]+\.png"
-                if ".png" in answer_from_model[1]:
-                    plot_files = re.findall(pattern, answer_from_model[1])
-                    plot_files_2 = re.findall(pattern2, answer_from_model[1])
-                    print("plot_files", plot_files, plot_files_2)
-                    for plot_file in plot_files:
-                        path_to_file = "Plots/" + plot_file
-                        if os.path.exists(path_to_file):
-                            await message.answer_photo(open(path_to_file, "rb"))
-                        path_to_file = "Plots/" + plot_file
-                        if os.path.exists(path_to_file):
-                            os.remove(path_to_file)
-                    for plot_file in plot_files_2:
-                        path_to_file = "Plots/" + plot_file
-                        if os.path.exists(path_to_file) and path_to_file not in plot_files:
-                            await message.answer_photo(open(path_to_file, "rb"))
-                        path_to_file = "Plots/" + plot_file
-                        if os.path.exists(path_to_file):
-                            os.remove(path_to_file)
-                    matplotlib.pyplot.close("all")
-                    await message.answer(f"Answer: {answer_from_model[0]}")
-                else:
-                    await message.answer(f"Answer: {answer_from_model[0]}")
-        except requests.exceptions.ConnectionError:
-            await message.answer("Что-то пошло не так, пожалуйста, повторите вопрос или используйте команду start")
-        except Exception as e:
-            print(traceback.format_exc())
+            if answer_from_model[0] == "F":
+                await message.answer("Что-то пошло не так")
+
+            current_summary = await bot_data_handler.get_summary(chat_id)
+            summary = answer_from_model[1]
+            new_summary = current_summary + summary
+            await db_manager.update_summary(chat_id, new_summary)
+            time.sleep(10)
+            pattern = r"\b\w+\.png\b"
+            pattern2 = r"[\w.-]+\.png"
+            if ".png" in answer_from_model[1]:
+                plot_files = re.findall(pattern, answer_from_model[1])
+                plot_files_2 = re.findall(pattern2, answer_from_model[1])
+                print("plot_files", plot_files, plot_files_2)
+                for plot_file in plot_files:
+                    path_to_file = "Plots/" + plot_file
+                    if os.path.exists(path_to_file):
+                        await message.answer_photo(open(path_to_file, "rb"))
+                    path_to_file = "Plots/" + plot_file
+                    if os.path.exists(path_to_file):
+                        os.remove(path_to_file)
+                for plot_file in plot_files_2:
+                    path_to_file = "Plots/" + plot_file
+                    if os.path.exists(path_to_file) and path_to_file not in plot_files:
+                        await message.answer_photo(open(path_to_file, "rb"))
+                    path_to_file = "Plots/" + plot_file
+                    if os.path.exists(path_to_file):
+                        os.remove(path_to_file)
+                matplotlib.pyplot.close("all")
+                await message.answer(f"Answer: {answer_from_model[0]}")
+            else:
+                await message.answer(f"Answer: {answer_from_model[0]}")
+    except requests.exceptions.ConnectionError:
+        await message.answer("Что-то пошло не так, пожалуйста, повторите вопрос или используйте команду start")
+    except Exception as e:
+        print(traceback.format_exc())
 
 
 @dp.message_handler(state='*')
@@ -671,7 +670,14 @@ async def create_inline_keyboard(chat_id, page_type, page=1, status_flag: bool =
 
 
 async def main():
-    await dp.start_polling()
+    while True:
+        try:
+            await dp.start_polling()
+        except KeyboardInterrupt:
+            break
+        except Exception as e:
+            print(traceback.format_exc())
+            await dp.start_polling()
 
 if __name__ == "__main__":
     asyncio.run(main())

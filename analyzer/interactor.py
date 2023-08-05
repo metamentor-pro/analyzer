@@ -51,7 +51,7 @@ def df_info_description(i: int, df: pd.DataFrame) -> str:
 
 
 def preparation(path_list: List[str] = [], build_plots: Union[bool, None] = None, current_summary: Union[str, None] = "",
-                table_description: List[str] = None, context_list: List[str] = None, callback: Callable = None, stop_event = None):
+                table_description: List[str] = None, context_list: List[str] = None, callback: Callable = None, stop_event: asyncio.locks.Event = None):
 
     with open("config.yaml") as f:
         cfg = yaml.load(f, Loader=yaml.FullLoader)
@@ -111,7 +111,7 @@ logging.basicConfig(level=logging.INFO, filename="py_log.log", filemode="w")
 
 
 def run_loop_bot(path_list: List[str] = None, build_plots: Union[bool, None] = False, user_question: Union[str, None] = None, current_summary: Union[str, None] = "",
-                 table_description: List[str] = None, context_list: List[str] = None, callback: Callable = None, stop_event = None):
+                 table_description: List[str] = None, context_list: List[str] = None, callback: Callable = None, stop_event: asyncio.locks.Event = None):
     ag, df_head, df_info = preparation(path_list=path_list, build_plots=build_plots, current_summary=current_summary, table_description=table_description, context_list=context_list, callback=callback, stop_event=stop_event)
     while True:
         question = user_question  # this is for interacting with the user's request via a bot
