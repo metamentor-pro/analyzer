@@ -20,8 +20,7 @@ import config
 import tracemalloc
 tracemalloc.start()
 matplotlib.use('Agg')
-
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.INFO, filename="py_log.log",filemode="w")
 
 if len(sys.argv) > 1:
     API_TOKEN = config.read_config(sys.argv[1])["bot_api"]
