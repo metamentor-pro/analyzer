@@ -641,6 +641,7 @@ async def process_model(message, state):
     except requests.exceptions.ConnectionError:
         await message.answer("Что-то пошло не так, пожалуйста, повторите вопрос или используйте команду start")
     except Exception as e:
+        logging.error(traceback.format_exc())
         print(traceback.format_exc())
 
 
@@ -675,6 +676,7 @@ async def main():
             break
         except Exception as e:
             print(traceback.format_exc())
+            logging.error(traceback.format_exc())
             await dp.start_polling()
 
 if __name__ == "__main__":
