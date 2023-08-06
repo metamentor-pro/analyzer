@@ -124,8 +124,7 @@ class CustomPromptTemplate(StringPromptTemplate):
                 time_passed = datetime.datetime.now() - self.start_time
                 print(time_passed)
                 if (time_passed.seconds)//60 >= 3:
-                    print("Ускроряюсь")
-                    kwargs["agent_scratchpad"] = "YOUR THOUGHT PROCESS TAKES TO MUCH TIME. HURRY UP! HARRY UP!" + (
+                    kwargs["agent_scratchpad"] = ("YOUR THOUGHT PROCESS TAKES TO MUCH TIME. HURRY UP! HARRY UP!" +
                     "Here is a summary of what has happened:\n" + self.last_summary
                     )
                     kwargs["agent_scratchpad"] += "\nEND OF SUMMARY\n"
@@ -139,7 +138,7 @@ class CustomPromptTemplate(StringPromptTemplate):
         tokens_integer = encoding.encode(self.thought_log(intermediate_steps))
         if len(tokens_integer) > 3500:
             forget = int(0.3*len(intermediate_steps))
-            kwargs["agent_scratchpad"] = "Here go your thoughts and actions:\n" + self.thought_log(intermediate_steps[forget])
+            kwargs["agent_scratchpad"] = "Here go your thoughts and actions:\n" + self.thought_log(intermediate_steps[forget:])
             print("deleted")
 
         else:
