@@ -1,4 +1,3 @@
-
 import os
 import sys
 import time
@@ -12,15 +11,18 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
 import aiosqlite
+from dotenv import load_dotenv
 
 import matplotlib
 import re
 
 import config
 import tracemalloc
+
+load_dotenv()
 tracemalloc.start()
 matplotlib.use('Agg')
-logging.basicConfig(level=logging.INFO, filename="py_log.log",filemode="w")
+logging.basicConfig(level=logging.INFO, filename="py_log.log", filemode="w")
 
 if len(sys.argv) > 1:
     API_TOKEN = config.read_config(sys.argv[1])["bot_api"]
@@ -37,11 +39,14 @@ bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
 import telebot
 
+
 class Bot(telebot.TeleBot):
     def __init__(self):
         super().__init__(API_TOKEN)
 
+
 telebot_bot = Bot()
+
 
 class Form(StatesGroup):
     working = State()
@@ -74,7 +79,7 @@ async def main_menu(message: types.Message, state: FSMContext):
     if first_time:
         await help_info(message)
     is_group = await db_manager.check_for_group(message)
-    if is_group == True:
+    if is_group:
         markup = await bot_data_handler.start_markup(is_group=True)
     else:
         markup = await bot_data_handler.start_markup(is_group=False)
@@ -87,7 +92,7 @@ async def main_menu(message: types.Message, state: FSMContext):
 async def help_info(message: types.Message):
     await message.reply("""Здравствуйте, я автономный помощник для проведения различной аналитики
 Я могу отвечать на вопросы по предоставленным данным, строить графики и проводить нужные вычисления""")
-    
+
     help_text = """
 * Используйте кнопку 'Выбрать Таблицу' для выбора и добавления таблиц
 * Используйте кнопку 'Добавить описание' для добавления описания к нужным таблицам
@@ -97,19 +102,19 @@ async def help_info(message: types.Message):
 * Используйте кнопку 'Группы таблиц' для создания и настройки групп таблиц"""
 
     await message.reply(help_text, parse_mode=types.ParseMode.MARKDOWN)
-    
+
     example = "Пример запроса: 'Проведи исследовательский анализ данных по предоставленной таблице'"
     await message.reply(example)
-    
+
     instructions = """
 Для того, чтобы начать общение с ботом:
 1) Нажмите кнопку 'Выбрать таблицу', затем добавьте новую таблицу или воспользуйтесь уже добавленной
 2) После этого вы можете добавить описание и контекст к вашим данным для лучшей работы модели
 3) Нажмите кнопку 'Режим отправки запроса' и напишите свой запрос модели, дождитесь ответа
 4) После получения ответа можете задать вопрос или выйти из режима в главное меню"""
-    
+
     await message.reply(instructions)
-    
+
     trouble = "В случае проблем с ботом попробуйте перезапустить его через команду 'start'"
     await message.reply(trouble)
 
@@ -135,7 +140,7 @@ async def callback_query(call: types.CallbackQuery, state: FSMContext) -> None:
         await call.message.answer(f"Таблица {tables[-1]} удалена из текущего списка")
 
     elif action in ("right", "left"):
-        amount = await inline_keyboard_manager.get_pages_amount(chat_id=chat_id,)
+        amount = await inline_keyboard_manager.get_pages_amount(chat_id=chat_id, )
         page = await inline_keyboard_manager.get_page(chat_id=chat_id, page_type="table_page")
         new_page = page
 
@@ -146,7 +151,8 @@ async def callback_query(call: types.CallbackQuery, state: FSMContext) -> None:
             new_page = page - 1
 
         await inline_keyboard_manager.change_page(call.message.chat.id, page_type="table_page", new_page=new_page)
-        markup = await create_inline_keyboard(call.message.chat.id, page_type="table_page", page=new_page, status_flag=False)
+        markup = await create_inline_keyboard(call.message.chat.id, page_type="table_page", page=new_page,
+                                              status_flag=False)
         await call.message.edit_text("Вы можете выбрать таблицу или добавить новую",
                                      reply_markup=markup)
     elif action == "exit":
@@ -160,7 +166,6 @@ async def callback_query(call: types.CallbackQuery, state: FSMContext) -> None:
 
 @dp.message_handler(content_types=['document'], state=Form.load_table)
 async def load_table(message: types.Message, state: FSMContext):
-
     chat_id = message.chat.id
     message = message
     data = await state.get_data()
@@ -182,7 +187,7 @@ async def load_table(message: types.Message, state: FSMContext):
                 async with aiosqlite.connect(db_name) as con:
                     existing_record = await con.execute(
                         """SELECT * FROM group_tables WHERE admin_id == ? AND table_name == ? and group_id == ?""",
-                    (chat_id, message.document.file_name, group_id))
+                        (chat_id, message.document.file_name, group_id))
                     existing_record = await existing_record.fetchone()
 
                 if existing_record is None:
@@ -191,8 +196,8 @@ async def load_table(message: types.Message, state: FSMContext):
                     page_type = "table_page"
                     markup2 = await create_inline_keyboard(chat_id=chat_id, page_type=page_type)
                     await bot.edit_message_text(chat_id=chat_id, message_id=message_id,
-                                              text="Вы можете выбрать таблицу или добавить новую",
-                                              reply_markup=markup2)
+                                                text="Вы можете выбрать таблицу или добавить новую",
+                                                reply_markup=markup2)
                     await GroupForm.group_menu.set()
                     await group_main_menu(message, state)
                 else:
@@ -201,7 +206,7 @@ async def load_table(message: types.Message, state: FSMContext):
             else:
                 async with aiosqlite.connect(db_name) as con:
                     existing_record = await con.execute("SELECT * FROM tables WHERE user_id == ? AND table_name == ?",
-                            (chat_id, message.document.file_name))
+                                                        (chat_id, message.document.file_name))
                     existing_record = await existing_record.fetchone()
                     if existing_record is None:
                         await db_manager.add_table(message=message, downloaded_file=downloaded_file)
@@ -209,14 +214,14 @@ async def load_table(message: types.Message, state: FSMContext):
                         page_type = "table_page"
                         markup2 = await create_inline_keyboard(chat_id=chat_id, page_type=page_type)
                         await bot.edit_message_text(chat_id=chat_id, message_id=message_id,
-                                              text="Вы можете выбрать таблицу или добавить новую",
-                                              reply_markup=markup2)
+                                                    text="Вы можете выбрать таблицу или добавить новую",
+                                                    reply_markup=markup2)
                         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
                         btn1 = types.KeyboardButton("Нет")
                         btn2 = types.KeyboardButton("Да")
                         markup.row(btn2, btn1)
                         await bot.send_message(chat_id, "Хотите ли вы получить предварительную информацию по таблице?",
-                                         reply_markup=markup)
+                                               reply_markup=markup)
                         await Form.question.set()
                     else:
                         await bot.send_message(chat_id, "Данная таблица уже была добавлена, попробуйте другую")
@@ -232,7 +237,6 @@ async def load_table(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state=Form.choose_table)
 async def choose_table(call: types.callback_query, state: FSMContext):
-
     try:
         chat_id = call.message.chat.id
         text = call.data
@@ -270,7 +274,7 @@ async def callback_query(call: types.CallbackQuery, state: FSMContext):
     call.data = action
 
     if action in ("right", "left"):
-        amount = await inline_keyboard_manager.get_pages_amount(chat_id=chat_id,)
+        amount = await inline_keyboard_manager.get_pages_amount(chat_id=chat_id, )
         page = await inline_keyboard_manager.get_page(chat_id=chat_id, page_type="context_page")
         new_page = page
         if page < amount:
@@ -360,7 +364,8 @@ async def callback_query(call: types.CallbackQuery, state: FSMContext):
         await state.finish()
 
     else:
-        await call.message.answer(f"Таблица {action} выбрана, отправьте описание в формате txt или текстовым сообщением")
+        await call.message.answer(
+            f"Таблица {action} выбрана, отправьте описание в формате txt или текстовым сообщением")
         await Form.description.set()
         await state.update_data({'table_name': call.data})
     await bot.answer_callback_query(call.id)
@@ -368,7 +373,6 @@ async def callback_query(call: types.CallbackQuery, state: FSMContext):
 
 @dp.message_handler(content_types=['text', 'document'], state=Form.description)
 async def save_description(message: types.Message, state: FSMContext):
-
     chat_id = message.chat.id
     data = await state.get_data()
     table_name = data.get("message_id")
@@ -385,7 +389,8 @@ async def save_description(message: types.Message, state: FSMContext):
             file_id = message.document.file_id
             file = await bot.get_file(file_id)
             downloaded_file = await bot.download_file_by_id(file.file_id)
-            await db_manager.choose_description_db(message=message, table_name=table_name, downloaded_file=downloaded_file)
+            await db_manager.choose_description_db(message=message, table_name=table_name,
+                                                   downloaded_file=downloaded_file)
             if group_name is not None:
                 await group_main_menu(message, state)
             else:
@@ -401,6 +406,7 @@ async def save_description(message: types.Message, state: FSMContext):
 
 @dp.message_handler(Text(equals="🖻 Режим визуализации"), state="*")
 async def plot_on_click(message: types.Message, state: FSMContext) -> None:
+    # todo: we should add an inline keyboard here instead and not change the buttons
     chat_id = message.chat.id
     settings = await db_manager.get_settings(chat_id)
     if settings["build_plots"] == 0:
@@ -412,7 +418,7 @@ async def plot_on_click(message: types.Message, state: FSMContext) -> None:
     btn2 = types.KeyboardButton("Включить")
     markup.row(btn1, btn2)
     await bot.send_message(chat_id, f"Можете выбрать режим визуализации данных, он  {build_plots}  в данный момент",
-                     reply_markup=markup)
+                           reply_markup=markup)
     await Form.plot.set()
 
 
@@ -451,7 +457,8 @@ async def group_main_menu(message: types.Message, state: FSMContext) -> None:
     async with aiosqlite.connect(db_name) as con:
         await con.execute("select * from groups")
         if message.text == "Нет":
-            await con.execute("UPDATE groups SET design_flag = False WHERE admin_id == ? AND group_name == ?", (chat_id, group_name))
+            await con.execute("UPDATE groups SET design_flag = False WHERE admin_id == ? AND group_name == ?",
+                              (chat_id, group_name))
             await con.commit()
             await main_menu(message, state)
         else:
@@ -485,13 +492,13 @@ async def callback_query(call: types.CallbackQuery, state: FSMContext) -> None:
 
         markup = await inline_keyboard_manager.create_group_keyboard(chat_id=chat_id, show_groups=True)
         await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
-                              text="Вы можете выбрать группу",
-                              reply_markup=markup)
+                                    text="Вы можете выбрать группу",
+                                    reply_markup=markup)
     elif call.data == "back":
         markup = await inline_keyboard_manager.create_group_keyboard(chat_id=chat_id, show_groups=False)
         await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
-                              text="Вы можете выбрать группу или добавить новую",
-                              reply_markup=markup)
+                                    text="Вы можете выбрать группу или добавить новую",
+                                    reply_markup=markup)
     else:
 
         await GroupForm.choose_group.set()
@@ -504,7 +511,8 @@ async def create_group(message: types.Message, state: FSMContext) -> None:
     admin_id = message.chat.id
     group_name = message.text.replace(" ", "")
     group_name_for_link = "group_" + str(admin_id)
-    text = await db_manager.create_group(admin_id=admin_id, group_name=group_name, group_name_for_link=group_name_for_link)
+    text = await db_manager.create_group(admin_id=admin_id, group_name=group_name,
+                                         group_name_for_link=group_name_for_link)
     await bot.send_message(admin_id, text)
     await main_menu(message, state)
 
@@ -517,7 +525,8 @@ async def choose_group(admin_id: int = None, call: types.CallbackQuery = None, s
     btn1 = types.KeyboardButton("Да")
     btn2 = types.KeyboardButton("Нет")
     markup.row(btn1, btn2)
-    await bot.send_message(admin_id, text=f"Вы точно ходите перейти к редактированию группы {group_name}?", reply_markup=markup)
+    await bot.send_message(admin_id, text=f"Вы точно ходите перейти к редактированию группы {group_name}?",
+                           reply_markup=markup)
     await GroupForm.group_menu.set()
 
 
@@ -534,7 +543,7 @@ async def save_group_settings(message: types.Message, state: FSMContext) -> None
 async def group_table_list(message: types.Message, state: FSMContext) -> None:
     chat_id = message.chat.id
     prepared_settings = await bot_data_handler.settings_prep(chat_id)
-    if prepared_settings == False:
+    if not prepared_settings:
         await bot.send_message(chat_id, text="В данной группе пока нет доступных таблиц")
     else:
         await bot.send_message(chat_id, text=f"Доступные таблицы: {prepared_settings}")
@@ -550,7 +559,6 @@ async def exit_group_mode(message: types.Message, state: FSMContext):
 
 @dp.message_handler(content_types=['photo', 'document', 'text'], state=Form.question)
 async def call_to_model(message: types.Message, state: FSMContext):
-
     demo_status = await db_manager.check_for_demo(chat_id=message.chat.id)
     if demo_status is not None:
         pass
@@ -589,7 +597,7 @@ async def process_model(message, state):
         if settings["table_name"] is None or settings["table_name"] == "":
             await message.answer("Таблицы не найдены, вы можете выбрать другие")
             await message.answer(text="Вы можете выйти из режима работы с моделью с помощью 'exit'",
-                             reply_markup=markup)
+                                 reply_markup=markup)
         else:
             await message.answer(text="Обрабатываю запрос, вы можете выйти из режима работы с моделью с помощью 'exit'",
                                  reply_markup=markup)
@@ -599,13 +607,14 @@ async def process_model(message, state):
             def callback(sum_on_step):
                 message_id = send_message.message_id
                 telebot_bot.edit_message_text(chat_id=chat_id, message_id=message_id,
-                                                  text=send_message.text + f"\n{sum_on_step}")
+                                              text=send_message.text + f"\n{sum_on_step}")
 
-            answer_from_model = await bot_data_handler.model_call(chat_id=chat_id, user_question=user_question, callback=callback)
+            answer_from_model = await bot_data_handler.model_call(chat_id=chat_id, user_question=user_question,
+                                                                  callback=callback)
             if answer_from_model[0] == "F":
                 await message.answer("Что-то пошло не так, повторяю запрос")
                 answer_from_model = await bot_data_handler.model_call(chat_id=chat_id, user_question=user_question,
-                                                   callback=callback)
+                                                                      callback=callback)
             if answer_from_model[0] == "F":
                 await message.answer("Что-то пошло не так")
 
@@ -652,7 +661,6 @@ async def unknown_message(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state="*")
 async def create_inline_keyboard(chat_id, page_type, page=1, status_flag: bool = True):
-
     keyboard_types = ["table_page", "description_page", "context_page"]
 
     if page_type not in keyboard_types:
@@ -678,6 +686,7 @@ async def main():
             print(traceback.format_exc())
             logging.error(traceback.format_exc())
             await dp.start_polling()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

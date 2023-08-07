@@ -39,4 +39,5 @@ def read_config(path: str) -> Dict[str, Any]:
         print(f"Error parsing {path}: {e}")
         raise
 
+
 config = read_config('config.yaml')

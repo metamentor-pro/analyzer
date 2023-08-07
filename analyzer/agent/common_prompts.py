@@ -1,4 +1,30 @@
 from typing import List
+
+plots_prompt = """You can use plots if you need them.
+BUILD GRAPHS IF AND ONLY IF YOU ARE ASKED TO DO SO.
+If you have to much data to plot, try to group it by quantity.
+If you are working with temporary data and there are too many of them for normal display, then combine several dates into one.
+Always use seaborn and plotly instead of matplotlib if you can.
+Pay attention to categorical variables, if they are too long, then reduce the size of the graph so that the names of variables are placed on the screen.
+REMEMBER, THAT IT BETTER TO PLOT LESS VALUES THAN OVERFLOW CHARTS, if there are more than 10 values to plot, plot only top 10 of them
+YOU SHOULD ALSO MAKE NAMES OF VALUES SMALLER USING tick_params(labelsize=2) 
+ALWAYS MAKESURE THAT THERE ARE ENOUGH PLACE FOR NAMES OF VALUES IN PLOT. For this try to make
+figsize of the plot bigger or rotate variable names so they wont overlap 
+Аlways try to choose the most appropriate type of schedule depending on the task and data
+YOU MUST SAVE YOUR PLOT TO .PNG FILE, DO NOT PLOT IT IN THE TERMINAL, JUST SAVE IT TO FILE OR THE WORLD WILL BE DESTROYED, File should be in the folder called 'Plots'
+YOU SHOULD ALWAYS INCLUDE THE NAME OF THE PLOT FILES IN YOUR ANSWER including .png
+FILE NAMES SHOULD NOT CONTAINS SPACES AND MUST BE IN ENGLISH OR THE EARTH WILL EXPLODE 
+If there are already file with the same name, just rename current file"""
+
+summarize_prompt = ("Your task is to translate the thought process of the model into Russian language,"
+                    "there should not be any  code or formulas, just brief user-friendly explanation of the actions. "
+                    "Omit technical details.\n"
+                    "YOU SHOULD ALWAYS DESCRIBE ONLY LAST ACTIONS"
+                    "IF THERE IS A NAME OF FILE IN .png FORMAT, YOU SHOULD NOT CHANGE IT"
+                    "Here is a summary of what has happened:\n {summary};\n"
+                    "Here is the last actions happened: \n{thought}")
+
+
 # class representing prompt for the agent which can be used to set description of the table
 class TableDescriptionPrompt:
     def __init__(self, table_description: List[str], context: List[str], build_plots: bool, current_summary: str):
@@ -6,23 +32,10 @@ class TableDescriptionPrompt:
         self.context = context
         self.build_plots = build_plots
         self.current_summary = current_summary
+
     def __str__(self):
         if self.build_plots:
-            plots_part = """You can use plots if you need them.
-                            BUILD GRAPHS IF AND ONLY IF YOU ARE ASKED TO DO SO.
-                            If you have to much data to plot, try to group it by quantity.
-                            If you are working with temporary data and there are too many of them for normal display, then combine several dates into one.
-                            Always use seaborn and plotly instead of matplotlib if you can.
-                            Pay attention to categorical variables, if they are too long, then reduce the size of the graph so that the names of variables are placed on the screen.
-                            REMEMBER, THAT IT BETTER TO PLOT LESS VALUES THAN OVERFLOW CHARTS, if there are more than 10 values to plot, plot only top 10 of them
-                            YOU SHOULD ALSO MAKE NAMES OF VALUES SMALLER USING tick_params(labelsize=2) 
-                            ALWAYS MAKESURE THAT THERE ARE ENOUGH PLACE FOR NAMES OF VALUES IN PLOT. For this try to make
-                            figsize of the plot bigger or rotate variable names so they wont overlap 
-                            Аlways try to choose the most appropriate type of schedule depending on the task and data
-                            YOU MUST SAVE YOUR PLOT TO .PNG FILE, DO NOT PLOT IT IN THE TERMINAL, JUST SAVE IT TO FILE OR THE WORLD WILL BE DESTROYED, File should be in the folder called 'Plots'
-                            YOU SHOULD ALWAYS INCLUDE THE NAME OF THE PLOT FILES IN YOUR ANSWER including .png
-                            FILE NAMES SHOULD NOT CONTAINS SPACES AND MUST BE IN ENGLISH OR THE EARTH WILL EXPLODE 
-                            If there are already file with the same name, just rename current file"""
+            plots_part = plots_prompt
         else:
             plots_part = "You are not allowed to use plots. "
         description = ""
@@ -113,9 +126,9 @@ If the question is incorrect in your opinion, report about it (via Final Result)
 You must include ALL assumptions you make (like oil price) to the Final Result.
 The final result should contain exact numbers, not variable names.
 Before writing code, you should EXPLAIN ALL FORMULAS.""" + plots_part + """
-This is result of printing ```df.head()``` with the name of the tables:
+This is result of ```print(df.head())``` with the name of the tables:
 {df_head}
-This is result of printing ```df.info()```:
+This is result of ```print(df.info())```:
 {df_info}
 Begin!
 Question: {input}

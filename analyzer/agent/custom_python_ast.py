@@ -52,6 +52,7 @@ class CustomPythonAstREPLTool(BaseTool):
             module_end = ast.Module(tree.body[-1:], type_ignores=[])
             module_end_str = ast.unparse(module_end)  # type: ignore
             try:
+                # todo: ???
                 raise NotImplementedError("Not yet")
                 return eval(module_end_str, self.globals, self.locals)
             except Exception:

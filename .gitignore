@@ -4,4 +4,11 @@
 **__pycache__**
 **.log**
 help.py
-
+data/
+analyzer/data
+analyzer/Plots
+.clippy.pkl
+analyzer/.clippy.pkl
+Report.md
+Report.pdf
+**.sql

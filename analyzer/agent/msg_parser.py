@@ -1,5 +1,6 @@
 import extract_msg
 
+
 def msg_to_string(path: str):
     msg = extract_msg.Message(path)
     msg_sender = msg.sender

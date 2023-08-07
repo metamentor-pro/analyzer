@@ -1,12 +1,11 @@
 import aiosqlite
-import yaml
 import chardet
-from typing import Union, Callable, List
-from msg_parser import msg_to_string
+from typing import Union
+from agent.msg_parser import msg_to_string
 import config
-import traceback
 import logging
 import aiofiles
+
 logging.basicConfig(level=logging.INFO, filename="py_log.log", filemode="w",
                     format="%(asctime)s %(levelname)s %(message)s")
 
@@ -88,8 +87,10 @@ async def create_tables():
                           """)
     await con.commit()
 
+
 # Запустите функцию создания таблиц в асинхронном контексте
 import asyncio
+
 asyncio.run(create_tables())
 
 
@@ -103,8 +104,8 @@ async def check_for_group(message) -> bool:
         except Exception as e:
             text = message.text
             if text == "/start":
-
-                await con.execute("UPDATE callback_manager SET group_flag = ? WHERE user_id == ? ", (0, message.chat.id))
+                await con.execute("UPDATE callback_manager SET group_flag = ? WHERE user_id == ? ",
+                                  (0, message.chat.id))
                 await con.commit()
 
             return False
@@ -119,9 +120,11 @@ async def check_for_group(message) -> bool:
                 group_name = group_name[0]
                 await con.execute("UPDATE callback_manager SET group_flag = ? WHERE user_id == ?", (1, message.chat.id))
                 await con.commit()
-                await con.execute("UPDATE callback_manager SET group_name = ? WHERE user_id == ?", (group_name, message.chat.id))
+                await con.execute("UPDATE callback_manager SET group_name = ? WHERE user_id == ?",
+                                  (group_name, message.chat.id))
                 await con.commit()
-                await con.execute("UPDATE callback_manager SET admin_id = ? WHERE user_id == ?", (admin_id, message.chat.id))
+                await con.execute("UPDATE callback_manager SET admin_id = ? WHERE user_id == ?",
+                                  (admin_id, message.chat.id))
                 await con.commit()
 
                 return True
@@ -130,7 +133,8 @@ async def check_for_group(message) -> bool:
                 await con.commit()
                 return False
         else:
-            is_group = await con.execute("SELECT group_flag FROM callback_manager WHERE user_id == ? ", (message.chat_id,))
+            is_group = await con.execute("SELECT group_flag FROM callback_manager WHERE user_id == ? ",
+                                         (message.chat_id,))
             is_group = await is_group.fetchone()
             is_group = is_group[0]
             if is_group:
@@ -142,10 +146,10 @@ async def check_for_group(message) -> bool:
 
 
 async def check_group_design(chat_id: int = None) -> Union[str, None]:
-
     admin_id = chat_id
     async with aiosqlite.connect(db_name) as con:
-        current = await con.execute("SELECT group_name FROM groups where admin_id = ? AND design_flag == 1 ", (admin_id,))
+        current = await con.execute("SELECT group_name FROM groups where admin_id = ? AND design_flag == 1 ",
+                                    (admin_id,))
         group_name = await current.fetchone()
 
     if group_name is not None:
@@ -178,14 +182,17 @@ async def get_settings(chat_id: int) -> dict:
             table_names = await con.execute(
                 "SELECT current_tables FROM groups WHERE admin_id = ? and group_name == ?", (chat_id, group_name))
             table_names = await table_names.fetchone()
-            build_plots = await con.execute("SELECT group_plot FROM groups WHERE admin_id = ? and group_name = ?", (chat_id, group_name))
+            build_plots = await con.execute("SELECT group_plot FROM groups WHERE admin_id = ? and group_name = ?",
+                                            (chat_id, group_name))
             build_plots = await build_plots.fetchone()
 
         elif group_name is not None:
 
-            table_names = await con.execute("SELECT current_tables FROM groups WHERE admin_id = ? and group_name == ?", (chat_id, group_name))
+            table_names = await con.execute("SELECT current_tables FROM groups WHERE admin_id = ? and group_name == ?",
+                                            (chat_id, group_name))
             table_names = await table_names.fetchone()
-            build_plots = await con.execute("SELECT group_plot FROM groups WHERE admin_id = ? and group_name = ?", (chat_id, group_name))
+            build_plots = await con.execute("SELECT group_plot FROM groups WHERE admin_id = ? and group_name = ?",
+                                            (chat_id, group_name))
             build_plots = await build_plots.fetchone()
 
         else:
@@ -196,12 +203,12 @@ async def get_settings(chat_id: int) -> dict:
 
         if table_names is not None:
             settings = {"table_name": table_names[0],
-                    "build_plots": build_plots[0],
-                    }
+                        "build_plots": build_plots[0],
+                        }
         else:
             settings = {"table_name": None,
-                    "build_plots": True,
-                    }
+                        "build_plots": True,
+                        }
         print(settings)
         return settings
 
@@ -212,7 +219,7 @@ async def update_summary(chat_id: int, new_summary: str) -> None:
 
         group_flag = await group_flag.fetchone()
         group_flag = group_flag[0]
-        if group_flag == True:
+        if group_flag:
             group_name = await con.execute("SELECT group_name FROM callback_manager WHERE user_id == ?", (chat_id,))
             group_name = await group_name.fetchone()
             group_name = group_name[0]
@@ -220,7 +227,7 @@ async def update_summary(chat_id: int, new_summary: str) -> None:
             admin_id = await admin_id.fetchone()
             admin_id = admin_id[0]
             await con.execute("UPDATE groups SET group_conv = ? WHERE admin_id == ? AND group_name == ?",
-                    (new_summary, admin_id, group_name))
+                              (new_summary, admin_id, group_name))
             await con.commit()
         else:
             await con.execute("UPDATE users SET conv_sum = ? WHERE user_id == ?", (new_summary, chat_id))
@@ -230,17 +237,20 @@ async def update_summary(chat_id: int, new_summary: str) -> None:
 async def create_group(admin_id: int, group_name: str, group_name_for_link: str) -> str:
     async with aiosqlite.connect(db_name) as con:
 
-        existing_record = await con.execute("SELECT * FROM groups WHERE admin_id == ? AND group_name == ?", (admin_id, group_name))
+        existing_record = await con.execute("SELECT * FROM groups WHERE admin_id == ? AND group_name == ?",
+                                            (admin_id, group_name))
         existing_record = await existing_record.fetchone()
         if existing_record is None:
             await con.execute("INSERT INTO groups(admin_id, group_name) VALUES(?,?)", (admin_id, group_name))
             await con.commit()
-            group_id = await con.execute("SELECT group_id FROM groups where admin_id == ? AND group_name == ?", (admin_id, group_name))
+            group_id = await con.execute("SELECT group_id FROM groups where admin_id == ? AND group_name == ?",
+                                         (admin_id, group_name))
             group_id = await group_id.fetchone()
             group_id = group_id[0]
+            # todo: bot name in link should be dynamic (equal to the current bot)
             group_link = "https://t.me/auto_analyzer_bot?start=" + group_name_for_link + "_" + str(group_id)
             await con.execute("UPDATE groups SET group_link = ? WHERE admin_id == ? and group_name == ? ",
-                    (group_link, admin_id, group_name))
+                              (group_link, admin_id, group_name))
             await con.commit()
             await con.execute("INSERT INTO group_manager(admin_id, group_name) VALUES(?,?)", (admin_id, group_name))
             await con.commit()
@@ -285,32 +295,35 @@ async def add_table(message=None, downloaded_file=None) -> None:
         async with aiosqlite.connect(db_name) as con:
             group_id = await get_group_id(group_name=group_name, admin_id=chat_id)
             if group_name is not None:
-                existing_record = await con.execute("SELECT * FROM group_tables WHERE admin_id == ? AND table_name == ? and group_id == ?",(chat_id, message.document.file_name, group_id))
+                existing_record = await con.execute(
+                    "SELECT * FROM group_tables WHERE admin_id == ? AND table_name == ? and group_id == ?",
+                    (chat_id, message.document.file_name, group_id))
                 existing_record = await existing_record.fetchone()
 
                 if existing_record is None:
-                    await con.execute("""INSERT INTO group_tables(admin_id, group_name, table_name, group_id) VALUES(?,?,?,?)""",
-                                (chat_id, group_name, message.document.file_name, group_id))
+                    await con.execute(
+                        """INSERT INTO group_tables(admin_id, group_name, table_name, group_id) VALUES(?,?,?,?)""",
+                        (chat_id, group_name, message.document.file_name, group_id))
                     await con.commit()
 
                     await con.execute("UPDATE groups SET current_tables = ? WHERE admin_id == ? AND group_name == ?",
-                                (message.document.file_name, chat_id, group_name))
+                                      (message.document.file_name, chat_id, group_name))
                     await con.commit()
             else:
-                existing_record = await con.execute("SELECT * FROM tables WHERE user_id == ? AND table_name == ?",(chat_id, message.document.file_name))
+                existing_record = await con.execute("SELECT * FROM tables WHERE user_id == ? AND table_name == ?",
+                                                    (chat_id, message.document.file_name))
                 existing_record = await existing_record.fetchone()
 
                 if existing_record is None:
-
                     await con.execute("""INSERT INTO tables(user_id, table_name) VALUES(?,?)""",
-                                (chat_id, message.document.file_name))
+                                      (chat_id, message.document.file_name))
                     await con.commit()
                     await con.execute("UPDATE users SET current_tables = ? WHERE user_id == ?",
-                                (message.document.file_name, chat_id))
+                                      (message.document.file_name, chat_id))
                     await con.commit()
 
 
-async def choose_description_db(message, table_name: str = None, downloaded_file = None) -> None:
+async def choose_description_db(message, table_name: str = None, downloaded_file=None) -> None:
     chat_id = message.from_user.id
     group_name = await check_group_design(chat_id)
     async with aiosqlite.connect(db_name) as con:
@@ -318,14 +331,15 @@ async def choose_description_db(message, table_name: str = None, downloaded_file
             description = str(message.text)
             if group_name is not None:
 
-                existing_record = await con.execute("select table_name from group_tables where admin_id == ? and group_name == ?",
-                        (chat_id, group_name))
+                existing_record = await con.execute(
+                    "select table_name from group_tables where admin_id == ? and group_name == ?",
+                    (chat_id, group_name))
                 existing_record = await existing_record.fetchall()
                 if existing_record:
                     await con.execute(
-                    """UPDATE group_tables SET table_description = ? WHERE table_name == ? and admin_id == ? and group_name == ?""",
-                    (
-                        description, table_name, chat_id, group_name))
+                        """UPDATE group_tables SET table_description = ? WHERE table_name == ? and admin_id == ? and group_name == ?""",
+                        (
+                            description, table_name, chat_id, group_name))
 
                 await con.commit()
 
@@ -335,8 +349,9 @@ async def choose_description_db(message, table_name: str = None, downloaded_file
                 existing_record = await existing_record.fetchall()
 
                 if existing_record:
-                    await con.execute("""UPDATE tables SET table_description = ? WHERE table_name == ? and user_id = ? """,
-                            (description, table_name, chat_id))
+                    await con.execute(
+                        """UPDATE tables SET table_description = ? WHERE table_name == ? and user_id = ? """,
+                        (description, table_name, chat_id))
                 await con.commit()
 
         elif message.content_type == "document":
@@ -346,7 +361,7 @@ async def choose_description_db(message, table_name: str = None, downloaded_file
             encoding_info = chardet.detect(downloaded_file)
             file_encoding = encoding_info['encoding']
 
-        # Проверяем кодировку и отправляем сообщение пользователю
+            # Проверяем кодировку и отправляем сообщение пользователю
             if file_encoding:
                 print(file_encoding)
             else:
@@ -358,13 +373,15 @@ async def choose_description_db(message, table_name: str = None, downloaded_file
                 description = await downloaded_file.decode("cp1251", "ignore")
 
             if group_name is not None:
-                existing_record = await con.execute("select table_name from group_tables where admin_id == ? and group_name == ?",(chat_id, group_name))
+                existing_record = await con.execute(
+                    "select table_name from group_tables where admin_id == ? and group_name == ?",
+                    (chat_id, group_name))
 
                 existing_record = await existing_record.fetchall()
                 if existing_record:
                     await con.execute(
-                    """UPDATE group_tables SET table_description = ? WHERE table_name == ? and admin_id == ? and group_name == ? """,
-                    (description, table_name, chat_id, group_name))
+                        """UPDATE group_tables SET table_description = ? WHERE table_name == ? and admin_id == ? and group_name == ? """,
+                        (description, table_name, chat_id, group_name))
                 await con.commit()
 
             else:
@@ -372,7 +389,7 @@ async def choose_description_db(message, table_name: str = None, downloaded_file
                 existing_record = await existing_record.fetchall()
                 if existing_record:
                     await con.execute("""UPDATE tables SET table_description = ? WHERE table_name == ? """,
-                                (description, table_name))
+                                      (description, table_name))
                 await con.commit()
 
 
@@ -384,13 +401,13 @@ async def add_context(message=None, table_name=None, downloaded_file=None) -> No
             context = str(message.text)
             if group_name is not None:
                 await con.execute(
-                """UPDATE group_tables SET context = ? WHERE table_name == ? and admin_id == ? and group_name == ? """,
+                    """UPDATE group_tables SET context = ? WHERE table_name == ? and admin_id == ? and group_name == ? """,
                     (context, table_name, chat_id, group_name))
                 await con.commit()
 
             else:
                 await con.execute("""UPDATE tables SET context = ? WHERE table_name == ? and user_id == ? """,
-                            (context, table_name, chat_id))
+                                  (context, table_name, chat_id))
                 await con.commit()
 
         elif message.content_type == "document":
@@ -406,12 +423,12 @@ async def add_context(message=None, table_name=None, downloaded_file=None) -> No
             if group_name is not None:
                 await con.execute(
                     """UPDATE group_tables SET context = ? WHERE table_name == ? and admin_id == ? and group_name == ? """,
-                (context, table_name, chat_id, group_name))
+                    (context, table_name, chat_id, group_name))
                 await con.commit()
 
             else:
                 await con.execute("""UPDATE tables SET context = ? WHERE table_name = ? and user_id == ? """,
-                            (context, table_name, chat_id))
+                                  (context, table_name, chat_id))
                 await con.commit()
 
 
@@ -438,8 +455,8 @@ async def check_for_demo(chat_id: int = None) -> Union[None, str]:
 
 async def save_group_settings(chat_id: int = None, group_name: str = None) -> str:
     async with aiosqlite.connect(db_name) as con:
-
-        group_link = await con.execute("SELECT group_link FROM groups where admin_id == ? AND group_name == ?", (chat_id, group_name))
+        group_link = await con.execute("SELECT group_link FROM groups where admin_id == ? AND group_name == ?",
+                                       (chat_id, group_name))
         await con.commit()
 
         group_link = await group_link.fetchone()
@@ -454,21 +471,21 @@ async def save_group_settings(chat_id: int = None, group_name: str = None) -> st
 
 async def choose_group_db(admin_id: int = None, group_name: str = None) -> None:
     async with aiosqlite.connect(db_name) as con:
-        await con.execute("UPDATE groups SET design_flag = True WHERE admin_id == ? AND group_name == ?", (admin_id, group_name))
+        await con.execute("UPDATE groups SET design_flag = True WHERE admin_id == ? AND group_name == ?",
+                          (admin_id, group_name))
         await con.commit()
 
 
 async def update_table(chat_id: int = None, settings: dict = None) -> None:
-
     group_name = await check_group_design(chat_id=chat_id)
     async with aiosqlite.connect(db_name) as con:
         if group_name is not None:
             await con.execute("UPDATE groups SET current_tables = ? WHERE admin_id == ? and group_name == ?",
-                    (settings["table_name"], chat_id, group_name))
+                              (settings["table_name"], chat_id, group_name))
             await con.commit()
         else:
             await con.execute(
-            "UPDATE users SET current_tables = ? WHERE user_id == ?", (settings["table_name"], chat_id))
+                "UPDATE users SET current_tables = ? WHERE user_id == ?", (settings["table_name"], chat_id))
             await con.commit()
 
 

@@ -20,7 +20,8 @@ data:
 build_plots: false
 #bot_api: 6004874058:AAFIBcKuWnFW1KQ5cuBuXkxwADkrV-xtUMg
 db_name: "user_data.sql"
-bot_api: "6244896218:AAFwtx-NsiIoC24fu5VHahWSB9Du0deMqZg"
+#bot_api: "6244896218:AAFwtx-NsiIoC24fu5VHahWSB9Du0deMqZg"
+bot_api: "5354323448:AAG7aRv3YYZgUTKbumnks23Bovm2a5QZqcg"
 #bot_api: "6095869124:AAFhuwDZElDiDPrNXLot7ilYiCNu5np56nA"
 bot_name: auto_analyzer
 demo: [false, 10, false]

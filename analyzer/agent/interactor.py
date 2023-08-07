@@ -12,10 +12,9 @@ import asyncio
 from langchain.agents import Tool
 from langchain.chat_models import ChatOpenAI
 from agent import BaseMinion
-from common_prompts import TableDescriptionPrompt
-from custom_python_ast import CustomPythonAstREPLTool
-
-from processing import process, unmerge_sheets
+from .common_prompts import TableDescriptionPrompt
+from .custom_python_ast import CustomPythonAstREPLTool
+from .processing import process, unmerge_sheets
 
 import typer
 import yaml
@@ -38,7 +37,7 @@ def read_df(path: str) -> (pd.DataFrame, str):
 
 
 def df_head_description(i: int, df: pd.DataFrame, name) -> str:
-    return f"table: {name} \n"\
+    return f"table: {name} \n" \
            f"df[{i}].head():" \
            f"{df.head()}\n"
 
@@ -50,14 +49,16 @@ def df_info_description(i: int, df: pd.DataFrame) -> str:
            f"{buf.getvalue()}\n"
 
 
-def preparation(path_list: List[str] = [], build_plots: Union[bool, None] = None, current_summary: Union[str, None] = "",
-                table_description: List[str] = None, context_list: List[str] = None, callback: Callable = None, stop_event: asyncio.locks.Event = None):
-
+def preparation(path_list: List[str] = [], build_plots: Union[bool, None] = None,
+                current_summary: Union[str, None] = "",
+                table_description: List[str] = None, context_list: List[str] = None, callback: Callable = None,
+                stop_event: asyncio.locks.Event = None):
+    # todo: import config instead
     with open("config.yaml") as f:
         cfg = yaml.load(f, Loader=yaml.FullLoader)
 
-    #assert path_list is None
-    #print(cfg["data"])
+    # assert path_list is None
+    # print(cfg["data"])
     if len(path_list) == 0:
         path_list = [data_item["path"] for data_item in cfg["data"]]
         print(path_list)
@@ -86,9 +87,10 @@ def preparation(path_list: List[str] = [], build_plots: Union[bool, None] = None
         df_info += df_info_description(i, item[0])
         df_work.append(item[0])
 
-    callback(f"Таблицы обработаны, затрачено времени: {datetime.datetime.now()- start_time}")
+    callback(f"Таблицы обработаны, затрачено времени: {datetime.datetime.now() - start_time}")
 
     llm = ChatOpenAI(temperature=0.7, model='gpt-4',
+                     # todo: key here and in all places should be from the .env file (os.environ.get("OPENAI_API_KEY"))
                      openai_api_key="")
     python_tool = CustomPythonAstREPLTool(locals={"df": df_work, "python": None, "python_repl_ast": None},
                                           globals={"pd": pd, "np": np, "sns": sns, "plotly": plotly})
@@ -99,20 +101,26 @@ def preparation(path_list: List[str] = [], build_plots: Union[bool, None] = None
         "Code should always produce a value"
     )
 
-    prompt = TableDescriptionPrompt(table_description=table_description, context=context_list, build_plots=build_plots, current_summary=current_summary)
+    prompt = TableDescriptionPrompt(table_description=table_description, context=context_list, build_plots=build_plots,
+                                    current_summary=current_summary)
     ag = BaseMinion(base_prompt=prompt.__str__(),
                     available_tools=[
                         Tool(name=python_tool.name, description=python_tool.description, func=python_tool._run)],
-                    model=llm, df_head=df_head, df_info=df_info, callback=callback, summarize_model="gpt-3.5-turbo", stop_event=stop_event)
+                    model=llm, df_head=df_head, df_info=df_info, callback=callback, summarize_model="gpt-3.5-turbo",
+                    stop_event=stop_event)
     return ag, df_head, df_info
 
 
 logging.basicConfig(level=logging.INFO, filename="py_log.log", filemode="w")
 
 
-def run_loop_bot(path_list: List[str] = None, build_plots: Union[bool, None] = False, user_question: Union[str, None] = None, current_summary: Union[str, None] = "",
-                 table_description: List[str] = None, context_list: List[str] = None, callback: Callable = None, stop_event: asyncio.locks.Event = None):
-    ag, df_head, df_info = preparation(path_list=path_list, build_plots=build_plots, current_summary=current_summary, table_description=table_description, context_list=context_list, callback=callback, stop_event=stop_event)
+def run_loop_bot(path_list: List[str] = None, build_plots: Union[bool, None] = False,
+                 user_question: Union[str, None] = None, current_summary: Union[str, None] = "",
+                 table_description: List[str] = None, context_list: List[str] = None, callback: Callable = None,
+                 stop_event: asyncio.locks.Event = None):
+    ag, df_head, df_info = preparation(path_list=path_list, build_plots=build_plots, current_summary=current_summary,
+                                       table_description=table_description, context_list=context_list,
+                                       callback=callback, stop_event=stop_event)
     while True:
         question = user_question  # this is for interacting with the user's request via a bot
         if question == "exit":
@@ -134,6 +142,7 @@ app = typer.Typer()
 def run_loop(path_list: List[str] = None, build_plots: Union[bool, None] = False):
     def callback(thought):
         print(thought)
+
     ag, df_head, df_info = preparation(path_list=path_list, build_plots=build_plots, callback=callback)
 
     while True:

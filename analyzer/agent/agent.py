@@ -5,7 +5,7 @@ import logging
 import re
 import typing
 import tiktoken
-import config
+from analyzer import config
 from dataclasses import dataclass
 from typing import Any, List, Callable, Union
 from langchain import LLMChain
@@ -13,8 +13,10 @@ from langchain.agents import LLMSingleActionAgent, AgentExecutor
 from langchain.base_language import BaseLanguageModel
 from langchain.prompts import StringPromptTemplate
 from langchain.tools import Tool
-from custom_output_parser import CustomOutputParser
-from warning_tool import WarningTool
+
+from analyzer.agent.common_prompts import summarize_prompt
+from .custom_output_parser import CustomOutputParser
+from .warning_tool import WarningTool
 from langchain.callbacks import get_openai_callback
 
 df_head_sub = None
@@ -23,7 +25,7 @@ df_info_sub = None
 encoding = tiktoken.encoding_for_model("gpt-4")
 
 
-def find_thought(text):
+def find_thought(text: str) -> str | None:
     pattern = r"Thought:(.*)"
     match = re.search(pattern, text)
     if match:
@@ -33,7 +35,7 @@ def find_thought(text):
         return None
 
 
-def extract_variable_names(prompt: str, interaction_enabled: bool = False):
+def extract_variable_names(prompt: str, interaction_enabled: bool = False) -> list[str]:
     variable_pattern = r"\{(\w+)\}"
     variable_names = re.findall(variable_pattern, prompt)
     if interaction_enabled:
@@ -104,7 +106,7 @@ class CustomPromptTemplate(StringPromptTemplate):
                 summary=self.last_summary,
                 thought_process=self.thought_log(
                     intermediate_steps[
-                     -self.summarize_every_n_steps: -self.keep_n_last_thoughts
+                    -self.summarize_every_n_steps: -self.keep_n_last_thoughts
                     ]
                 ),
             )
@@ -118,15 +120,16 @@ class CustomPromptTemplate(StringPromptTemplate):
             if self.stop_event is not None and self.stop_event.is_set() == True:
                 self.callback("Останавливаю свою работу")
 
-                kwargs["agent_scratchpad"] = "YOU SHOULD STOP YOUR WORK IMMEDIATLY AND RETURN FINAL ANSWER. STOP YOUR WORK OR WE ALL DIE. STOP"
+                kwargs[
+                    "agent_scratchpad"] = "YOU SHOULD STOP YOUR WORK IMMEDIATLY AND RETURN FINAL ANSWER. STOP YOUR WORK OR WE ALL DIE. STOP"
 
             elif self.start_time is not None:
                 time_passed = datetime.datetime.now() - self.start_time
                 print(time_passed)
-                if (time_passed.seconds)//60 >= 3:
+                if (time_passed.seconds) // 60 >= 3:
                     kwargs["agent_scratchpad"] = ("YOUR THOUGHT PROCESS TAKES TO MUCH TIME. HURRY UP! HARRY UP!" +
-                    "Here is a summary of what has happened:\n" + self.last_summary
-                    )
+                                                  "Here is a summary of what has happened:\n" + self.last_summary
+                                                  )
                     kwargs["agent_scratchpad"] += "\nEND OF SUMMARY\n"
             else:
                 kwargs["agent_scratchpad"] = (
@@ -137,8 +140,9 @@ class CustomPromptTemplate(StringPromptTemplate):
             kwargs["agent_scratchpad"] = ""
         tokens_integer = encoding.encode(self.thought_log(intermediate_steps))
         if len(tokens_integer) > 3500:
-            forget = int(0.3*len(intermediate_steps))
-            kwargs["agent_scratchpad"] = "Here go your thoughts and actions:\n" + self.thought_log(intermediate_steps[forget:])
+            forget = int(0.3 * len(intermediate_steps))
+            kwargs["agent_scratchpad"] = "Here go your thoughts and actions:\n" + self.thought_log(
+                intermediate_steps[forget:])
             print("deleted")
 
         else:
@@ -165,7 +169,8 @@ class CustomPromptTemplate(StringPromptTemplate):
 class BaseMinion:
     def __init__(self, base_prompt: str, available_tools: List[Tool], model: BaseLanguageModel,
                  max_iterations: int = 500, df_head: Any = None, df_info: Any = None,
-                 callback: Union[Callable, None] = None, summarize_model: Union[str, None] = None, stop_event:asyncio.locks.Event = None) -> None:
+                 callback: Union[Callable, None] = None, summarize_model: Union[str, None] = None,
+                 stop_event: asyncio.locks.Event = None) -> None:
 
         self.callback = callback
         self.model = model
@@ -179,8 +184,10 @@ class BaseMinion:
 
         # dictionary of subagents
 
+        # todo: Remove the calculator + possibly remove subagents altogether
         subagents = {"Checker": Checker(self.base_prompt, self.available_tools, self.model, self.df_head, self.df_info),
-                     "Calculator": Calculator(self.base_prompt, self.available_tools, self.model, self.df_head, self.df_info),
+                     "Calculator": Calculator(self.base_prompt, self.available_tools, self.model, self.df_head,
+                                              self.df_info),
                      }
         for subagents_names in subagents.keys():
             subagent = subagents[subagents_names]
@@ -193,19 +200,14 @@ class BaseMinion:
                 self.summarize_model = inner_summarize_model
 
             def run(self, summary: str, thought_process: str):
-
                 if self.summarize_model is None:
                     return self.summary
 
                 thought = find_thought(thought_process)
                 print("thoughts:", thought)
 
-                last_summary = get_answer(f"Your task is to translate the thought process of the model into Russian language,"
-                                            f"there should not be any  code or formulas, just brief explanation of the actions."
-                                            f"YOU SHOULD ALWAYS DESCRIBE ONLY LAST ACTIONS"
-                                            f"IF THERE IS A NAME OF FILE IN .png FORMAT, YOU SHOULD NOT CHANGE IT"
-                                            f"Here is a summary of what has happened:\n {summary};\n"
-                                            f"Here is the last actions happened: \n{thought}", self.summarize_model)
+                last_summary = get_answer(
+                    summarize_prompt.format(summary=summary, thought=thought), self.summarize_model)
 
                 return last_summary
 
@@ -247,9 +249,7 @@ class BaseMinion:
         if config.config["price_flag"]:
             self.callback(cb)
         summary = self.summarizer.add_question_answer(question, ans)
-        final_answer = []
-        final_answer.append(ans)
-        final_answer.append(summary)
+        final_answer = [ans, summary]
         return final_answer
 
 
@@ -259,6 +259,7 @@ class SubagentTool(BaseMinion):
         llm = model
         agent_toolnames = [tool.name for tool in available_tools]
         self.stop_event = stop_event
+
         class Summarizer:
             def __init__(self, inner_summarize_model: Union[str, None] = None):
                 self.summary = ""
@@ -316,9 +317,7 @@ class SubagentTool(BaseMinion):
                 or "No result. The execution was probably unsuccessful."
         )
         summary = self.summarizer.add_question_answer(question, ans)
-        final_answer = []
-        final_answer.append(ans)
-        final_answer.append(summary)
+        final_answer = [ans, summary]
         return final_answer
 
     name: str
@@ -331,7 +330,8 @@ class SubagentTool(BaseMinion):
 
 # there can be any subagents needed
 class Calculator(SubagentTool):
-    def __init__(self, base_prompt: str, available_tools: List[Tool], model: BaseLanguageModel, df_head: Any = None, df_info: Any = None,
+    def __init__(self, base_prompt: str, available_tools: List[Tool], model: BaseLanguageModel, df_head: Any = None,
+                 df_info: Any = None,
                  max_iterations: int = 50) -> None:
         super().__init__(base_prompt, available_tools, model)
         self.base_prompt = base_prompt
@@ -352,7 +352,8 @@ class Calculator(SubagentTool):
 
 
 class Checker(SubagentTool):
-    def __init__(self, base_prompt: str, available_tools: List[Tool], model: BaseLanguageModel, df_head: Any = None, df_info: Any = None,
+    def __init__(self, base_prompt: str, available_tools: List[Tool], model: BaseLanguageModel, df_head: Any = None,
+                 df_info: Any = None,
                  max_iterations: int = 50) -> None:
         super().__init__(base_prompt, available_tools, model)
         self.base_prompt = base_prompt
@@ -360,6 +361,7 @@ class Checker(SubagentTool):
         self.model = model
         self.df_head = df_head
         self.df_info = df_info
+
     name: str = "Checker"
     description: str = "A subagent tool that can be used to check the results"
 
@@ -369,6 +371,3 @@ class Checker(SubagentTool):
             return '\r' + result[0] + '\n'
         else:
             return "Not enough data"
-
-
-

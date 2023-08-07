@@ -2,6 +2,11 @@ import os
 import openpyxl
 import pandas as pd
 from openpyxl.utils.cell import range_boundaries
+
+
+# todo: types and docs
+
+
 def check_cells_content(wb):
     sheet = wb.active
     cell_a1 = sheet['A1']
@@ -14,6 +19,8 @@ def check_cells_content(wb):
     if cell_b1.value is not None and cell_b1.value != "":
         return True
     return False
+
+
 def get_data_range(sheet):
     start_row, start_col, end_row, end_col = None, None, None, None
     for row in sheet.iter_rows():
@@ -36,11 +43,15 @@ def get_data_range(sheet):
         return data_range, start_row, start_col, start_col_name, end_col_name
     else:
         return None
+
+
 def move(wb):
     sheet = wb.active
     range = get_data_range(sheet)
     if range:
         sheet.move_range(range[0], rows=-range[1] + 1, cols=-range[2] + 1, translate=True)
+
+
 def unmerge_cells(wb):
     sheet = wb.active
     range = get_data_range(sheet)
@@ -64,6 +75,8 @@ def unmerge_cells(wb):
                         cell.value = top_left_cell_value
         if is_merged:
             sheet.delete_rows(range[1])
+
+
 def process(path):
     save_path = path[:-5] + '_prepared.xlsx'
     name = os.path.basename(path)
@@ -74,6 +87,8 @@ def process(path):
             move(wb)
         wb.save(save_path)
     return save_path, name
+
+
 def unmerge_sheets(file_path):
     new_path = ""
     index = file_path.rfind("/")
@@ -100,4 +115,3 @@ def unmerge_sheets(file_path):
                 if not file.endswith('_prepared.xlsx'):
                     paths.append(os.path.join(root, file))
         return paths
-
