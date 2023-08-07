@@ -16,7 +16,7 @@ from agent import BaseMinion
 from .common_prompts import TableDescriptionPrompt
 from .custom_python_ast import CustomPythonAstREPLTool
 from .processing import process, unmerge_sheets
-from analyzer.analyzer import config
+from analyzer import config
 import typer
 import yaml
 openai_api_key = os.environ.get("OPENAI_API_KEY")

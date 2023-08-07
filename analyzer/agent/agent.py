@@ -5,7 +5,7 @@ import logging
 import re
 import typing
 import tiktoken
-from analyzer.analyzer import config
+from analyzer import config
 from dataclasses import dataclass
 from typing import Any, List, Callable, Union
 from langchain import LLMChain
@@ -14,7 +14,7 @@ from langchain.base_language import BaseLanguageModel
 from langchain.prompts import StringPromptTemplate
 from langchain.tools import Tool
 
-from analyzer.analyzer.agent.common_prompts import summarize_prompt
+from analyzer.agent.common_prompts import summarize_prompt
 from .custom_output_parser import CustomOutputParser
 from .warning_tool import WarningTool
 from langchain.callbacks import get_openai_callback
