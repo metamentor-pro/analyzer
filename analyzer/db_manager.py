@@ -9,7 +9,7 @@ import aiofiles
 logging.basicConfig(level=logging.INFO, filename="py_log.log", filemode="w",
                     format="%(asctime)s %(levelname)s %(message)s")
 
-bot_name = config.config["bot_name"]
+bot_name = config.config["bot_name"] + "_bot"
 bot_api = config.config["bot_api"]
 demo = config.config["demo"][0]
 max_requests = config.config["demo"][1]
@@ -18,10 +18,9 @@ db_name = config.config["db_name"]
 
 
 async def create_tables():
-    # Установить соединение с базой данных
+
     con = await aiosqlite.connect(db_name)
 
-    # Создание таблицы users
     await con.execute("""CREATE TABLE IF NOT EXISTS users
                           (user_id INTEGER PRIMARY KEY,
                           conv_sum TEXT,
@@ -30,7 +29,6 @@ async def create_tables():
                           )""")
     await con.commit()
 
-    # Создание таблицы groups
     await con.execute("""CREATE TABLE IF NOT EXISTS groups
                           (group_id INTEGER PRIMARY KEY AUTOINCREMENT,
                           admin_id INTEGER,
@@ -42,7 +40,6 @@ async def create_tables():
                           design_flag boolean DEFAULT 0)""")
     await con.commit()
 
-    # Создание таблицы callback_manager
     await con.execute("""CREATE TABLE IF NOT EXISTS callback_manager
                           (user_id INTEGER PRIMARY KEY,
                           table_page INTEGER DEFAULT 1,
@@ -55,7 +52,6 @@ async def create_tables():
                           FOREIGN KEY(user_id) REFERENCES users (user_id) on DELETE CASCADE)""")
     await con.commit()
 
-    # Создание таблицы group_manager
     await con.execute("""CREATE TABLE IF NOT EXISTS group_manager
                           (admin_id INTEGER,
                           group_name,
@@ -65,7 +61,6 @@ async def create_tables():
                           """)
     await con.commit()
 
-    # Создание таблицы tables
     await con.execute("""CREATE TABLE IF NOT EXISTS tables 
                           (table_id INTEGER PRIMARY KEY AUTOINCREMENT,
                           user_id INTEGER, 
@@ -75,7 +70,6 @@ async def create_tables():
                           FOREIGN KEY(user_id) REFERENCES users (user_id) on DELETE CASCADE)""")
     await con.commit()
 
-    # Создание таблицы group_tables
     await con.execute("""CREATE TABLE IF NOT EXISTS group_tables
                           (group_name VARCHAR,
                           admin_id INTEGER,
@@ -88,7 +82,6 @@ async def create_tables():
     await con.commit()
 
 
-# Запустите функцию создания таблиц в асинхронном контексте
 import asyncio
 
 asyncio.run(create_tables())
@@ -247,8 +240,7 @@ async def create_group(admin_id: int, group_name: str, group_name_for_link: str)
                                          (admin_id, group_name))
             group_id = await group_id.fetchone()
             group_id = group_id[0]
-            # todo: bot name in link should be dynamic (equal to the current bot)
-            group_link = "https://t.me/auto_analyzer_bot?start=" + group_name_for_link + "_" + str(group_id)
+            group_link = "https://t.me/" + bot_name + "?start=" + group_name_for_link + "_" + str(group_id)
             await con.execute("UPDATE groups SET group_link = ? WHERE admin_id == ? and group_name == ? ",
                               (group_link, admin_id, group_name))
             await con.commit()

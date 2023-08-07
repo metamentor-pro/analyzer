@@ -5,7 +5,7 @@ import logging
 import re
 import typing
 import tiktoken
-from analyzer import config
+from analyzer.analyzer import config
 from dataclasses import dataclass
 from typing import Any, List, Callable, Union
 from langchain import LLMChain
@@ -14,7 +14,7 @@ from langchain.base_language import BaseLanguageModel
 from langchain.prompts import StringPromptTemplate
 from langchain.tools import Tool
 
-from analyzer.agent.common_prompts import summarize_prompt
+from analyzer.analyzer.agent.common_prompts import summarize_prompt
 from .custom_output_parser import CustomOutputParser
 from .warning_tool import WarningTool
 from langchain.callbacks import get_openai_callback
@@ -181,17 +181,6 @@ class BaseMinion:
         self.stop_event = stop_event
         llm = model
         available_tools.append(WarningTool().get_tool())
-
-        # dictionary of subagents
-
-        # todo: Remove the calculator + possibly remove subagents altogether
-        subagents = {"Checker": Checker(self.base_prompt, self.available_tools, self.model, self.df_head, self.df_info),
-                     "Calculator": Calculator(self.base_prompt, self.available_tools, self.model, self.df_head,
-                                              self.df_info),
-                     }
-        for subagents_names in subagents.keys():
-            subagent = subagents[subagents_names]
-            available_tools.append(subagent.get_tool())
         agent_toolnames = [tool.name for tool in available_tools]
 
         class Summarizer:
@@ -253,121 +242,4 @@ class BaseMinion:
         return final_answer
 
 
-class SubagentTool(BaseMinion):
-    def __init__(self, base_prompt: str, available_tools: List[Tool], model: BaseLanguageModel,
-                 max_iterations: int = 50, stop_event: asyncio.locks.Event = None) -> None:
-        llm = model
-        agent_toolnames = [tool.name for tool in available_tools]
-        self.stop_event = stop_event
 
-        class Summarizer:
-            def __init__(self, inner_summarize_model: Union[str, None] = None):
-                self.summary = ""
-                self.summarize_model = inner_summarize_model
-
-            def run(self, summary: str, thought_process: str):
-                if self.summarize_model is None:
-                    return self.summary
-
-                thought = find_thought(thought_process)
-                print("thoughts:", thought)
-
-                last_summary = get_answer(
-                    f"Your task is to translate the thought process of the model into Russian language,"
-                    f"there should not be any  code or formulas, just brief explanation of the actions."
-                    f"YOU SHOULD ALWAYS DESCRIBE ONLY LAST ACTIONS. ANSWER SHOULD BE IN RUSSIAN"
-                    f"Here is a summary of what has happened:\n {summary};\n"
-                    f"Here is the last actions happened: \n{thought}", self.summarize_model)
-
-                return last_summary
-
-            def add_question_answer(self, question: str, answer: str):
-                self.summary += f"Previous question: {question}\nPrevious answer: {answer}\n\n"
-
-                return self.summary
-
-        self.summarizer = Summarizer()
-
-        self.prompt = CustomPromptTemplate(
-            template=base_prompt,
-            tools=available_tools,
-            input_variables=extract_variable_names(
-                base_prompt, interaction_enabled=True
-            ),
-            agent_toolnames=agent_toolnames,
-            my_summarize_agent=self.summarizer,
-            stop_event=self.stop_event
-        )
-        self.llm_chain = LLMChain(llm=llm, prompt=self.prompt)
-        self.output_parser = CustomOutputParser()
-        self.agent = LLMSingleActionAgent(
-            llm_chain=self.llm_chain,
-            output_parser=self.output_parser,
-            stop=["AResult:"],
-            allowed_tools=[tool.name for tool in available_tools],
-        )
-        self.agent_executor = AgentExecutor.from_agent_and_tools(
-            agent=self.agent, tools=available_tools, verbose=True, max_iterations=max_iterations
-        )
-
-    def run(self, **kwargs):
-        question = kwargs["input"]
-        ans = (
-                self.agent_executor.run(**kwargs)
-                or "No result. The execution was probably unsuccessful."
-        )
-        summary = self.summarizer.add_question_answer(question, ans)
-        final_answer = [ans, summary]
-        return final_answer
-
-    name: str
-    description: str
-    func: typing.Callable[[str], str]
-
-    def get_tool(self):
-        return Tool(name=self.name, func=self.func, description=self.description)
-
-
-# there can be any subagents needed
-class Calculator(SubagentTool):
-    def __init__(self, base_prompt: str, available_tools: List[Tool], model: BaseLanguageModel, df_head: Any = None,
-                 df_info: Any = None,
-                 max_iterations: int = 50) -> None:
-        super().__init__(base_prompt, available_tools, model)
-        self.base_prompt = base_prompt
-        self.available_tools = available_tools
-        self.model = model
-        self.df_head = df_head
-        self.df_info = df_info
-
-    name: str = "Calculator"
-    description: str = "A subagent tool that can be used for calculations "
-
-    def func(self, args: str) -> str:
-        if (self.df_head is not None) and (self.df_info is not None):
-            result = self.run(input=args, df_head=self.df_head, df_info=self.df_info)
-            return '\r' + result[0] + '\n'
-        else:
-            return "Not enough data"
-
-
-class Checker(SubagentTool):
-    def __init__(self, base_prompt: str, available_tools: List[Tool], model: BaseLanguageModel, df_head: Any = None,
-                 df_info: Any = None,
-                 max_iterations: int = 50) -> None:
-        super().__init__(base_prompt, available_tools, model)
-        self.base_prompt = base_prompt
-        self.available_tools = available_tools
-        self.model = model
-        self.df_head = df_head
-        self.df_info = df_info
-
-    name: str = "Checker"
-    description: str = "A subagent tool that can be used to check the results"
-
-    def func(self, args: str) -> str:
-        if (self.df_head is not None) and (self.df_info is not None):
-            result = self.run(input=args, df_head=self.df_head, df_info=self.df_info)
-            return '\r' + result[0] + '\n'
-        else:
-            return "Not enough data"

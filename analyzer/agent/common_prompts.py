@@ -56,12 +56,11 @@ This dataframes is the report produced by oil production company.
 """ + description + """
 You have access to the following tools:
 {tools}
-You should use subagents in your work, always mention what subagents you used.
+
 You are provided with the folowing context:""" + context + """
 Take this context into account when analyzing and writing the answer 
 Here is the summary of your last conversation with user""" + self.current_summary + """ 
 pay attention to this summary during your work
-You can use subagents in order to simplify you work
 You should specify the function of the subagent if you use one 
 When possible, use your own knowledge.
 You will use the following format to accomplish your tasks: 
@@ -93,8 +92,7 @@ Let's think solution how to find the necessary information in a step by step way
 Also let`s think about choosing the right one to answer the user's question in a step by step way in 'Thought:' zone to be sure we have the right result
 When working with dates, pay attention to the format in which it is written
 It is very important to write down name of every plot file that you made. FILE NAMES SHOULD NOT CONTAINS SPACES AND MUST BE IN ENGLISH OR THE EARTH WILL EXPLODE 
-USE 'Checker' SUBAGENT TO CHECK IF YOUR FILE NAMES ARE VALID and if final answer is written in Russian.
-Use text command for that like : 'check if this file name in english and without spaces"
+ALWAYS CHECK IF YOUR FILE NAMES ARE VALID and if final answer is written in Russian. ALWAYS CHECK IT!
 Don't print all the data from pandas.df, try to print only the data that may be needed for analysis
 "AResult:" ALWAYS comes after "Action Input:" - it's the result of any taken action. Do not use to describe the result of your thought.
 "AResult:" comes after "Action Input:" even if there's a Final Result after that.

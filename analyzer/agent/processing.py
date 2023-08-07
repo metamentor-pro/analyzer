@@ -2,12 +2,10 @@ import os
 import openpyxl
 import pandas as pd
 from openpyxl.utils.cell import range_boundaries
+from typing import Union, List, Any
 
 
-# todo: types and docs
-
-
-def check_cells_content(wb):
+def check_cells_content(wb: openpyxl.workbook.workbook.Workbook) -> bool:
     sheet = wb.active
     cell_a1 = sheet['A1']
     cell_a2 = sheet['A2']
@@ -21,7 +19,7 @@ def check_cells_content(wb):
     return False
 
 
-def get_data_range(sheet):
+def get_data_range(sheet: openpyxl.worksheet.worksheet.Worksheet) -> Any:
     start_row, start_col, end_row, end_col = None, None, None, None
     for row in sheet.iter_rows():
         for cell in row:
@@ -45,25 +43,25 @@ def get_data_range(sheet):
         return None
 
 
-def move(wb):
+def move(wb: openpyxl.workbook.workbook.Workbook) -> None:
     sheet = wb.active
-    range = get_data_range(sheet)
+    table_range = get_data_range(sheet)
     if range:
-        sheet.move_range(range[0], rows=-range[1] + 1, cols=-range[2] + 1, translate=True)
+        sheet.move_range(table_range[0], rows=-table_range[1] + 1, cols=-table_range[2] + 1, translate=True)
 
 
-def unmerge_cells(wb):
+def unmerge_cells(wb: openpyxl.workbook.workbook.Workbook) -> None:
     sheet = wb.active
-    range = get_data_range(sheet)
-    if range is not None:
-        check_range = f'{range[3]}{range[1]}:{range[4]}{range[1]}'
+    table_range = get_data_range(sheet)
+    if table_range is not None:
+        check_range = f'{table_range[3]}{table_range[1]}:{table_range[4]}{table_range[1]}'
         is_merged = False
         for merged_range in sheet.merged_cells.ranges:
             if merged_range.coord == check_range:
                 is_merged = True
                 break
         if is_merged:
-            name = sheet.cell(row=range[1], column=range[2]).value
+            name = sheet.cell(row=table_range[1], column=table_range[2]).value
         mcr_coord_list = [mcr.coord for mcr in sheet.merged_cells.ranges]
         for mcr in mcr_coord_list:
             min_col, min_row, max_col, max_row = range_boundaries(mcr)
@@ -74,10 +72,10 @@ def unmerge_cells(wb):
                     for cell in row:
                         cell.value = top_left_cell_value
         if is_merged:
-            sheet.delete_rows(range[1])
+            sheet.delete_rows(table_range[1])
 
 
-def process(path):
+def process(path: str) -> tuple[str, str]:
     save_path = path[:-5] + '_prepared.xlsx'
     name = os.path.basename(path)
     if not os.path.exists(save_path):
@@ -89,7 +87,7 @@ def process(path):
     return save_path, name
 
 
-def unmerge_sheets(file_path):
+def unmerge_sheets(file_path: str) -> List[str]:
     new_path = ""
     index = file_path.rfind("/")
     if index != -1:

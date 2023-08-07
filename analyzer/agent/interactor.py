@@ -1,5 +1,6 @@
 import io
 import logging
+import os
 import traceback
 import pathlib
 import datetime
@@ -15,9 +16,10 @@ from agent import BaseMinion
 from .common_prompts import TableDescriptionPrompt
 from .custom_python_ast import CustomPythonAstREPLTool
 from .processing import process, unmerge_sheets
-
+from analyzer.analyzer import config
 import typer
 import yaml
+openai_api_key = os.environ.get("OPENAI_API_KEY")
 
 
 def read_df(path: str) -> (pd.DataFrame, str):
@@ -49,14 +51,12 @@ def df_info_description(i: int, df: pd.DataFrame) -> str:
            f"{buf.getvalue()}\n"
 
 
-def preparation(path_list: List[str] = [], build_plots: Union[bool, None] = None,
+def preparation(path_list: List[str] = None, build_plots: Union[bool, None] = None,
                 current_summary: Union[str, None] = "",
                 table_description: List[str] = None, context_list: List[str] = None, callback: Callable = None,
                 stop_event: asyncio.locks.Event = None):
-    # todo: import config instead
-    with open("config.yaml") as f:
-        cfg = yaml.load(f, Loader=yaml.FullLoader)
 
+    cfg = config.config
     # assert path_list is None
     # print(cfg["data"])
     if len(path_list) == 0:
@@ -90,8 +90,7 @@ def preparation(path_list: List[str] = [], build_plots: Union[bool, None] = None
     callback(f"Таблицы обработаны, затрачено времени: {datetime.datetime.now() - start_time}")
 
     llm = ChatOpenAI(temperature=0.7, model='gpt-4',
-                     # todo: key here and in all places should be from the .env file (os.environ.get("OPENAI_API_KEY"))
-                     openai_api_key="")
+                     openai_api_key=openai_api_key)
     python_tool = CustomPythonAstREPLTool(locals={"df": df_work, "python": None, "python_repl_ast": None},
                                           globals={"pd": pd, "np": np, "sns": sns, "plotly": plotly})
     python_tool.description = (
