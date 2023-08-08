@@ -259,6 +259,7 @@ async def choose_table(call: types.callback_query, state: FSMContext):
         settings["table_name"] = text
         await message.answer("Таблица выбрана.")
     await db_manager.update_table(chat_id=chat_id, settings=settings)
+    await Form.working.set()
 
 
 @dp.message_handler(Text(equals="Добавить контекст"), state="*")
