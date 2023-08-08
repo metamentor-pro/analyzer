@@ -1,3 +1,16 @@
+Как устроен проект:  
+Взаимодействие с пользователем осуществляется через файл bot.py и файлы bot_data_handler.py,
+db_manager.py и inline_keyboard_manager.py  
+Основной стек: aiogram, aiosqlite
+
+Работа агента осуществялется в основном в файле agent.py, обработка данных и подготовка к работе 
+модели - в файлах processing.py и interactor.py. Настройка промптов в файле - common_prompts.py  
+Основной стек: asyncio, openai, langchain
+
+
+
+
+
 Для запуска проeкта добавьте файл config.yaml со следующей структурой:
 
 data: 
@@ -14,7 +27,4 @@ price_flag: False
 Также нужно вписать OPENAI_API_KEY в файл .env
 
 Выполнить команды:  
-`
-$ docker-compose build`  
-`
-$ docker-compose up`  
+`docker-compose build && docker-compose up -d`
