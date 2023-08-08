@@ -27,6 +27,7 @@ logging.basicConfig(level=logging.INFO, filename="py_log.log", filemode="w")
 if len(sys.argv) > 1:
     API_TOKEN = config.read_config(sys.argv[1])["bot_api"]
     config.config = config.read_config(sys.argv[1])
+    db_name = config.config["db_name"]
 else:
     API_TOKEN = config.config["bot_api"]
     db_name = config.config["db_name"]
