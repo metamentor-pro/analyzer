@@ -9,7 +9,7 @@ import aiofiles
 logging.basicConfig(level=logging.INFO, filename="py_log.log", filemode="w",
                     format="%(asctime)s %(levelname)s %(message)s")
 
-bot_name = config.config["bot_name"] + "_bot"
+bot_name = config.config["bot_name"]
 bot_api = config.config["bot_api"]
 demo = config.config["demo"][0]
 max_requests = config.config["demo"][1]
