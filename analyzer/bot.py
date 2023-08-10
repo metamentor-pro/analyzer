@@ -120,7 +120,7 @@ async def help_info(message: types.Message):
     await message.reply(trouble)
 
 
-@dp.message_handler(Text(equals="🖹 Выбрать таблицу"), state="*")
+@dp.message_handler(Text(equals="📁 Выбрать таблицу"), state="*")
 async def select_table(message: types.Message):
     markup = await create_inline_keyboard(message.chat.id, page_type="table_page")
     await message.reply("Можете выбрать нужную таблицу или добавить новую", reply_markup=markup)
@@ -262,7 +262,7 @@ async def choose_table(call: types.callback_query, state: FSMContext):
     await Form.working.set()
 
 
-@dp.message_handler(Text(equals="Добавить контекст"), state="*")
+@dp.message_handler(Text(equals="➕ Добавить контекст"), state="*")
 async def add_description(message: types.Message, state: FSMContext):
     markup = await create_inline_keyboard(message.chat.id, page_type="context_page")
 
@@ -406,7 +406,7 @@ async def save_description(message: types.Message, state: FSMContext):
         await Form.question.set()
 
 
-@dp.message_handler(Text(equals="🖻 Режим визуализации"), state="*")
+@dp.message_handler(Text(equals="📈 Режим визуализации"), state="*")
 async def plot_on_click(message: types.Message, state: FSMContext) -> None:
     # todo: we should add an inline keyboard here instead and not change the buttons
     chat_id = message.chat.id
@@ -446,7 +446,7 @@ async def request_mode(message: types.Message, state: FSMContext):
     await Form.question.set()
 
 
-@dp.message_handler(Text(equals="Группы таблиц"), state="*")
+@dp.message_handler(Text(equals="🗄️ Группы таблиц"), state="*")
 async def group_options(message: types.Message, state: FSMContext):
     markup = await inline_keyboard_manager.create_group_keyboard(message.chat.id)
     await message.reply(text="Вы можете выбрать опцию", reply_markup=markup)
@@ -467,11 +467,11 @@ async def group_main_menu(message: types.Message, state: FSMContext) -> None:
             print("да")
             chat_id = message.chat.id
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-            btn1 = types.KeyboardButton("🖹 Выбрать таблицу")
+            btn1 = types.KeyboardButton("📁 Выбрать таблицу")
             btn2 = types.KeyboardButton("➕ Добавить описание таблицы")
-            btn3 = types.KeyboardButton("🖻 Режим визуализации")
+            btn3 = types.KeyboardButton("📈 Режим визуализации")
             btn4 = types.KeyboardButton("exit")
-            btn5 = types.KeyboardButton("Добавить контекст")
+            btn5 = types.KeyboardButton("➕ Добавить контекст")
             btn6 = types.KeyboardButton("Сохранить настройки группы")
             markup.row(btn1, btn2, btn3)
             markup.row(btn5, btn4, btn6)
