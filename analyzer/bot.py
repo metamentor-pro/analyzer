@@ -651,7 +651,7 @@ async def process_model(message, state):
                 await message.answer(f"Answer: {answer_from_model[0]}")
     except requests.exceptions.ConnectionError:
         await message.answer("Что-то пошло не так, пожалуйста, повторите вопрос или используйте команду start")
-    except Exception as e:
+    except Exception:
         logging.error(traceback.format_exc())
         print(traceback.format_exc())
 
