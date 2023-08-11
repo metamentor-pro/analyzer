@@ -263,14 +263,16 @@ async def start_markup(is_group: bool = False) -> types.ReplyKeyboardMarkup:
     if not is_group:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         markup.add(
-            types.KeyboardButton("🖹 Выбрать таблицу"),
-            types.KeyboardButton("➕ Добавить описание таблицы"),
-            types.KeyboardButton("🖻 Режим визуализации"),
+            types.KeyboardButton("📁 Выбрать таблицу"),
+            types.KeyboardButton("🗄️ Группы таблиц")
         )
         markup.add(
-            types.KeyboardButton("❓ Режим отправки запроса"),
-            types.KeyboardButton("Добавить контекст"),
-            types.KeyboardButton("Группы таблиц")
+            types.KeyboardButton("➕ Добавить контекст"),
+            types.KeyboardButton("➕ Добавить описание таблицы")
+        )
+        markup.add(
+            types.KeyboardButton("📈 Режим визуализации"),
+            types.KeyboardButton("❓ Режим отправки запроса")
         )
     else:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
