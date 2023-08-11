@@ -104,9 +104,6 @@ async def help_info(message: types.Message):
 
     await message.reply(help_text, parse_mode=types.ParseMode.MARKDOWN)
 
-    example = "Пример запроса: 'Проведи исследовательский анализ данных по предоставленной таблице'"
-    await message.reply(example)
-
     instructions = """
 Для того, чтобы начать общение с ботом:
 1) Нажмите кнопку 'Выбрать таблицу', затем добавьте новую таблицу или воспользуйтесь уже добавленной
