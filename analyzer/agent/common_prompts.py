@@ -76,6 +76,7 @@ use 'str.contains' function for searching required rows (use different forms of 
 ALWAYS USE BOTH OF THEM TO FIND FULL INFORMATION OR THE WORLD WILL BE DESTROYED
 IF VALUE THAT YOU ARE ASKED TO FIND IS EQUAL TO 0, TRY TO FIND IN ANOTHER COLUMNS AND BE VERY CAREFUL
 Pay attention to the values with '.' between number, they are not always fractions.
+IF YOU HAVE PARTIAL VARIABLES, ALWAYS CHECK IF YOUR CALCULATIONS ARE CORRECT
 Example of your actions:  
 I need to check the dataframe to see which rows where 'Материал Имя' or 'Материал имя (полное)1' contains the information about 'Керамические шары':
 # Define the target variable
